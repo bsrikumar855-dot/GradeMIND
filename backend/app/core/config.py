@@ -11,8 +11,6 @@ class Settings(BaseSettings):
     PROJECT_VERSION: str = "1.0.0"
     DATABASE_URL: str
     SECRET_KEY: str
-    JWT_ALGORITHM: str = "HS256"
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = 60  # default to 60 minutes
     DEBUG: bool = True
 
     # Configure Pydantic settings to load from .env file
