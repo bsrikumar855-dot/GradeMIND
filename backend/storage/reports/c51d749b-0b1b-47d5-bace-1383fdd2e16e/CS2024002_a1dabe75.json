@@ -1,0 +1,19 @@
+{
+  "submission_id": "ce756efe-9ae8-4cde-9d2f-8ca8682af18a",
+  "student_name": "Priya Patel",
+  "student_roll_number": "CS2024002",
+  "exam_id": "c51d749b-0b1b-47d5-bace-1383fdd2e16e",
+  "obtained_marks": 0.0,
+  "total_marks": 100.0,
+  "ocr_confidence": 0.945,
+  "evaluation_confidence": 0.0,
+  "evaluation_details": {
+    "parsed_answers": [],
+    "rubric_alignment": {},
+    "total_obtained": 0.0,
+    "evaluation_confidence": 0.0,
+    "feedback": {},
+    "fairness": {}
+  },
+  "status": "COMPLETED"
+}

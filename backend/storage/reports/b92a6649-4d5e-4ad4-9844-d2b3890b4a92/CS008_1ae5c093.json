@@ -1,0 +1,19 @@
+{
+  "submission_id": "fcb0737a-87a6-4741-ae6b-63842cb3c002",
+  "student_name": "Default Status Test",
+  "student_roll_number": "CS008",
+  "exam_id": "b92a6649-4d5e-4ad4-9844-d2b3890b4a92",
+  "obtained_marks": 0.0,
+  "total_marks": 100.0,
+  "ocr_confidence": 0.945,
+  "evaluation_confidence": 0.0,
+  "evaluation_details": {
+    "parsed_answers": [],
+    "rubric_alignment": {},
+    "total_obtained": 0.0,
+    "evaluation_confidence": 0.0,
+    "feedback": {},
+    "fairness": {}
+  },
+  "status": "COMPLETED"
+}

@@ -1,0 +1,19 @@
+{
+  "submission_id": "1e080ef4-af42-4eaf-b1cf-cc4da8fbb49f",
+  "student_name": "Relationship Test",
+  "student_roll_number": "CS007",
+  "exam_id": "2654b7e8-a387-45bf-97e1-61c612411828",
+  "obtained_marks": 0.0,
+  "total_marks": 100.0,
+  "ocr_confidence": 0.945,
+  "evaluation_confidence": 0.0,
+  "evaluation_details": {
+    "parsed_answers": [],
+    "rubric_alignment": {},
+    "total_obtained": 0.0,
+    "evaluation_confidence": 0.0,
+    "feedback": {},
+    "fairness": {}
+  },
+  "status": "COMPLETED"
+}

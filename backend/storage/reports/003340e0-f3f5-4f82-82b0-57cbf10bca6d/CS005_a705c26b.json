@@ -1,0 +1,19 @@
+{
+  "submission_id": "3c1e31a4-1c73-48e0-9212-3028c5a3829b",
+  "student_name": "Status Test",
+  "student_roll_number": "CS005",
+  "exam_id": "003340e0-f3f5-4f82-82b0-57cbf10bca6d",
+  "obtained_marks": 0.0,
+  "total_marks": 100.0,
+  "ocr_confidence": 0.945,
+  "evaluation_confidence": 0.0,
+  "evaluation_details": {
+    "parsed_answers": [],
+    "rubric_alignment": {},
+    "total_obtained": 0.0,
+    "evaluation_confidence": 0.0,
+    "feedback": {},
+    "fairness": {}
+  },
+  "status": "COMPLETED"
+}

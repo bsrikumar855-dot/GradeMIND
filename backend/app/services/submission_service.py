@@ -238,16 +238,7 @@ class SubmissionService:
     def trigger_evaluation(self, submission_id: UUID) -> None:
         """
         Execute AI evaluation on OCR output.
-        Integrates with:
-        - AI/understanding/question_understanding.py
-        - AI/evaluation/rubric_engine.py
-        - AI/evaluation/scorer.py
-        - AI/evaluation/feedback.py
-        - AI/evaluation/fairness.py
-
-        If individual components are not yet available, the integration
-        interface is preserved and the method logs which components
-        were invoked or skipped.
+        Integrates with backend/app/services/ai_service.py evaluate_submission.
         """
         submission = self.repo.get_submission(submission_id)
         if not submission or not submission.ocr_output_path:
@@ -263,84 +254,14 @@ class SubmissionService:
             with open(submission.ocr_output_path, "r", encoding="utf-8") as f:
                 ocr_data = json.load(f)
 
-            evaluation_result = {}
-            total_obtained = 0.0
-            eval_confidence = 0.0
-
-            # ── Step 1: Question Understanding ──
-            try:
-                from AI.understanding.question_understanding import QuestionUnderstanding
-                qu = QuestionUnderstanding()
-                parsed_answers = qu.parse_ocr_to_answers(ocr_data)
-                evaluation_result["parsed_answers"] = parsed_answers
-                logger.info(f"Question Understanding: parsed {len(parsed_answers)} answers")
-            except ImportError:
-                logger.warning("QuestionUnderstanding not available — skipping.")
-                evaluation_result["parsed_answers"] = []
-            except Exception as e:
-                logger.warning(f"QuestionUnderstanding error: {e}")
-                evaluation_result["parsed_answers"] = []
-
-            # ── Step 2: Rubric Engine ──
-            try:
-                from AI.evaluation.rubric_engine import RubricEngine
-                rubric_engine = RubricEngine()
-                rubric_alignment = rubric_engine.align(evaluation_result.get("parsed_answers", []))
-                evaluation_result["rubric_alignment"] = rubric_alignment
-                logger.info("Rubric Engine: alignment completed")
-            except ImportError:
-                logger.warning("RubricEngine not available — skipping.")
-                evaluation_result["rubric_alignment"] = {}
-            except Exception as e:
-                logger.warning(f"RubricEngine error: {e}")
-                evaluation_result["rubric_alignment"] = {}
-
-            # ── Step 3: Scorer ──
-            try:
-                from AI.evaluation.scorer import calculate_marks, generate_confidence
-                q_evals = evaluation_result.get("rubric_alignment", {})
-                if isinstance(q_evals, dict) and q_evals:
-                    total_obtained = calculate_marks(list(q_evals.values()))
-                    eval_confidence = generate_confidence(
-                        ocr_confidence=submission.ocr_confidence or 0.0,
-                        grading_confidence=0.85,
-                        discrepancies=[]
-                    )
-                evaluation_result["total_obtained"] = total_obtained
-                evaluation_result["evaluation_confidence"] = eval_confidence
-                logger.info(f"Scorer: marks={total_obtained}, confidence={eval_confidence}")
-            except ImportError:
-                logger.warning("Scorer not available — skipping.")
-            except Exception as e:
-                logger.warning(f"Scorer error: {e}")
-
-            # ── Step 4: Feedback Engine ──
-            try:
-                from AI.evaluation.feedback import FeedbackEngine
-                feedback_engine = FeedbackEngine()
-                feedback = feedback_engine.generate(evaluation_result)
-                evaluation_result["feedback"] = feedback
-                logger.info("Feedback Engine: feedback generated")
-            except ImportError:
-                logger.warning("FeedbackEngine not available — skipping.")
-                evaluation_result["feedback"] = {}
-            except Exception as e:
-                logger.warning(f"FeedbackEngine error: {e}")
-                evaluation_result["feedback"] = {}
-
-            # ── Step 5: Fairness Engine ──
-            try:
-                from AI.evaluation.fairness import FairnessEngine
-                fairness_engine = FairnessEngine()
-                fairness = fairness_engine.check(evaluation_result)
-                evaluation_result["fairness"] = fairness
-                logger.info("Fairness Engine: checks completed")
-            except ImportError:
-                logger.warning("FairnessEngine not available — skipping.")
-                evaluation_result["fairness"] = {}
-            except Exception as e:
-                logger.warning(f"FairnessEngine error: {e}")
-                evaluation_result["fairness"] = {}
+            # Run the AI evaluation engine on the OCR data
+            from app.services.ai_service import evaluate_submission
+            
+            evaluation_result = evaluate_submission(
+                submission_id=str(submission.id),
+                exam_id=str(submission.exam_id),
+                ocr_output=ocr_data
+            )
 
             # Save evaluation output as JSON
             eval_output_path = storage_service.generate_file_path(
@@ -358,8 +279,8 @@ class SubmissionService:
             self.repo.update_results(
                 submission_id=submission_id,
                 evaluation_output_path=eval_output_path,
-                obtained_marks=total_obtained,
-                evaluation_confidence=eval_confidence
+                obtained_marks=evaluation_result.get("total_score", 0.0),
+                evaluation_confidence=evaluation_result.get("confidence_score", 0.0)
             )
             self._update_status(
                 submission_id, SubmissionStatus.EVALUATING,
@@ -390,47 +311,57 @@ class SubmissionService:
             raise ValueError(f"Submission {submission_id} has no evaluation output for report generation.")
 
         try:
+            # Add AI directory to path for imports
+            ai_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", ".."))
+            if ai_root not in sys.path:
+                sys.path.insert(0, ai_root)
+
             # Load evaluation data
             with open(submission.evaluation_output_path, "r", encoding="utf-8") as f:
                 eval_data = json.load(f)
 
-            # Build report payload
-            report_payload = {
-                "submission_id": str(submission.id),
-                "student_name": submission.student_name,
-                "student_roll_number": submission.student_roll_number,
-                "exam_id": str(submission.exam_id),
-                "obtained_marks": submission.obtained_marks,
-                "total_marks": submission.total_marks,
-                "ocr_confidence": submission.ocr_confidence,
-                "evaluation_confidence": submission.evaluation_confidence,
-                "evaluation_details": eval_data,
-                "status": "COMPLETED"
-            }
+            # Import AI Schemas and Report Builder
+            from AI.schemas.evaluation_schema import SubmissionEvaluation as AISubmissionEvaluation, ReportPayload
+            from AI.reports.report_data_builder import ReportDataBuilder
 
-            # Try using the ReportDataBuilder if available
-            try:
-                ai_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", ".."))
-                if ai_root not in sys.path:
-                    sys.path.insert(0, ai_root)
+            # Reconstruct the Pydantic model from stored evaluation dict
+            ai_eval = AISubmissionEvaluation.model_validate(eval_data)
+            builder = ReportDataBuilder()
 
-                from AI.reports.report_data_builder import ReportDataBuilder
-                builder = ReportDataBuilder()
-                logger.info("ReportDataBuilder loaded for report generation.")
-                # Builder requires SubmissionEvaluation objects — integration point
-                # For now, store the raw compiled payload
-            except ImportError:
-                logger.warning("ReportDataBuilder not available — using raw payload.")
+            # Compile analytics, dashboards, and PDF payloads
+            analytics_payload = builder.build_analytics([ai_eval])
+            teacher_dash = builder.build_teacher_dashboard([ai_eval])
+            student_dash = builder.build_student_dashboard(ai_eval)
 
-            # Save report as JSON
+            # Generate target JSON report path
             report_path = storage_service.generate_file_path(
                 category="reports",
                 exam_id=str(submission.exam_id),
                 identifier=submission.student_roll_number,
                 original_filename="report.json"
             )
+
+            # Generate target PDF report path
+            pdf_path = os.path.splitext(report_path)[0] + ".pdf"
+            builder.generate_pdf_report(ai_eval, pdf_path)
+
+            # Pack all payloads into Final Pydantic ReportPayload schema
+            final_payload = ReportPayload(
+                pdf_url=pdf_path,
+                evaluation_summary=ai_eval,
+                analytics=analytics_payload,
+                teacher_dashboard=teacher_dash,
+                student_dashboard=student_dash,
+                metadata={
+                    "student_name": submission.student_name,
+                    "student_roll_number": submission.student_roll_number,
+                    "exam_id": str(submission.exam_id)
+                }
+            )
+
+            # Save report JSON file
             storage_service.save_text_file(
-                json.dumps(report_payload, indent=2, default=str),
+                final_payload.model_dump_json(indent=2),
                 report_path
             )
 
@@ -440,7 +371,7 @@ class SubmissionService:
                 report_path=report_path
             )
 
-            logger.info(f"Report generated for submission {submission_id}: {report_path}")
+            logger.info(f"Report generated for submission {submission_id}: {report_path} and {pdf_path}")
 
         except Exception as e:
             logger.error(f"Report generation failed for submission {submission_id}: {e}")
