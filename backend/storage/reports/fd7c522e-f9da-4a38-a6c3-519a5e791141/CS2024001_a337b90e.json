@@ -1,0 +1,19 @@
+{
+  "submission_id": "16bbfd11-9cde-4d64-bffc-0f681cd2b079",
+  "student_name": "Aarav Sharma",
+  "student_roll_number": "CS2024001",
+  "exam_id": "fd7c522e-f9da-4a38-a6c3-519a5e791141",
+  "obtained_marks": 0.0,
+  "total_marks": 100.0,
+  "ocr_confidence": 0.945,
+  "evaluation_confidence": 0.0,
+  "evaluation_details": {
+    "parsed_answers": [],
+    "rubric_alignment": {},
+    "total_obtained": 0.0,
+    "evaluation_confidence": 0.0,
+    "feedback": {},
+    "fairness": {}
+  },
+  "status": "COMPLETED"
+}

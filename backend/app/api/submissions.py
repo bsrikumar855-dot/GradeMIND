@@ -284,13 +284,21 @@ def _run_background_processing(submission_id: UUID, db_session_factory):
     Background task that creates its own database session and runs
     the full processing pipeline. This runs outside the request lifecycle.
     """
-    from app.core.database import SessionLocal
+    from app.main import app
+    from app.db.session import get_db
 
-    db = SessionLocal()
+    # Dynamically resolve get_db to respect test dependency overrides
+    factory = app.dependency_overrides.get(get_db, get_db)
+    generator = factory()
+    db = next(generator)
     try:
         service = SubmissionService(db)
         service.process_submission(submission_id)
     except Exception as e:
         logger.error(f"Background processing failed for {submission_id}: {e}")
     finally:
-        db.close()
+        try:
+            next(generator)
+        except StopIteration:
+            pass
+

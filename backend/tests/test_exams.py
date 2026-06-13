@@ -2,9 +2,6 @@ import pytest
 from fastapi.testclient import TestClient
 from uuid import uuid4
 
-# Create a mock database session
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
 from app.core.database import Base
 from app.main import app
 from app.db.session import get_db
@@ -12,29 +9,17 @@ from app.db.session import get_db
 # Import placeholders for dependency overriding
 from app.api.exams import get_current_user_placeholder, require_teacher_or_admin_placeholder
 
-from sqlalchemy.pool import StaticPool
-
-SQLALCHEMY_DATABASE_URL = "sqlite:///:memory:"
-engine = create_engine(
-    SQLALCHEMY_DATABASE_URL,
-    connect_args={"check_same_thread": False},
-    poolclass=StaticPool,
-)
-TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-
-def override_get_db():
-    try:
-        db = TestingSessionLocal()
-        yield db
-    finally:
-        db.close()
-
-app.dependency_overrides[get_db] = override_get_db
-
+from app.models.user import User
+from app.models.audit_log import AuditLog
+from app.models.refresh_token import RefreshToken
 from app.models.exam import Exam
+from app.models.submission import Submission
+from tests.conftest import engine, TestingSessionLocal
 
 @pytest.fixture(scope="function", autouse=True)
 def setup_db():
+    # Diagnostic print required by user
+    print("Base.metadata.tables.keys():", Base.metadata.tables.keys())
     Base.metadata.create_all(bind=engine)
     yield
     Base.metadata.drop_all(bind=engine)

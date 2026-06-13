@@ -1,0 +1,19 @@
+{
+  "submission_id": "162d0f23-9965-4435-9aa5-7dd00aa2fb64",
+  "student_name": "Admin Upload Test",
+  "student_roll_number": "CS2024003",
+  "exam_id": "020924f5-ec86-42c4-9912-9df5ac1bc530",
+  "obtained_marks": 0.0,
+  "total_marks": 100.0,
+  "ocr_confidence": 0.945,
+  "evaluation_confidence": 0.0,
+  "evaluation_details": {
+    "parsed_answers": [],
+    "rubric_alignment": {},
+    "total_obtained": 0.0,
+    "evaluation_confidence": 0.0,
+    "feedback": {},
+    "fairness": {}
+  },
+  "status": "COMPLETED"
+}

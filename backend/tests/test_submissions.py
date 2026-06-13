@@ -10,39 +10,17 @@ import pytest
 from fastapi.testclient import TestClient
 from uuid import uuid4, UUID
 
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
-from sqlalchemy.pool import StaticPool
-
 from app.core.database import Base
 from app.main import app
 from app.db.session import get_db
 from app.api.auth_deps import get_current_user, require_teacher_or_admin
 from app.models.exam import Exam
 from app.models.submission import Submission, SubmissionStatus
+from app.models.user import User
+from app.models.audit_log import AuditLog
+from app.models.refresh_token import RefreshToken
+from tests.conftest import engine, TestingSessionLocal
 
-# ────────────────────────────────────────────
-# Test Database Setup
-# ────────────────────────────────────────────
-
-SQLALCHEMY_DATABASE_URL = "sqlite:///:memory:"
-engine = create_engine(
-    SQLALCHEMY_DATABASE_URL,
-    connect_args={"check_same_thread": False},
-    poolclass=StaticPool,
-)
-TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-
-
-def override_get_db():
-    try:
-        db = TestingSessionLocal()
-        yield db
-    finally:
-        db.close()
-
-
-app.dependency_overrides[get_db] = override_get_db
 
 
 # ────────────────────────────────────────────
@@ -105,6 +83,7 @@ def mock_student_auth(user_id=None):
 @pytest.fixture(scope="function", autouse=True)
 def setup_db():
     """Create and tear down all tables for each test."""
+    print("Base.metadata.tables.keys():", Base.metadata.tables.keys())
     Base.metadata.create_all(bind=engine)
     yield
     Base.metadata.drop_all(bind=engine)
@@ -464,7 +443,7 @@ class TestDatabaseOperations:
 
         # Query directly from DB
         submission = db_session.query(Submission).filter(
-            Submission.id == submission_id
+            Submission.id == UUID(submission_id)
         ).first()
 
         assert submission is not None

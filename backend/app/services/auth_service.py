@@ -9,6 +9,16 @@ from app.services.audit_service import AuditService
 from datetime import datetime, timezone, timedelta
 from typing import Optional
 import hashlib
+from uuid import uuid4
+
+
+def ensure_utc(dt):
+    """Normalize a datetime to UTC-aware. SQLite returns naive datetimes."""
+    if dt is None:
+        return None
+    if dt.tzinfo is None:
+        return dt.replace(tzinfo=timezone.utc)
+    return dt.astimezone(timezone.utc)
 
 def hash_token(token: str) -> str:
     return hashlib.sha256(token.encode()).hexdigest()
@@ -66,7 +76,7 @@ class AuthService:
             )
             
         # Check lockout
-        if user.locked_until and user.locked_until > datetime.now(timezone.utc):
+        if user.locked_until and ensure_utc(user.locked_until) > datetime.now(timezone.utc):
             AuditService.log_event(self.db, "Login Failed - Account Locked", user.id, ip_address)
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
@@ -103,7 +113,7 @@ class AuthService:
         }
         
         access_token = create_access_token(data=payload)
-        refresh_token = create_refresh_token(data={"sub": user.email, "id": str(user.id)})
+        refresh_token = create_refresh_token(data={"sub": user.email, "id": str(user.id), "jti": str(uuid4())})
         
         # Store refresh token
         token_entry = RefreshToken(
@@ -145,7 +155,7 @@ class AuthService:
         t_hash = hash_token(refresh_token)
         token_record = self.db.query(RefreshToken).filter(RefreshToken.token_hash == t_hash).first()
         
-        if not token_record or token_record.revoked or token_record.expires_at < datetime.now(timezone.utc):
+        if not token_record or token_record.revoked or ensure_utc(token_record.expires_at) < datetime.now(timezone.utc):
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Refresh token is revoked or invalid",
@@ -164,7 +174,7 @@ class AuthService:
         }
         
         new_access_token = create_access_token(data=new_payload)
-        new_refresh_token = create_refresh_token(data={"sub": user.email, "id": str(user.id)})
+        new_refresh_token = create_refresh_token(data={"sub": user.email, "id": str(user.id), "jti": str(uuid4())})
         
         # Store new refresh token
         new_token_entry = RefreshToken(

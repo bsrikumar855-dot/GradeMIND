@@ -1,0 +1,19 @@
+{
+  "submission_id": "023a8c91-9025-42a0-8aa1-caf7ffb8a33a",
+  "student_name": "Test",
+  "student_roll_number": "CS002",
+  "exam_id": "51714d47-94fa-420f-a0cf-f3c298ed6802",
+  "obtained_marks": 0.0,
+  "total_marks": 100.0,
+  "ocr_confidence": 0.945,
+  "evaluation_confidence": 0.0,
+  "evaluation_details": {
+    "parsed_answers": [],
+    "rubric_alignment": {},
+    "total_obtained": 0.0,
+    "evaluation_confidence": 0.0,
+    "feedback": {},
+    "fairness": {}
+  },
+  "status": "COMPLETED"
+}

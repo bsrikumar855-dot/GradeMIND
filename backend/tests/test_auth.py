@@ -1,30 +1,29 @@
 import pytest
 from fastapi.testclient import TestClient
 from app.main import app
-from app.core.database import SessionLocal, engine
+from app.db.session import get_db
+from app.core.database import Base
 from app.models.user import User
 from app.models.audit_log import AuditLog
-from sqlalchemy import text
+from app.models.refresh_token import RefreshToken
+from app.models.exam import Exam
+from app.models.submission import Submission
 import uuid
-import time
 from datetime import datetime, timezone, timedelta
 from app.core.security import create_access_token
+from tests.conftest import engine, TestingSessionLocal
+
+@pytest.fixture(autouse=True, scope="function")
+def setup_db():
+    # Diagnostic print required by user
+    print("Base.metadata.tables.keys():", Base.metadata.tables.keys())
+    # Setup - create tables in memory
+    Base.metadata.create_all(bind=engine)
+    yield
+    # Teardown - drop tables
+    Base.metadata.drop_all(bind=engine)
 
 client = TestClient(app)
-
-@pytest.fixture(autouse=True, scope="module")
-def setup_teardown():
-    # Setup - drop specific tables to avoid cascade issues if needed, or just delete data
-    with SessionLocal() as db:
-        db.execute(text("TRUNCATE TABLE audit_logs CASCADE"))
-        db.execute(text("TRUNCATE TABLE users CASCADE"))
-        db.commit()
-    yield
-    # Teardown
-    with SessionLocal() as db:
-        db.execute(text("TRUNCATE TABLE audit_logs CASCADE"))
-        db.execute(text("TRUNCATE TABLE users CASCADE"))
-        db.commit()
 
 @pytest.fixture(scope="function")
 def unique_email():
