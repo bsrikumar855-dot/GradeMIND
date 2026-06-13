@@ -1,0 +1,3 @@
+"""
+GradeMIND OCR Package.
+"""

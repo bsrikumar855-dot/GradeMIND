@@ -1,0 +1,3 @@
+"""
+GradeMIND AI Schemas Package.
+"""

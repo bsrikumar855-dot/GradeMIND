@@ -1,0 +1,45 @@
+# ═══════════════════════════════════════════════
+# GradeMIND .gitignore
+# ═══════════════════════════════════════════════
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+.coverage
+
+# Virtual Environments
+venv/
+.venv/
+backend/venv/
+
+# Environment Files
+.env
+.env.*
+
+# VS Code
+.vscode/
+
+# Generated Storage Artifacts
+backend/storage/*
+!backend/storage/.gitkeep
+
+# OCR Outputs
+backend/storage/ocr_outputs/
+
+# Evaluation Outputs
+backend/storage/evaluation_outputs/
+
+# Reports
+backend/storage/reports/
+
+# Uploaded Answer Sheets
+backend/storage/answer_sheets/
+
+# AI Cache
+AI/**/__pycache__/
+
+# Test Artifacts
+htmlcov/
