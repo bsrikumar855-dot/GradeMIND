@@ -83,13 +83,6 @@ export default function LoginPage() {
 
         {/* Right Side - Login Form */}
         <div className="w-full lg:w-[500px] relative z-10">
-          <div className="bg-white/95 backdrop-blur-xl rounded-[32px] p-10 sm:p-14 shadow-[0_30px_80px_rgba(0,0,0,0.15)] border border-white/80">
-            <div className="w-8 h-8 rounded-lg bg-brand-primary flex items-center justify-center">
-              <span className="text-white font-bold text-xl leading-none">G</span>
-            </div>
-            <span className="text-3xl font-bold text-white tracking-tight">GradeMIND</span>
-          </div>
-
           <div className="bg-white rounded-[28px] p-12 sm:p-16 shadow-[0_20px_60px_rgba(0,0,0,0.3)] border border-white/80">
             <div className="mb-10 text-center">
               <h2 className="text-4xl font-extrabold text-brand-dark mb-3">Welcome Back</h2>
