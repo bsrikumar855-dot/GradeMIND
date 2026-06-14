@@ -6,9 +6,12 @@ following the repository pattern established by UserRepository.
 
 from typing import Optional, List
 from uuid import UUID
+import logging
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import SQLAlchemyError
 from app.models.submission import Submission
+
+logger = logging.getLogger("GradeMIND.SubmissionRepository")
 
 
 class SubmissionRepository:
@@ -34,6 +37,11 @@ class SubmissionRepository:
             self.session.add(submission)
             self.session.commit()
             self.session.refresh(submission)
+            logger.info(
+                "DB_STAGE submission_created submission_id=%s status=%s",
+                submission.id,
+                submission.status,
+            )
             return submission
         except SQLAlchemyError as e:
             self.session.rollback()
@@ -142,6 +150,14 @@ class SubmissionRepository:
 
             self.session.commit()
             self.session.refresh(submission)
+            logger.info(
+                "DB_STAGE status_updated submission_id=%s status=%s ocr_status=%s evaluation_status=%s error=%s",
+                submission_id,
+                submission.status,
+                submission.ocr_status,
+                submission.evaluation_status,
+                submission.error_message,
+            )
             return submission
         except SQLAlchemyError as e:
             self.session.rollback()
@@ -196,6 +212,17 @@ class SubmissionRepository:
 
             self.session.commit()
             self.session.refresh(submission)
+            logger.info(
+                "DB_STAGE results_updated submission_id=%s obtained_marks=%s total_marks=%s ocr_confidence=%s evaluation_confidence=%s ocr_output_path=%s evaluation_output_path=%s report_path=%s",
+                submission_id,
+                submission.obtained_marks,
+                submission.total_marks,
+                submission.ocr_confidence,
+                submission.evaluation_confidence,
+                submission.ocr_output_path,
+                submission.evaluation_output_path,
+                submission.report_path,
+            )
             return submission
         except SQLAlchemyError as e:
             self.session.rollback()

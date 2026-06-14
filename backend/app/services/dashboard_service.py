@@ -25,7 +25,7 @@ class DashboardService:
     def __init__(self, db: Session):
         self.db = db
 
-    def get_overview_metrics(self, user_id: UUID, is_admin: bool = False) -> Dict[str, Any]:
+    def get_overview_metrics(self, user_id: Optional[UUID], is_admin: bool = False) -> Dict[str, Any]:
         """
         Gathers aggregate overview statistics for the current user's exams.
         """
@@ -43,7 +43,13 @@ class DashboardService:
                     "total_submissions": 0,
                     "evaluated_submissions": 0,
                     "average_score": 0.0,
-                    "average_confidence": 0.0
+                    "average_confidence": 0.0,
+                    "published_exams_count": 0,
+                    "unpublished_exams_count": 0,
+                    "average_student_score": 0.0,
+                    "result_publication_rate": 0.0,
+                    "autonomous_evaluations": 0,
+                    "answer_key_evaluations": 0
                 }
 
             # Gather submission counts
@@ -64,12 +70,24 @@ class DashboardService:
                 avg_score = 0.0
                 avg_confidence = 0.0
 
+            # Calculate new fields
+            published_exams_count = sum(1 for e in exams if getattr(e, "results_published", False))
+            unpublished_exams_count = total_exams - published_exams_count
+            result_publication_rate = (published_exams_count / total_exams) * 100.0 if total_exams > 0 else 0.0
+            mode_counts = self._evaluation_mode_counts(evaluated_subs)
+
             return {
                 "total_exams": total_exams,
                 "total_submissions": total_submissions,
                 "evaluated_submissions": evaluated_count,
                 "average_score": round(avg_score, 2),
-                "average_confidence": round(avg_confidence, 4)
+                "average_confidence": round(avg_confidence, 4),
+                "published_exams_count": published_exams_count,
+                "unpublished_exams_count": unpublished_exams_count,
+                "average_student_score": round(avg_score, 2),
+                "result_publication_rate": round(result_publication_rate, 2),
+                "autonomous_evaluations": mode_counts["AI_AUTONOMOUS"],
+                "answer_key_evaluations": mode_counts["ANSWER_KEY"]
             }
         except Exception as e:
             logger.error(f"Error gathering overview metrics: {e}")
@@ -78,7 +96,13 @@ class DashboardService:
                 "total_submissions": 0,
                 "evaluated_submissions": 0,
                 "average_score": 0.0,
-                "average_confidence": 0.0
+                "average_confidence": 0.0,
+                "published_exams_count": 0,
+                "unpublished_exams_count": 0,
+                "average_student_score": 0.0,
+                "result_publication_rate": 0.0,
+                "autonomous_evaluations": 0,
+                "answer_key_evaluations": 0
             }
 
     def get_exam_analytics(self, exam_id: UUID) -> Optional[Dict[str, Any]]:
@@ -153,12 +177,14 @@ class DashboardService:
                     # Build breakdown
                     for q in eval_data.get("questions", []):
                         question_breakdown.append({
-                            "question_number": q.get("question_number"),
+                            "question_number": str(q.get("question_number")),
                             "max_marks": q.get("max_marks"),
                             "score_awarded": q.get("score_awarded"),
                             "student_answer_extracted": q.get("student_answer_extracted"),
                             "criteria_feedback": q.get("criteria_feedback"),
-                            "confidence": q.get("confidence")
+                            "confidence": q.get("confidence"),
+                            "concept_coverage": q.get("concept_coverage"),
+                            "evaluation_mode": q.get("evaluation_mode") or eval_data.get("evaluation_mode")
                         })
 
                     # Build feedback
@@ -178,17 +204,6 @@ class DashboardService:
                 except Exception as e:
                     logger.warning(f"Could not load evaluation data from {submission.evaluation_output_path}: {e}")
 
-            # Fallback for question breakdown if JSON is empty but db has marks
-            if not question_breakdown and submission.obtained_marks is not None:
-                question_breakdown.append({
-                    "question_number": 1,
-                    "max_marks": submission.total_marks or 10.0,
-                    "score_awarded": submission.obtained_marks,
-                    "student_answer_extracted": "Extracted answer details not available in fallback.",
-                    "criteria_feedback": "Detailed rubric breakdown not loaded.",
-                    "confidence": submission.evaluation_confidence or 1.0
-                })
-
             return {
                 "student": submission.student_name,
                 "score": submission.obtained_marks or 0.0,
@@ -201,7 +216,7 @@ class DashboardService:
             logger.error(f"Error retrieving submission review: {e}")
             return None
 
-    def get_monitoring_data(self, user_id: UUID, is_admin: bool = False) -> Dict[str, Any]:
+    def get_monitoring_data(self, user_id: Optional[UUID], is_admin: bool = False) -> Dict[str, Any]:
         """
         Compiles aggregate evaluation monitoring data including score and confidence distributions.
         """
@@ -282,6 +297,7 @@ class DashboardService:
 
             avg_fairness = sum(fairness_scores) / len(fairness_scores) if fairness_scores else 1.0
             bias_free_rate = ((completed_count - flagged_count) / completed_count * 100.0) if completed_count > 0 else 100.0
+            mode_counts = self._evaluation_mode_counts(completed_subs)
 
             return {
                 "aggregate_analytics": {
@@ -289,7 +305,9 @@ class DashboardService:
                     "completed_submissions": completed_count,
                     "failed_submissions": failed_count,
                     "average_score": round(avg_score, 2),
-                    "average_confidence": round(avg_confidence, 4)
+                    "average_confidence": round(avg_confidence, 4),
+                    "autonomous_evaluations": mode_counts["AI_AUTONOMOUS"],
+                    "answer_key_evaluations": mode_counts["ANSWER_KEY"]
                 },
                 "score_distribution": score_dist,
                 "confidence_distribution": conf_dist,
@@ -310,7 +328,9 @@ class DashboardService:
                 "completed_submissions": 0,
                 "failed_submissions": 0,
                 "average_score": 0.0,
-                "average_confidence": 0.0
+                "average_confidence": 0.0,
+                "autonomous_evaluations": 0,
+                "answer_key_evaluations": 0
             },
             "score_distribution": {
                 "90-100": 0, "80-89": 0, "70-79": 0, "60-69": 0, "below_60": 0
@@ -326,3 +346,20 @@ class DashboardService:
                 "flagged_submissions_count": 0
             }
         }
+
+    def _evaluation_mode_counts(self, submissions: List[Submission]) -> Dict[str, int]:
+        counts = {"AI_AUTONOMOUS": 0, "ANSWER_KEY": 0}
+        for submission in submissions:
+            mode = None
+            if submission.evaluation_output_path and os.path.exists(submission.evaluation_output_path):
+                try:
+                    with open(submission.evaluation_output_path, "r", encoding="utf-8") as f:
+                        mode = json.load(f).get("evaluation_mode")
+                except Exception:
+                    mode = None
+            if not mode and getattr(submission, "exam", None):
+                mode = getattr(submission.exam, "evaluation_mode", None)
+            if mode not in counts:
+                mode = "ANSWER_KEY" if getattr(submission.exam, "answer_key_url", None) else "AI_AUTONOMOUS"
+            counts[mode] += 1
+        return counts

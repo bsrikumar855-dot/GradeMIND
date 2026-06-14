@@ -32,6 +32,15 @@ class AuthService:
         self.user_repo = user_repo
         self.db = user_repo.session
 
+    def _serialize_user(self, user: User) -> dict:
+        role = user.role.value if isinstance(user.role, Roles) else str(user.role)
+        return {
+            "id": user.id,
+            "name": user.name,
+            "email": user.email,
+            "role": role.upper()
+        }
+
     def register_user(self, user_data: RegisterRequest, ip_address: Optional[str] = None) -> dict:
         existing_user = self.user_repo.get_user_by_email(user_data.email)
         if existing_user:
@@ -42,22 +51,24 @@ class AuthService:
             )
 
         hashed_pw = hash_password(user_data.password)
+        user_role = Roles.STUDENT
+        if user_data.role:
+            try:
+                user_role = Roles[user_data.role.upper()]
+            except KeyError:
+                pass
+
         new_user = User(
             name=user_data.name,
             email=user_data.email,
             password_hash=hashed_pw,
-            role=Roles.STUDENT
+            role=user_role
         )
         
         created_user = self.user_repo.create_user(new_user)
         AuditService.log_event(self.db, "User Registration", created_user.id, ip_address)
         
-        return {
-            "id": created_user.id,
-            "name": created_user.name,
-            "email": created_user.email,
-            "role": created_user.role.value if isinstance(created_user.role, Roles) else created_user.role
-        }
+        return self._serialize_user(created_user)
 
     def login_user(self, login_data: LoginRequest, ip_address: Optional[str] = None, user_agent: Optional[str] = None) -> dict:
         user = self.user_repo.get_user_by_email(login_data.email)
@@ -129,7 +140,8 @@ class AuthService:
         return {
             "access_token": access_token,
             "refresh_token": refresh_token,
-            "token_type": "bearer"
+            "token_type": "bearer",
+            "user": self._serialize_user(user)
         }
         
     def refresh_access_token(self, refresh_token: str, ip_address: Optional[str] = None, user_agent: Optional[str] = None) -> dict:
@@ -192,7 +204,8 @@ class AuthService:
         return {
             "access_token": new_access_token,
             "refresh_token": new_refresh_token,
-            "token_type": "bearer"
+            "token_type": "bearer",
+            "user": self._serialize_user(user)
         }
 
     def logout_user(self, refresh_token: str, ip_address: Optional[str] = None) -> None:
@@ -211,9 +224,4 @@ class AuthService:
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="User not found or inactive"
             )
-        return {
-            "id": user.id,
-            "name": user.name,
-            "email": user.email,
-            "role": user.role.value if isinstance(user.role, Roles) else user.role
-        }
+        return self._serialize_user(user)

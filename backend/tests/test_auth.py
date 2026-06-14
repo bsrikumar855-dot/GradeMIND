@@ -85,6 +85,8 @@ def test_login_success(unique_email):
     data = response.json()
     assert "access_token" in data["data"]
     assert "refresh_token" in data["data"]
+    assert data["data"]["user"]["email"] == unique_email
+    assert data["data"]["user"]["role"] == "STUDENT"
 
 def test_login_failure(unique_email):
     response = client.post("/auth/login", json={
@@ -133,6 +135,14 @@ def test_refresh_token(unique_email):
     assert response.status_code == 200
     assert "access_token" in response.json()["data"]
     assert "refresh_token" in response.json()["data"]
+    assert response.json()["data"]["user"]["email"] == unique_email
+
+    me_response = client.get(
+        "/auth/me",
+        headers={"Authorization": f"Bearer {response.json()['data']['access_token']}"}
+    )
+    assert me_response.status_code == 200
+    assert me_response.json()["data"]["email"] == unique_email
     
     # Try using the old refresh token again (should be revoked)
     response_revoked = client.post("/auth/refresh", json={
@@ -194,3 +204,18 @@ def test_role_access(unique_email):
 def test_unauthorized_access():
     response = client.get("/auth/me")
     assert response.status_code == 401
+
+
+def test_cors_preflight_allows_localhost_authorization_header():
+    response = client.options(
+        "/auth/me",
+        headers={
+            "Origin": "http://localhost:3000",
+            "Access-Control-Request-Method": "GET",
+            "Access-Control-Request-Headers": "authorization,content-type",
+        },
+    )
+    assert response.status_code == 200
+    assert response.headers["access-control-allow-origin"] == "http://localhost:3000"
+    assert response.headers["access-control-allow-credentials"] == "true"
+    assert "Authorization" in response.headers["access-control-allow-headers"]

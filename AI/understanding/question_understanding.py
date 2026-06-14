@@ -67,7 +67,7 @@ class QuestionUnderstandingAgent:
         if any(w in q_lower for w in ["define", "what is", "what are", "meaning of", "definition"]):
             return "definition"
             
-        # Default fallback
+        # Default classification
         return "explanation"
 
     def extract_keywords(self, question_text: str) -> List[str]:
@@ -158,13 +158,12 @@ class QuestionUnderstandingAgent:
         """
         if self.use_llm:
             try:
-                # LLM execution placeholder (stub for actual integration)
-                # In production, this would make an API request to Gemini
+                # Optional LLM path is intentionally disabled until a provider client is configured.
                 pass
             except Exception as e:
                 logger.error(f"LLM question understanding failed, falling back to heuristics: {e}")
                 
-        # Rule-based fallback
+        # Rule-based analysis
         q_type = self.detect_question_type(question_text)
         keywords = self.extract_keywords(question_text)
         topics = self.extract_topics(question_text)

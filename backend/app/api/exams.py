@@ -7,17 +7,7 @@ from typing import Any
 from app.db.session import get_db
 from app.schemas.exam import CreateExamRequest, UpdateExamRequest, ExamResponse, ExamListResponse
 from app.services import exam_service
-
-# Placeholder dependency for authentication since user/auth layer is not yet complete.
-# TODO: Replace with actual current user dependency from auth module once ready.
-def get_current_user_placeholder():
-    return {"id": UUID("00000000-0000-0000-0000-000000000000"), "role": "TEACHER"}
-
-# TODO: Replace with actual require_teacher_or_admin dependency.
-def require_teacher_or_admin_placeholder(user: dict = Depends(get_current_user_placeholder)):
-    if user["role"] not in ["TEACHER", "ADMIN"]:
-        raise HTTPException(status_code=403, detail="Not enough permissions")
-    return user
+from app.api.auth_deps import get_current_user, normalize_role, require_teacher_or_admin
 
 router = APIRouter(prefix="/exams", tags=["Exams"])
 
@@ -25,7 +15,7 @@ router = APIRouter(prefix="/exams", tags=["Exams"])
 def create_exam(
     exam_data: CreateExamRequest,
     db: Session = Depends(get_db),
-    user: dict = Depends(require_teacher_or_admin_placeholder)
+    user: dict = Depends(require_teacher_or_admin)
 ) -> Any:
     exam = exam_service.create_exam(db, exam_data, teacher_id=user["id"])
     return exam
@@ -33,23 +23,22 @@ def create_exam(
 @router.get("", response_model=ExamListResponse)
 def list_exams(
     db: Session = Depends(get_db),
-    user: dict = Depends(get_current_user_placeholder)
+    user: dict = Depends(get_current_user)
 ) -> Any:
-    if user["role"] == "ADMIN":
+    role = normalize_role(user["role"])
+    if role == "ADMIN":
         exams = exam_service.get_all_exams(db)
-    elif user["role"] == "TEACHER":
+    elif role == "TEACHER":
         exams = exam_service.get_teacher_exams(db, teacher_id=user["id"])
     else:
-        # Students can view assigned exams, but this implementation only checks for teacher/admin or all for now
-        # Assuming for students it returns assigned exams, maybe we return empty list if not assigned for now
-        exams = [] # Placeholder for student logic if needed, but per requirements students can view assigned.
+        exams = []
     return ExamListResponse(exams=exams)
 
 @router.get("/{exam_id}", response_model=ExamResponse)
 def get_single_exam(
     exam_id: UUID,
     db: Session = Depends(get_db),
-    user: dict = Depends(get_current_user_placeholder)
+    user: dict = Depends(get_current_user)
 ) -> Any:
     exam = exam_service.get_exam_by_id(db, exam_id)
     if not exam:
@@ -62,7 +51,7 @@ def update_exam(
     exam_id: UUID,
     exam_data: UpdateExamRequest,
     db: Session = Depends(get_db),
-    user: dict = Depends(require_teacher_or_admin_placeholder)
+    user: dict = Depends(require_teacher_or_admin)
 ) -> Any:
     exam = exam_service.get_exam_by_id(db, exam_id)
     if not exam:
@@ -78,7 +67,7 @@ def update_exam(
 def delete_exam(
     exam_id: UUID,
     db: Session = Depends(get_db),
-    user: dict = Depends(require_teacher_or_admin_placeholder)
+    user: dict = Depends(require_teacher_or_admin)
 ) -> Any:
     exam = exam_service.get_exam_by_id(db, exam_id)
     if not exam:

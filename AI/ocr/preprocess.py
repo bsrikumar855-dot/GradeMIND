@@ -1,7 +1,6 @@
 """
 GradeMIND Image Preprocessing Module.
 Handles Grayscale, Denoising, Deskewing, Contrast Enhancement, and Adaptive Thresholding.
-Supports dynamic fallbacks if OpenCV or numpy is not installed.
 """
 
 import os
@@ -24,7 +23,12 @@ try:
     HAS_OPENCV = True
 except ImportError:
     HAS_OPENCV = False
-    logger.warning("OpenCV not found. Preprocessing will run in fallback/mock mode.")
+    logger.warning("OpenCV not found. Preprocessing is unavailable.")
+
+
+def _require_opencv() -> None:
+    if not HAS_OPENCV or not HAS_NUMPY:
+        raise RuntimeError("Image preprocessing requires both OpenCV and numpy to be installed.")
 
 
 def grayscale(image: Union["np.ndarray", str]) -> "np.ndarray":
@@ -37,9 +41,7 @@ def grayscale(image: Union["np.ndarray", str]) -> "np.ndarray":
     Returns:
         Grayscaled numpy array.
     """
-    if not HAS_OPENCV:
-        logger.info("Mock Grayscale: returning dummy image representation.")
-        return image if not isinstance(image, str) else np.zeros((100, 100), dtype=np.uint8)
+    _require_opencv()
 
     if isinstance(image, str):
         image = cv2.imread(image)
@@ -61,9 +63,7 @@ def denoise(image: "np.ndarray") -> "np.ndarray":
     Returns:
         Denoised numpy array.
     """
-    if not HAS_OPENCV:
-        logger.info("Mock Denoise: returning unchanged input.")
-        return image
+    _require_opencv()
 
     # Bilateral filter: diameter=9, sigmaColor=75, sigmaSpace=75
     # Excellent for retaining handwriting strokes while smoothing out page texture
@@ -80,9 +80,7 @@ def deskew(image: "np.ndarray") -> "np.ndarray":
     Returns:
         Deskewed/realigned numpy array.
     """
-    if not HAS_OPENCV:
-        logger.info("Mock Deskew: returning unchanged input.")
-        return image
+    _require_opencv()
 
     gray = grayscale(image)
     # Perform Canny edge detection
@@ -128,9 +126,7 @@ def enhance_contrast(image: "np.ndarray") -> "np.ndarray":
     Returns:
         Contrast-enhanced grayscale numpy array.
     """
-    if not HAS_OPENCV:
-        logger.info("Mock Enhance Contrast: returning unchanged input.")
-        return image
+    _require_opencv()
 
     gray = grayscale(image)
     # Create CLAHE object
@@ -148,9 +144,7 @@ def adaptive_threshold(image: "np.ndarray") -> "np.ndarray":
     Returns:
         Binary thresholded numpy array.
     """
-    if not HAS_OPENCV:
-        logger.info("Mock Adaptive Threshold: returning unchanged input.")
-        return image
+    _require_opencv()
 
     gray = grayscale(image)
     # Apply Gaussian blur first to reduce high-frequency noise
@@ -175,10 +169,7 @@ def preprocess_image(image_path: str) -> "np.ndarray":
     Returns:
         Preprocessed binary numpy array.
     """
-    if not HAS_OPENCV:
-        logger.info(f"Mock pipeline: Processing image at {image_path}")
-        # Return a dummy numpy array
-        return np.ones((100, 100), dtype=np.uint8) * 255
+    _require_opencv()
 
     if not os.path.exists(image_path):
         raise FileNotFoundError(f"Source image file not found at: {image_path}")

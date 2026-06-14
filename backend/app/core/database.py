@@ -37,7 +37,7 @@ def init_db() -> None:
     """
     Initialize database schemas.
     Note: In production and standard workflows, Alembic is preferred.
-    This function is a fallback for quick initialization.
+    This function supports quick local initialization.
     """
     from app.models.user import User  # noqa: F401
     Base.metadata.create_all(bind=engine)

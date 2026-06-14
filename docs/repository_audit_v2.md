@@ -65,9 +65,9 @@ Below is a complete inventory of all files under `backend/app`, `backend/tests`,
 | `AI/paddle_ocr_reader.py` | Standalone CLI | `DEPRECATED` | Original standalone OCR CLI script. Superseded by modular package. |
 | `AI/ocr/preprocess.py` | Image Utility | `PRODUCTION_READY` | Binarization, scaling, deskewing, and noise reduction filters. |
 | `AI/ocr/segmenter.py` | Image Utility | `PRODUCTION_READY` | Identifies and crops visual blocks (paragraphs, text lines). |
-| `AI/ocr/paddle_engine.py` | OCR Wrapper | `PRODUCTION_READY` | Interface for PaddleOCR. Includes mock fallback data for dev. |
-| `AI/ocr/easyocr_engine.py` | OCR Wrapper | `PRODUCTION_READY` | Interface for EasyOCR. Includes mock fallback data for dev. |
-| `AI/ocr/tesseract_engine.py` | OCR Wrapper | `PRODUCTION_READY` | Interface for Tesseract. Includes mock fallback data for dev. |
+| `AI/ocr/paddle_engine.py` | OCR Wrapper | `PRODUCTION_READY` | Interface for PaddleOCR. Raises explicit errors when unavailable. |
+| `AI/ocr/easyocr_engine.py` | OCR Wrapper | `PRODUCTION_READY` | Interface for EasyOCR. Raises explicit errors when unavailable. |
+| `AI/ocr/tesseract_engine.py` | OCR Wrapper | `PRODUCTION_READY` | Interface for Tesseract. Raises explicit errors when unavailable. |
 | `AI/ocr/ocr_manager.py` | Orchestrator | `PRODUCTION_READY` | Runs all three engines and selects the best result via confidence voting. |
 | `AI/schemas/ocr_schema.py` | Validation Schema | `PRODUCTION_READY` | Pydantic schemas for text layout, lines, confidence, and boxes. |
 | `AI/schemas/evaluation_schema.py`| Validation Schema | `PRODUCTION_READY` | Pydantic schemas representing rubric grades, comments, scores. |

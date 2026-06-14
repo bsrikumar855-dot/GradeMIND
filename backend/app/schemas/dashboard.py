@@ -13,6 +13,12 @@ class DashboardOverviewResponse(BaseModel):
     evaluated_submissions: int
     average_score: float
     average_confidence: float
+    published_exams_count: Optional[int] = 0
+    unpublished_exams_count: Optional[int] = 0
+    average_student_score: Optional[float] = 0.0
+    result_publication_rate: Optional[float] = 0.0
+    autonomous_evaluations: Optional[int] = 0
+    answer_key_evaluations: Optional[int] = 0
 
 
 class ExamAnalyticsResponse(BaseModel):
@@ -26,12 +32,14 @@ class ExamAnalyticsResponse(BaseModel):
 
 
 class QuestionBreakdownItem(BaseModel):
-    question_number: int
+    question_number: str
     max_marks: float
     score_awarded: float
     student_answer_extracted: Optional[str] = None
     criteria_feedback: Optional[str] = None
     confidence: float
+    concept_coverage: Optional[float] = None
+    evaluation_mode: Optional[str] = None
 
 
 class FeedbackDetails(BaseModel):
@@ -62,6 +70,8 @@ class MonitoringAnalytics(BaseModel):
     failed_submissions: int
     average_score: float
     average_confidence: float
+    autonomous_evaluations: int = 0
+    answer_key_evaluations: int = 0
 
 
 class FairnessMetrics(BaseModel):

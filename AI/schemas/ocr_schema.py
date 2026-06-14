@@ -3,7 +3,7 @@ GradeMIND OCR Schema definitions.
 Provides structured models for regions, lines, and documents extracted by OCR engines.
 """
 
-from typing import List
+from typing import List, Union
 from pydantic import BaseModel, Field
 
 
@@ -39,7 +39,7 @@ class OCRDocument(BaseModel):
     """
     Unified representation of a fully processed OCR document.
     """
-    submission_id: int = Field(..., description="Reference ID of the submission.")
+    submission_id: Union[str, int] = Field(..., description="Reference ID of the submission.")
     confidence: float = Field(..., description="Aggregate confidence score across the document.")
     lines: List[OCRLine] = Field(default_factory=list, description="Extracted lines in reading order.")
     regions: List[OCRRegion] = Field(default_factory=list, description="Raw spatial regions detected.")

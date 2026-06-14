@@ -6,8 +6,8 @@ from app.core.database import Base
 from app.main import app
 from app.db.session import get_db
 
-# Import placeholders for dependency overriding
-from app.api.exams import get_current_user_placeholder, require_teacher_or_admin_placeholder
+# Import actual dependencies for dependency overriding
+from app.api.auth_deps import get_current_user, require_teacher_or_admin
 
 from app.models.user import User
 from app.models.audit_log import AuditLog
@@ -33,7 +33,7 @@ def mock_auth(role="TEACHER", user_id=None):
     def override_get_current_user():
         return {"id": user_id, "role": role}
 
-    app.dependency_overrides[get_current_user_placeholder] = override_get_current_user
+    app.dependency_overrides[get_current_user] = override_get_current_user
 
     def override_require_teacher_or_admin():
         user = override_get_current_user()
@@ -42,7 +42,7 @@ def mock_auth(role="TEACHER", user_id=None):
             raise HTTPException(status_code=403, detail="Not enough permissions")
         return user
 
-    app.dependency_overrides[require_teacher_or_admin_placeholder] = override_require_teacher_or_admin
+    app.dependency_overrides[require_teacher_or_admin] = override_require_teacher_or_admin
     return user_id
 
 def test_create_exam_teacher():

@@ -61,30 +61,47 @@ def validate_score_consistency(scores_history: List[Dict[str, Any]], current_eva
 
 def detect_outliers(scores: List[float]) -> List[int]:
     """
-    Identifies index positions of outlier scores using standard deviation thresholding (Z-score > 2.0).
-    
+    Identifies index positions of outlier scores using Modified Z-Score (MAD method).
+    Uses Median Absolute Deviation which is robust against outlier self-contamination
+    in small datasets where both Z-score and IQR methods can fail.
+
     Args:
         scores: List of scores to analyze.
-        
+
     Returns:
         List of integer indices corresponding to outlier scores.
     """
     if len(scores) < 3:
         return []
 
-    mean = sum(scores) / len(scores)
-    variance = sum((x - mean) ** 2 for x in scores) / len(scores)
-    std_dev = math.sqrt(variance)
+    sorted_vals = sorted(scores)
+    n = len(sorted_vals)
 
-    if std_dev == 0:
+    # Calculate median
+    if n % 2 == 1:
+        median_val = sorted_vals[n // 2]
+    else:
+        median_val = (sorted_vals[n // 2 - 1] + sorted_vals[n // 2]) / 2.0
+
+    # Calculate MAD (Median Absolute Deviation)
+    abs_deviations = sorted([abs(x - median_val) for x in scores])
+    if len(abs_deviations) % 2 == 1:
+        mad = abs_deviations[len(abs_deviations) // 2]
+    else:
+        mad = (abs_deviations[len(abs_deviations) // 2 - 1] +
+               abs_deviations[len(abs_deviations) // 2]) / 2.0
+
+    if mad == 0:
         return []
 
+    # Modified Z-score: 0.6745 is the 0.75th quantile of the standard normal distribution
+    threshold = 3.5
     outliers = []
     for idx, score in enumerate(scores):
-        z_score = abs(score - mean) / std_dev
-        if z_score > 2.0:
+        modified_z = 0.6745 * abs(score - median_val) / mad
+        if modified_z > threshold:
             outliers.append(idx)
-            
+
     return outliers
 
 

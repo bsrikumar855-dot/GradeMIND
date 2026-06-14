@@ -98,7 +98,7 @@ sequenceDiagram
     rect rgb(255, 255, 240)
         note right of S: Report Retrieval
         S->>FE: Click "View Report"
-        FE->>BE: GET /reports/101
+        FE->>BE: GET /submissions/{submission_id}/pdf
         BE->>DB: Verify Ownership / Permission
         BE->>GCS: Generate Signed URL
         GCS-->>BE: Returns secure CDN URL

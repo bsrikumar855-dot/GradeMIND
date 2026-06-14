@@ -188,8 +188,8 @@ class TestDashboardAPIs:
         assert response.status_code == 404
         assert "not found" in response.json()["detail"].lower()
 
-    def test_submission_review_fallback(self, sample_data):
-        """Verify GET /dashboard/submissions/{submission_id} returns fallback breakdown if JSON file is missing."""
+    def test_submission_review_without_json_does_not_fabricate_breakdown(self, sample_data):
+        """Verify missing JSON does not create fake question-level review data."""
         sub_id = sample_data["sub1"].id
         response = client.get(f"/dashboard/submissions/{sub_id}")
         assert response.status_code == 200
@@ -198,11 +198,10 @@ class TestDashboardAPIs:
         assert data["student"] == "Alice Smith"
         assert data["score"] == 85.0
         assert data["confidence"] == 0.92
-        assert len(data["question_breakdown"]) == 1
-        assert data["question_breakdown"][0]["score_awarded"] == 85.0
+        assert data["question_breakdown"] == []
         assert data["feedback"]["summary"] == ""
 
-    def test_submission_review_with_file(self, sample_data, tmp_path):
+    def test_submission_review_with_file(self, sample_data, tmp_path, db_session):
         """Verify GET /dashboard/submissions/{submission_id} successfully parses evaluation output files."""
         sub1 = sample_data["sub1"]
         
@@ -244,6 +243,7 @@ class TestDashboardAPIs:
             json.dump(eval_data, f)
             
         sub1.evaluation_output_path = temp_file
+        db_session.commit()
         
         response = client.get(f"/dashboard/submissions/{sub1.id}")
         assert response.status_code == 200
@@ -253,7 +253,7 @@ class TestDashboardAPIs:
         assert data["score"] == 85.0
         assert data["confidence"] == 0.92
         assert len(data["question_breakdown"]) == 2
-        assert data["question_breakdown"][0]["question_number"] == 1
+        assert data["question_breakdown"][0]["question_number"] == "1"
         assert data["question_breakdown"][0]["score_awarded"] == 50.0
         assert data["question_breakdown"][1]["score_awarded"] == 35.0
         assert data["feedback"]["summary"] == "Overall excellent performance."
@@ -262,7 +262,7 @@ class TestDashboardAPIs:
         assert data["fairness_checks"][0]["value"] == 0.95
         assert data["fairness_checks"][0]["status"] == "PASSED"
 
-    def test_report_download_success(self, sample_data, tmp_path):
+    def test_report_download_success(self, sample_data, tmp_path, db_session):
         """Verify GET /dashboard/submissions/{submission_id}/pdf serves compiled PDF file."""
         sub1 = sample_data["sub1"]
         
@@ -277,6 +277,7 @@ class TestDashboardAPIs:
             f.write(b"%PDF-1.4\n%mock pdf content")
             
         sub1.report_path = temp_json
+        db_session.commit()
         
         response = client.get(f"/dashboard/submissions/{sub1.id}/pdf")
         assert response.status_code == 200
@@ -294,12 +295,17 @@ class TestDashboardAPIs:
         """Verify GET /dashboard/submissions/{submission_id}/pdf returns 404 if PDF file is not on disk."""
         sub1 = sample_data["sub1"]
         sub1.report_path = "non_existent_report_path.json"
+        db = TestingSessionLocal()
+        db_sub = db.query(Submission).filter(Submission.id == sub1.id).first()
+        db_sub.report_path = "non_existent_report_path.json"
+        db.commit()
+        db.close()
         
         response = client.get(f"/dashboard/submissions/{sub1.id}/pdf")
         assert response.status_code == 404
         assert "missing" in response.json()["detail"].lower()
 
-    def test_monitoring_stats(self, sample_data, tmp_path):
+    def test_monitoring_stats(self, sample_data, tmp_path, db_session):
         """Verify GET /dashboard/monitoring returns correct distributions and metrics."""
         sub1 = sample_data["sub1"]
         sub2 = sample_data["sub2"]
@@ -318,6 +324,7 @@ class TestDashboardAPIs:
             
         sub1.evaluation_output_path = temp_file1
         sub2.evaluation_output_path = temp_file2
+        db_session.commit()
         
         response = client.get("/dashboard/monitoring")
         assert response.status_code == 200

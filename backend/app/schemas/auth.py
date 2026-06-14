@@ -1,11 +1,13 @@
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 from uuid import UUID
+from typing import Optional
 import re
 
 class RegisterRequest(BaseModel):
     name: str = Field(..., min_length=1, max_length=100, description="Full name of the user")
     email: EmailStr = Field(..., description="Unique email address of the user")
     password: str = Field(..., min_length=8, max_length=128, description="Plaintext password, minimum 8 characters")
+    role: Optional[str] = Field(None, description="Optional role of the user (e.g. teacher, student)")
 
     @field_validator('email')
     @classmethod

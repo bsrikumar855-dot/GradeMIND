@@ -10,6 +10,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import FileResponse, JSONResponse
 from sqlalchemy.orm import Session
 
+from app.core.config import settings
 from app.db.session import get_db
 from app.api.auth_deps import get_current_user, require_teacher_or_admin
 from app.services.dashboard_service import DashboardService
@@ -44,8 +45,8 @@ def get_overview(
     Retrieves aggregate overview statistics for the teacher's exams,
     including total exams, submissions count, completed counts, average score, and average confidence.
     """
-    is_admin = user.get("role") == "ADMIN"
-    user_id = UUID(str(user.get("id")))
+    is_admin = not settings.AUTH_ENABLED or user.get("role") == "ADMIN"
+    user_id = UUID(str(user.get("id"))) if user.get("id") else None
     metrics = db_service.get_overview_metrics(user_id, is_admin)
     return metrics
 
@@ -112,6 +113,8 @@ def download_pdf_report(
     Serves the compiled PDF report card for a student submission.
     """
     from app.models.submission import Submission
+    from app.services.submission_service import SubmissionService
+
     submission = db.query(Submission).filter(Submission.id == submission_id).first()
     if not submission:
         raise HTTPException(
@@ -119,24 +122,58 @@ def download_pdf_report(
             detail=f"Submission with ID {submission_id} not found."
         )
 
-    if not submission.report_path:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Evaluation report has not been generated for this submission yet."
-        )
-
-    # Resolve PDF filename
-    pdf_path = os.path.splitext(submission.report_path)[0] + ".pdf"
-    if not os.path.exists(pdf_path):
+    try:
+        _, pdf_path = SubmissionService(db).ensure_report_artifacts(submission_id)
+    except ValueError as exc:
+        if str(exc) == "EVALUATION_OUTPUT_MISSING":
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Evaluation must complete before the PDF report can be downloaded."
+            )
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="PDF report file is missing or has not been compiled."
+            detail="PDF report could not be generated for this submission."
         )
+
 
     return FileResponse(
         path=pdf_path,
         media_type="application/pdf",
         filename=f"report_{submission.student_roll_number}.pdf"
+    )
+
+
+@router.get(
+    "/submissions/{submission_id}/study-plan-pdf",
+    status_code=status.HTTP_200_OK,
+    summary="Download Study Plan PDF"
+)
+def download_study_plan_pdf(
+    submission_id: UUID,
+    user: dict = Depends(require_teacher_or_admin),
+    db: Session = Depends(get_db)
+):
+    from app.models.submission import Submission
+    from app.services.submission_service import SubmissionService
+
+    submission = db.query(Submission).filter(Submission.id == submission_id).first()
+    if not submission:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Submission with ID {submission_id} not found."
+        )
+    try:
+        plan_path = SubmissionService(db).generate_study_plan_pdf(submission_id)
+    except ValueError:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Evaluation must complete before the study plan can be downloaded."
+        )
+
+    return FileResponse(
+        path=plan_path,
+        media_type="application/pdf",
+        filename=f"study_plan_{submission.student_roll_number}.pdf"
     )
 
 
@@ -154,7 +191,7 @@ def get_monitoring(
     Retrieves aggregate monitoring data, score distributions, confidence groupings, and fairness metrics
     to audit pipeline health.
     """
-    is_admin = user.get("role") == "ADMIN"
-    user_id = UUID(str(user.get("id")))
+    is_admin = not settings.AUTH_ENABLED or user.get("role") == "ADMIN"
+    user_id = UUID(str(user.get("id"))) if user.get("id") else None
     monitoring_data = db_service.get_monitoring_data(user_id, is_admin)
     return monitoring_data

@@ -469,11 +469,18 @@ This document outlines the API specifications for the GradeMIND Backend. All end
 ## Reports & Analytics APIs
 
 ### 1. Get Report PDF
-- **Endpoint**: `GET /reports/{id}`
+- **Endpoint**: `GET /submissions/{id}/pdf`
 - **Purpose**: Downloads or redirects to the generated PDF evaluation report card.
 - **Authentication**: JWT Bearer token.
 - **Request Body**: None.
 - **Response Body**: Binary PDF stream or Redirect (302) to Cloud Storage.
+
+### 1a. Get Report JSON
+- **Endpoint**: `GET /submissions/{id}/report`
+- **Purpose**: Downloads the generated JSON evaluation report payload.
+- **Authentication**: JWT Bearer token.
+- **Request Body**: None.
+- **Response Body**: JSON report file.
 
 #### Success Example (Status 200 OK / 302 Found)
 *Returns application/pdf content stream or redirects to GCS/S3 signed download URL.*

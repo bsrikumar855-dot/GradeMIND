@@ -4,7 +4,6 @@ Interface for extracting text and layout bounding boxes using Tesseract OCR (via
 """
 
 import logging
-from typing import Optional
 from AI.schemas.ocr_schema import OCRDocument, OCRLine, OCRRegion
 
 logger = logging.getLogger("GradeMIND.TesseractEngine")
@@ -36,7 +35,7 @@ class TesseractOCREngine:
     def __init__(self):
         _init_tesseract()
 
-    def extract(self, image_path: str, submission_id: int = 1) -> OCRDocument:
+    def extract(self, image_path: str, submission_id: str) -> OCRDocument:
         """
         Run Tesseract OCR text recognition on an image.
         
@@ -48,7 +47,7 @@ class TesseractOCREngine:
             OCRDocument containing extracted layout regions and lines.
         """
         if not _has_pytesseract:
-            return self._generate_mock_document(submission_id)
+            raise RuntimeError("Tesseract OCR engine is unavailable; install/configure pytesseract and Tesseract before processing submissions.")
 
         try:
             import pytesseract
@@ -137,53 +136,4 @@ class TesseractOCREngine:
 
         except Exception as e:
             logger.error(f"Error during Tesseract OCR execution: {e}")
-            return self._generate_mock_document(submission_id)
-
-    def _generate_mock_document(self, submission_id: int) -> OCRDocument:
-        """
-        Generate realistic mock OCR results for student submissions when Tesseract is not installed.
-        Contains slight transcription noise (e.g., spelling errors) to simulate standard Tesseract behavior.
-        """
-        logger.info(f"Generating mock OCRDocument for submission {submission_id} via TesseractOCREngine")
-        
-        mock_data = [
-            ("Q1. What is Photosynthesis?", [[100, 100], [400, 100], [400, 120], [100, 120]], 0.95),
-            ("Student Answer: Photosynthesis is the process used by plants to convert light energy to chemical energy.", [[100, 140], [800, 140], [800, 160], [100, 160]], 0.88),
-            ("This occurs in the cloroplasts using chlorophyll. They absorb carbon dioxide and water to make glucose and release oxygen.", [[100, 170], [850, 170], [850, 190], [100, 190]], 0.85),
-            ("Q2. Define Cell Division and compare Mitosis with Meiosis.", [[100, 250], [600, 250], [600, 270], [100, 270]], 0.93),
-            ("Student Answer: Cell division is how cells replicate. Mitosis produces two identical diploid daughter cells", [[100, 290], [800, 290], [800, 310], [100, 310]], 0.89),
-            ("for growth and repair. Meiosis produces four unique haploid gametes for sexual reproduction.", [[100, 320], [820, 320], [820, 340], [100, 340]], 0.87),
-            ("Q3. Solve: 2x + 5 = 15.", [[100, 400], [300, 400], [300, 420], [100, 420]], 0.94),
-            ("Student Answer: 2x = 15 - 5 => 2x = 10 => x = 5.", [[100, 440], [500, 440], [500, 460], [100, 460]], 0.84)
-        ]
-
-        regions = []
-        lines = []
-
-        for text, poly, conf in mock_data:
-            region = OCRRegion(
-                text=text,
-                confidence=conf,
-                bounding_box=poly,
-                top_y=float(poly[0][1]),
-                left_x=float(poly[0][0])
-            )
-            regions.append(region)
-            
-            line = OCRLine(
-                text=text,
-                confidence=conf,
-                bounding_box=poly,
-                top_y=float(poly[0][1]),
-                left_x=float(poly[0][0])
-            )
-            lines.append(line)
-
-        avg_conf = sum(r.confidence for r in regions) / len(regions)
-
-        return OCRDocument(
-            submission_id=submission_id,
-            confidence=avg_conf,
-            lines=lines,
-            regions=regions
-        )
+            raise

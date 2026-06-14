@@ -7,6 +7,9 @@ class CreateExamRequest(BaseModel):
     title: str
     subject: str
     total_marks: int
+    question_paper_url: Optional[str] = None
+    answer_key_url: Optional[str] = None
+    evaluation_mode: Optional[str] = None
 
     model_config = ConfigDict(
         json_schema_extra={
@@ -22,6 +25,9 @@ class UpdateExamRequest(BaseModel):
     title: Optional[str] = None
     subject: Optional[str] = None
     total_marks: Optional[int] = None
+    question_paper_url: Optional[str] = None
+    answer_key_url: Optional[str] = None
+    evaluation_mode: Optional[str] = None
 
     model_config = ConfigDict(
         json_schema_extra={
@@ -38,6 +44,9 @@ class ExamResponse(BaseModel):
     title: str
     subject: str
     total_marks: int
+    question_paper_url: Optional[str] = None
+    answer_key_url: Optional[str] = None
+    evaluation_mode: str
     status: str
     created_at: datetime
 

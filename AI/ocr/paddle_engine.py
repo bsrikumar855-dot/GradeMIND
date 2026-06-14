@@ -4,7 +4,6 @@ Interface for extracting text and layout bounding boxes using PaddleOCR.
 """
 
 import logging
-from typing import Optional
 from AI.schemas.ocr_schema import OCRDocument, OCRLine, OCRRegion
 
 logger = logging.getLogger("GradeMIND.PaddleEngine")
@@ -50,7 +49,7 @@ class PaddleOCREngine:
     def __init__(self):
         _init_paddle()
 
-    def extract(self, image_path: str, submission_id: int = 1) -> OCRDocument:
+    def extract(self, image_path: str, submission_id: str) -> OCRDocument:
         """
         Run PaddleOCR text recognition on an image.
         
@@ -62,7 +61,7 @@ class PaddleOCREngine:
             OCRDocument containing extracted layout regions and lines.
         """
         if _ocr_model is None:
-            return self._generate_mock_document(submission_id)
+            raise RuntimeError("PaddleOCR engine is unavailable; install/configure paddleocr before processing submissions.")
 
         try:
             results = list(_ocr_model.predict(image_path))
@@ -81,9 +80,7 @@ class PaddleOCREngine:
                 scores = result.get('rec_scores', result.get('scores', []))
                 polys = result.get('dt_polys', result.get('polys', []))
             else:
-                # Fallback check
-                logger.warning("PaddleOCR result format is unrecognized, running fallback.")
-                return self._generate_mock_document(submission_id)
+                raise RuntimeError("PaddleOCR result format is unrecognized.")
 
             regions = []
             for text, score, poly in zip(texts, scores, polys):
@@ -155,53 +152,4 @@ class PaddleOCREngine:
 
         except Exception as e:
             logger.error(f"Error during PaddleOCR execution: {e}")
-            return self._generate_mock_document(submission_id)
-
-    def _generate_mock_document(self, submission_id: int) -> OCRDocument:
-        """
-        Generate realistic mock OCR results for student submissions when PaddleOCR is not installed.
-        """
-        logger.info(f"Generating mock OCRDocument for submission {submission_id} via PaddleOCREngine")
-        
-        # A mock page containing answers for standard exam questions
-        mock_data = [
-            ("Q1. What is Photosynthesis?", [[100, 100], [400, 100], [400, 120], [100, 120]], 0.98),
-            ("Student Answer: Photosynthesis is the process used by plants to convert light energy into chemical energy.", [[100, 140], [800, 140], [800, 160], [100, 160]], 0.94),
-            ("This occurs in the chloroplasts using chlorophyll. They absorb carbon dioxide and water to make glucose and release oxygen.", [[100, 170], [850, 170], [850, 190], [100, 190]], 0.92),
-            ("Q2. Define Cell Division and compare Mitosis with Meiosis.", [[100, 250], [600, 250], [600, 270], [100, 270]], 0.96),
-            ("Student Answer: Cell division is how cells replicate. Mitosis produces two identical diploid daughter cells", [[100, 290], [800, 290], [800, 310], [100, 310]], 0.95),
-            ("for growth and repair. Meiosis produces four unique haploid gametes for sexual reproduction.", [[100, 320], [820, 320], [820, 340], [100, 340]], 0.93),
-            ("Q3. Solve: 2x + 5 = 15.", [[100, 400], [300, 400], [300, 420], [100, 420]], 0.97),
-            ("Student Answer: 2x = 15 - 5 => 2x = 10 => x = 5.", [[100, 440], [500, 440], [500, 460], [100, 460]], 0.91)
-        ]
-
-        regions = []
-        lines = []
-
-        for text, poly, conf in mock_data:
-            region = OCRRegion(
-                text=text,
-                confidence=conf,
-                bounding_box=poly,
-                top_y=float(poly[0][1]),
-                left_x=float(poly[0][0])
-            )
-            regions.append(region)
-            
-            line = OCRLine(
-                text=text,
-                confidence=conf,
-                bounding_box=poly,
-                top_y=float(poly[0][1]),
-                left_x=float(poly[0][0])
-            )
-            lines.append(line)
-
-        avg_conf = sum(r.confidence for r in regions) / len(regions)
-
-        return OCRDocument(
-            submission_id=submission_id,
-            confidence=avg_conf,
-            lines=lines,
-            regions=regions
-        )
+            raise

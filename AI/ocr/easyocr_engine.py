@@ -4,7 +4,6 @@ Interface for extracting text and layout bounding boxes using EasyOCR.
 """
 
 import logging
-from typing import Optional
 from AI.schemas.ocr_schema import OCRDocument, OCRLine, OCRRegion
 
 logger = logging.getLogger("GradeMIND.EasyOCREngine")
@@ -35,7 +34,7 @@ class EasyOCREngine:
     def __init__(self):
         _init_easyocr()
 
-    def extract(self, image_path: str, submission_id: int = 1) -> OCRDocument:
+    def extract(self, image_path: str, submission_id: str) -> OCRDocument:
         """
         Run EasyOCR text recognition on an image.
         
@@ -47,7 +46,7 @@ class EasyOCREngine:
             OCRDocument containing extracted layout regions and lines.
         """
         if _ocr_model is None:
-            return self._generate_mock_document(submission_id)
+            raise RuntimeError("EasyOCR engine is unavailable; install/configure easyocr before processing submissions.")
 
         try:
             # EasyOCR readtext returns: [([[x1, y1], [x2, y2], [x3, y3], [x4, y4]], text, confidence), ...]
@@ -123,53 +122,4 @@ class EasyOCREngine:
 
         except Exception as e:
             logger.error(f"Error during EasyOCR execution: {e}")
-            return self._generate_mock_document(submission_id)
-
-    def _generate_mock_document(self, submission_id: int) -> OCRDocument:
-        """
-        Generate realistic mock OCR results for student submissions when EasyOCR is not installed.
-        We slightly vary values and text compared to Paddle to simulate independent engine outputs.
-        """
-        logger.info(f"Generating mock OCRDocument for submission {submission_id} via EasyOCREngine")
-        
-        mock_data = [
-            ("Q1. What is Photosynthesis?", [[101, 99], [402, 99], [402, 121], [101, 121]], 0.96),
-            ("Student Answer: Photosynthesis is the process used by plants to convert light energy to chemical energy.", [[99, 141], [801, 141], [801, 159], [99, 159]], 0.92),
-            ("This occurs in the chloroplasts using chlorophyll. They absorb carbon dioxide and water to make glucose and release oxygen.", [[98, 171], [849, 171], [849, 191], [98, 191]], 0.90),
-            ("Q2. Define Cell Division and compare Mitosis with Meiosis.", [[102, 248], [598, 248], [598, 272], [102, 272]], 0.95),
-            ("Student Answer: Cell division is how cells replicate. Mitosis produces two identical diploid daughter cells", [[98, 292], [798, 292], [798, 312], [98, 312]], 0.93),
-            ("for growth and repair. Meiosis produces four unique haploid gametes for sexual reproduction.", [[99, 321], [821, 321], [821, 341], [99, 341]], 0.91),
-            ("Q3. Solve: 2x + 5 = 15.", [[101, 401], [301, 401], [301, 421], [101, 421]], 0.96),
-            ("Student Answer: 2x = 15 - 5 => 2x = 10 => x = 5.", [[100, 441], [501, 441], [501, 461], [100, 461]], 0.89)
-        ]
-
-        regions = []
-        lines = []
-
-        for text, poly, conf in mock_data:
-            region = OCRRegion(
-                text=text,
-                confidence=conf,
-                bounding_box=poly,
-                top_y=float(poly[0][1]),
-                left_x=float(poly[0][0])
-            )
-            regions.append(region)
-            
-            line = OCRLine(
-                text=text,
-                confidence=conf,
-                bounding_box=poly,
-                top_y=float(poly[0][1]),
-                left_x=float(poly[0][0])
-            )
-            lines.append(line)
-
-        avg_conf = sum(r.confidence for r in regions) / len(regions)
-
-        return OCRDocument(
-            submission_id=submission_id,
-            confidence=avg_conf,
-            lines=lines,
-            regions=regions
-        )
+            raise

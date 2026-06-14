@@ -99,7 +99,7 @@ client = TestClient(app)
 class TestPipelineIntegration:
     """End-to-end test validating OCR to Evaluation and Report Generation integration."""
 
-    def test_end_to_end_pipeline_success(self, sample_exam, sample_answer_sheet, db_session):
+    def test_end_to_end_pipeline_success(self, sample_exam, sample_answer_sheet, db_session, tmp_path, monkeypatch):
         """
         Verify that a complete upload, OCR, evaluation, and report generation cycle
         progresses successfully and produces correct JSON and PDF files in local storage.
@@ -124,6 +124,33 @@ class TestPipelineIntegration:
         assert response.status_code == 201
         res_data = response.json()
         submission_id = UUID(res_data["id"])
+
+        question_file = tmp_path / "questions.txt"
+        question_file.write_text("Q1. Explain Photosynthesis [15 Marks]", encoding="utf-8")
+        sample_exam.question_paper_url = str(question_file)
+        db_session.commit()
+
+        from AI.schemas.ocr_schema import OCRDocument, OCRLine
+        from AI.ocr.ocr_manager import OCRManager
+
+        def mock_extract_text(self, image_path, submission_id):
+            return OCRDocument(
+                submission_id=str(submission_id),
+                confidence=0.95,
+                lines=[
+                    OCRLine(
+                        text=(
+                            "Q1. Photosynthesis uses sunlight and chlorophyll. "
+                            "Plants take carbon dioxide and water to produce glucose and oxygen."
+                        ),
+                        confidence=0.95,
+                        bounding_box=[],
+                    )
+                ],
+                regions=[],
+            )
+
+        monkeypatch.setattr(OCRManager, "extract_text", mock_extract_text)
 
         # 3. Synchronously run the processing pipeline using SubmissionService
         service = SubmissionService(db_session)
@@ -151,16 +178,17 @@ class TestPipelineIntegration:
         assert os.path.exists(submission.evaluation_output_path)
         with open(submission.evaluation_output_path, "r", encoding="utf-8") as f:
             eval_content = json.load(f)
-            assert eval_content["submission_id"] == 101
+            assert eval_content["submission_id"] == str(submission_id)
+            assert eval_content["evaluation_mode"] == "AI_AUTONOMOUS"
             assert eval_content["total_score"] > 0
-            assert eval_content["max_possible"] == 15.0  # 3 default questions * 5 marks
+            assert eval_content["max_possible"] == 15.0
 
         # Verify Report output exists on disk (JSON format)
         assert submission.report_path is not None
         assert os.path.exists(submission.report_path)
         with open(submission.report_path, "r", encoding="utf-8") as f:
             report_content = json.load(f)
-            assert report_content["evaluation_summary"]["submission_id"] == 101
+            assert report_content["evaluation_summary"]["submission_id"] == str(submission_id)
             assert "analytics" in report_content
             assert "teacher_dashboard" in report_content
             assert "student_dashboard" in report_content

@@ -3,7 +3,7 @@ GradeMIND Evaluation Schema definitions.
 Provides structured models for question-level grades, submission evaluations, and reports.
 """
 
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any, Optional, Union
 from pydantic import BaseModel, Field
 
 
@@ -33,17 +33,24 @@ class QuestionEvaluation(BaseModel):
         description="Detailed breakdown of scoring criteria."
     )
     confidence: float = Field(1.0, description="Grading confidence score (0.0 to 1.0) for this question.")
+    concept_coverage: Optional[float] = Field(None, description="Concept coverage percentage for autonomous evaluation.")
+    missing_concepts: List[str] = Field(default_factory=list, description="Expected concepts not found in the answer.")
+    evaluation_mode: Optional[str] = Field(None, description="Evaluation mode used for this question.")
+    difficulty: Optional[str] = Field(None, description="Inferred question difficulty.")
+    expected_depth: Optional[str] = Field(None, description="Expected answer depth.")
 
 
 class SubmissionEvaluation(BaseModel):
     """
     Complete evaluation results for an entire exam sheet submission.
     """
-    submission_id: int = Field(..., description="Reference ID of the submission.")
+    submission_id: Union[str, int] = Field(..., description="Reference ID of the submission.")
     total_score: float = Field(..., description="Sum of all question scores.")
     max_possible: float = Field(..., description="Maximum possible score for the exam sheet.")
     status: str = Field("COMPLETED", description="Status of the evaluation: COMPLETED, PENDING_REVIEW, FAILED.")
     confidence_score: float = Field(..., description="Aggregated confidence percentage (0.0 to 1.0).")
+    evaluation_mode: str = Field("ANSWER_KEY", description="Evaluation mode: ANSWER_KEY or AI_AUTONOMOUS.")
+    concept_coverage: Optional[float] = Field(None, description="Average concept coverage percentage.")
     questions: List[QuestionEvaluation] = Field(default_factory=list, description="List of individual question scores.")
     
     # Fairness details
@@ -54,6 +61,7 @@ class SubmissionEvaluation(BaseModel):
     strengths: List[str] = Field(default_factory=list, description="Strengths identified in the submission.")
     weaknesses: List[str] = Field(default_factory=list, description="Weaknesses identified in the submission.")
     improvements: List[str] = Field(default_factory=list, description="Areas of recommended improvement.")
+    study_recommendations: List[str] = Field(default_factory=list, description="Recommended study actions.")
     summary: str = Field("", description="A general constructive summary of student performance.")
 
 
