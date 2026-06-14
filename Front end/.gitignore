@@ -1,0 +1,69 @@
+# Dependencies
+/node_modules
+/.pnp
+.pnp.js
+.yarn/install-state.gz
+
+# Frontend build output
+/.next/
+/out/
+/build
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Testing and coverage
+/coverage
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Local runtime output
+tmp/
+$out/
+*.log
+backend/debug.log
+backend/e2e_results.json
+
+# MyPy
+.mypy_cache/
+
+# Virtual environments
+venv/
+.venv/
+
+# Editors
+.vscode/
+
+# Storage
+backend/storage/
+
+# Generated reports
+AI/tests/test_pipeline_output.json
+
+# OS and misc
+Thumbs.db
+.DS_Store
+*.pem
+
+# Debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Environment variables
+.env
+.env.local
+.env.*
+.env*.local
+!.env.example
+
+# Vercel
+.vercel
+
+# TypeScript
+*.tsbuildinfo
+next-env.d.ts

@@ -1,0 +1,18 @@
+<svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background -->
+  <rect width="32" height="32" rx="7" fill="#2F5A3A"/>
+  
+  <!-- Brain hemisphere arc -->
+  <path d="M 17 3 C 10 3 4 9.5 4 17 C 4 24.5 10 29.5 17 29.5" stroke="#FFFFFF" stroke-width="2.2" stroke-linecap="round" fill="none"/>
+  
+  <!-- Neural pathways -->
+  <path d="M 17 17 C 15.5 14.5 13 11 11 8" stroke="#FFFFFF" stroke-width="1.8" stroke-linecap="round"/>
+  <path d="M 17 17 C 14 16.5 11 15.5 7 14.5" stroke="#FFFFFF" stroke-width="1.8" stroke-linecap="round"/>
+  <path d="M 17 17 C 15.5 19.5 13 23 11 26" stroke="#FFFFFF" stroke-width="1.8" stroke-linecap="round"/>
+  
+  <!-- Center node -->
+  <circle cx="17" cy="17" r="2" fill="#FFFFFF"/>
+  
+  <!-- Checkmark -->
+  <path d="M 9 23 L 16 30 L 29 5" stroke="#86B77B" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+</svg>
