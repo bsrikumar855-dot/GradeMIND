@@ -19,7 +19,7 @@ export interface GradeMindLogoProps {
   textSize?: "sm" | "md" | "lg" | "xl";
 }
 
-export const GRADEMIND_LOGO_SRC = "/images/grademind-logo.png";
+export const GRADEMIND_LOGO_SRC = "/images/grademind-logo-official.jpeg";
 
 const DEFAULT_SIZES: Record<LogoVariant, number> = {
   "full-color": 44,
