@@ -1,0 +1,12 @@
+{
+  "/_not-found/page": "app/_not-found/page.js",
+  "/api/run-cmd/route": "app/api/run-cmd/route.js",
+  "/login/page": "app/login/page.js",
+  "/page": "app/page.js",
+  "/(authenticated)/dashboard/page": "app/(authenticated)/dashboard/page.js",
+  "/(authenticated)/results/page": "app/(authenticated)/results/page.js",
+  "/(authenticated)/feedback/page": "app/(authenticated)/feedback/page.js",
+  "/(authenticated)/reports/page": "app/(authenticated)/reports/page.js",
+  "/(authenticated)/upload/page": "app/(authenticated)/upload/page.js",
+  "/(authenticated)/evaluation/page": "app/(authenticated)/evaluation/page.js"
+}

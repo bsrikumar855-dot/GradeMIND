@@ -1,0 +1,911 @@
+=== Command: set BUILD_PROD=true&& npx next build ===
+Started at: 2026-06-17T12:24:00.412Z
+
+ ⚠ You are using a non-standard "NODE_ENV" value in your environment. This creates inconsistencies in the project and is strongly advised against. Read more: https://nextjs.org/docs/messages/non-standard-node-env
+ ⚠ You are using a non-standard "NODE_ENV" value in your environment. This creates inconsistencies in the project and is strongly advised against. Read more: https://nextjs.org/docs/messages/non-standard-node-env
+  ▲ Next.js 14.2.35
+  - Environments: .env.local
+
+  ▲ Next.js 14.2.35
+   Creating an optimized production build ...
+  - Environments: .env.local
+
+   Creating an optimized production build ...
+<w> [webpack.cache.PackFileCacheStrategy/webpack.FileSystemInfo] Resolving '../../../typescript/lib/typescript' in d:\GradeMIND\frontend\node_modules\next\dist\build for build dependencies doesn't lead to expected result 'D:\GradeMIND\frontend\node_modules\typescript\lib\typescript.js', but to 'd:\GradeMIND\frontend\node_modules\typescript\lib\typescript.js' instead. Resolving dependencies are ignored for this path.
+<w>  at resolve commonjs file ../../../typescript/lib/typescript (expected D:\GradeMIND\frontend\node_modules\typescript\lib\typescript.js)
+<w>  at file dependencies d:\GradeMIND\frontend\node_modules\next\dist\build\load-jsconfig.js
+<w>  at file d:\GradeMIND\frontend\node_modules\next\dist\build\load-jsconfig.js
+<w>  at file dependencies d:\GradeMIND\frontend\node_modules\next\dist\build\webpack-config.js
+<w>  at file d:\GradeMIND\frontend\node_modules\next\dist\build\webpack-config.js
+<w>  at file dependencies d:\GradeMIND\frontend\node_modules\next\dist\build\webpack\loaders\next-swc-loader.js
+<w>  at file d:\GradeMIND\frontend\node_modules\next\dist\build\webpack\loaders\next-swc-loader.js
+<w>  at resolve commonjs d:\GradeMIND\frontend\node_modules\next\dist\build\webpack\loaders\next-swc-loader.js
+<w> [webpack.cache.PackFileCacheStrategy/webpack.FileSystemInfo] Resolving '../../../typescript/lib/typescript' in d:\GradeMIND\frontend\node_modules\next\dist\build for build dependencies doesn't lead to expected result 'D:\GradeMIND\frontend\node_modules\typescript\lib\typescript.js', but to 'd:\GradeMIND\frontend\node_modules\typescript\lib\typescript.js' instead. Resolving dependencies are ignored for this path.
+<w>  at resolve commonjs file ../../../typescript/lib/typescript (expected D:\GradeMIND\frontend\node_modules\typescript\lib\typescript.js)
+<w>  at file dependencies d:\GradeMIND\frontend\node_modules\next\dist\build\load-jsconfig.js
+<w>  at file d:\GradeMIND\frontend\node_modules\next\dist\build\load-jsconfig.js
+<w>  at file dependencies d:\GradeMIND\frontend\node_modules\next\dist\build\webpack-config.js
+<w>  at file d:\GradeMIND\frontend\node_modules\next\dist\build\webpack-config.js
+<w>  at file dependencies d:\GradeMIND\frontend\node_modules\next\dist\build\webpack\loaders\next-swc-loader.js
+<w>  at file d:\GradeMIND\frontend\node_modules\next\dist\build\webpack\loaders\next-swc-loader.js
+<w>  at resolve commonjs d:\GradeMIND\frontend\node_modules\next\dist\build\webpack\loaders\next-swc-loader.js
+<w> [webpack.cache.PackFileCacheStrategy/webpack.FileSystemInfo] Resolving '../../../typescript/lib/typescript' in d:\GradeMIND\frontend\node_modules\next\dist\build for build dependencies doesn't lead to expected result 'D:\GradeMIND\frontend\node_modules\typescript\lib\typescript.js', but to 'd:\GradeMIND\frontend\node_modules\typescript\lib\typescript.js' instead. Resolving dependencies are ignored for this path.
+<w>  at resolve commonjs file ../../../typescript/lib/typescript (expected D:\GradeMIND\frontend\node_modules\typescript\lib\typescript.js)
+<w>  at file dependencies d:\GradeMIND\frontend\node_modules\next\dist\build\load-jsconfig.js
+<w>  at file d:\GradeMIND\frontend\node_modules\next\dist\build\load-jsconfig.js
+<w>  at file dependencies d:\GradeMIND\frontend\node_modules\next\dist\build\webpack-config.js
+<w>  at file d:\GradeMIND\frontend\node_modules\next\dist\build\webpack-config.js
+<w>  at file dependencies d:\GradeMIND\frontend\node_modules\next\dist\build\webpack\loaders\next-swc-loader.js
+<w>  at file d:\GradeMIND\frontend\node_modules\next\dist\build\webpack\loaders\next-swc-loader.js
+<w>  at resolve commonjs d:\GradeMIND\frontend\node_modules\next\dist\build\webpack\loaders\next-swc-loader.js
+<w> [webpack.cache.PackFileCacheStrategy/webpack.FileSystemInfo] Resolving '../../../typescript/lib/typescript' in d:\GradeMIND\frontend\node_modules\next\dist\build for build dependencies doesn't lead to expected result 'D:\GradeMIND\frontend\node_modules\typescript\lib\typescript.js', but to 'd:\GradeMIND\frontend\node_modules\typescript\lib\typescript.js' instead. Resolving dependencies are ignored for this path.
+<w>  at resolve commonjs file ../../../typescript/lib/typescript (expected D:\GradeMIND\frontend\node_modules\typescript\lib\typescript.js)
+<w>  at file dependencies d:\GradeMIND\frontend\node_modules\next\dist\build\load-jsconfig.js
+<w>  at file d:\GradeMIND\frontend\node_modules\next\dist\build\load-jsconfig.js
+<w>  at file dependencies d:\GradeMIND\frontend\node_modules\next\dist\build\webpack-config.js
+<w>  at file d:\GradeMIND\frontend\node_modules\next\dist\build\webpack-config.js
+<w>  at file dependencies d:\GradeMIND\frontend\node_modules\next\dist\build\webpack\loaders\next-swc-loader.js
+<w>  at file d:\GradeMIND\frontend\node_modules\next\dist\build\webpack\loaders\next-swc-loader.js
+<w>  at resolve commonjs d:\GradeMIND\frontend\node_modules\next\dist\build\webpack\loaders\next-swc-loader.js
+<w> [webpack.cache.PackFileCacheStrategy/webpack.FileSystemInfo] Resolving '../../../typescript/lib/typescript' in d:\GradeMIND\frontend\node_modules\next\dist\build for build dependencies doesn't lead to expected result 'D:\GradeMIND\frontend\node_modules\typescript\lib\typescript.js', but to 'd:\GradeMIND\frontend\node_modules\typescript\lib\typescript.js' instead. Resolving dependencies are ignored for this path.
+<w>  at resolve commonjs file ../../../typescript/lib/typescript (expected D:\GradeMIND\frontend\node_modules\typescript\lib\typescript.js)
+<w>  at file dependencies d:\GradeMIND\frontend\node_modules\next\dist\build\load-jsconfig.js
+<w>  at file d:\GradeMIND\frontend\node_modules\next\dist\build\load-jsconfig.js
+<w>  at file dependencies d:\GradeMIND\frontend\node_modules\next\dist\build\webpack-config.js
+<w>  at file d:\GradeMIND\frontend\node_modules\next\dist\build\webpack-config.js
+<w>  at file dependencies d:\GradeMIND\frontend\node_modules\next\dist\build\webpack\loaders\next-swc-loader.js
+<w>  at file d:\GradeMIND\frontend\node_modules\next\dist\build\webpack\loaders\next-swc-loader.js
+<w>  at resolve commonjs d:\GradeMIND\frontend\node_modules\next\dist\build\webpack\loaders\next-swc-loader.js
+<w> [webpack.cache.PackFileCacheStrategy/webpack.FileSystemInfo] Resolving '../../../typescript/lib/typescript' in d:\GradeMIND\frontend\node_modules\next\dist\build for build dependencies doesn't lead to expected result 'D:\GradeMIND\frontend\node_modules\typescript\lib\typescript.js', but to 'd:\GradeMIND\frontend\node_modules\typescript\lib\typescript.js' instead. Resolving dependencies are ignored for this path.
+<w>  at resolve commonjs file ../../../typescript/lib/typescript (expected D:\GradeMIND\frontend\node_modules\typescript\lib\typescript.js)
+<w>  at file dependencies d:\GradeMIND\frontend\node_modules\next\dist\build\load-jsconfig.js
+<w>  at file d:\GradeMIND\frontend\node_modules\next\dist\build\load-jsconfig.js
+<w>  at file dependencies d:\GradeMIND\frontend\node_modules\next\dist\build\webpack-config.js
+<w>  at file d:\GradeMIND\frontend\node_modules\next\dist\build\webpack-config.js
+<w>  at file dependencies d:\GradeMIND\frontend\node_modules\next\dist\build\webpack\loaders\next-swc-loader.js
+<w>  at file d:\GradeMIND\frontend\node_modules\next\dist\build\webpack\loaders\next-swc-loader.js
+<w>  at resolve commonjs d:\GradeMIND\frontend\node_modules\next\dist\build\webpack\loaders\next-swc-loader.js
+ ✓ Compiled successfully
+   Linting and checking validity of types ...
+ ✓ Compiled successfully
+   Linting and checking validity of types ...
+
+   We detected TypeScript in your project and reconfigured your tsconfig.json file for you. Strict-mode is set to false by default.
+   The following suggested values were added to your tsconfig.json. These values can be changed to fit your project's needs:
+
+   	- include was updated to add '.next-prod/types/**/*.ts'
+
+   Collecting page data ...
+   Collecting page data ...
+   Generating static pages (0/12) ...
+   Generating static pages (0/12) ...
+TypeError: Cannot read properties of null (reading 'useContext')
+    at t.useContext (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.prod.js:12:109421)
+    at d (d:\GradeMIND\frontend\.next-prod\server\chunks\298.js:1:21705)
+    at h (d:\GradeMIND\frontend\.next-prod\server\chunks\298.js:1:13643)
+    at au (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:10446)
+    at d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:15122
+    at aw (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:16908)
+    at a_ (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:49776)
+    at ab (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:11808)
+    at d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:16871
+    at aw (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:16908) {
+  digest: '1522895258'
+}
+TypeError: Cannot read properties of null (reading 'useContext')
+    at t.useContext (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.prod.js:12:109421)
+    at d (d:\GradeMIND\frontend\.next-prod\server\chunks\298.js:1:21705)
+    at h (d:\GradeMIND\frontend\.next-prod\server\chunks\298.js:1:13643)
+    at au (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:10446)
+    at d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:15122
+    at aw (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:16908)
+    at a_ (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:49776)
+    at ab (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:11808)
+    at d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:16871
+    at aw (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:16908)
+
+Error occurred prerendering page "/login". Read more: https://nextjs.org/docs/messages/prerender-error
+
+TypeError: Cannot read properties of null (reading 'useContext')
+    at t.useContext (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.prod.js:12:109421)
+    at d (d:\GradeMIND\frontend\.next-prod\server\chunks\298.js:1:21705)
+    at h (d:\GradeMIND\frontend\.next-prod\server\chunks\298.js:1:13643)
+    at au (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:10446)
+    at d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:15122
+    at aw (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:16908)
+    at a_ (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:49776)
+    at ab (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:11808)
+    at d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:16871
+    at aw (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:16908)
+TypeError: Cannot read properties of null (reading 'useContext')
+    at t.useContext (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.prod.js:12:109421)
+    at d (d:\GradeMIND\frontend\.next-prod\server\chunks\298.js:1:21705)
+    at h (d:\GradeMIND\frontend\.next-prod\server\chunks\298.js:1:13643)
+    at au (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:10446)
+    at d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:15122
+    at aw (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:16908)
+    at a_ (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:49776)
+    at ab (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:11808)
+    at d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:16871
+    at aw (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:16908) {
+  digest: '1522895258'
+}
+TypeError: Cannot read properties of null (reading 'useContext')
+    at t.useContext (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.prod.js:12:109421)
+    at d (d:\GradeMIND\frontend\.next-prod\server\chunks\298.js:1:21705)
+    at h (d:\GradeMIND\frontend\.next-prod\server\chunks\298.js:1:13643)
+    at au (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:10446)
+    at d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:15122
+    at aw (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:16908)
+    at a_ (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:49776)
+    at ab (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:11808)
+    at d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:16871
+    at aw (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:16908)
+
+Error occurred prerendering page "/dashboard". Read more: https://nextjs.org/docs/messages/prerender-error
+
+TypeError: Cannot read properties of null (reading 'useContext')
+    at t.useContext (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.prod.js:12:109421)
+    at d (d:\GradeMIND\frontend\.next-prod\server\chunks\298.js:1:21705)
+    at h (d:\GradeMIND\frontend\.next-prod\server\chunks\298.js:1:13643)
+    at au (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:10446)
+    at d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:15122
+    at aw (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:16908)
+    at a_ (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:49776)
+    at ab (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:11808)
+    at d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:16871
+    at aw (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:16908)
+   Generating static pages (3/12) 
+TypeError: Cannot read properties of null (reading 'useContext')
+    at t.useContext (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.prod.js:12:109421)
+    at d (d:\GradeMIND\frontend\.next-prod\server\chunks\298.js:1:21705)
+    at h (d:\GradeMIND\frontend\.next-prod\server\chunks\298.js:1:13643)
+    at au (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:10446)
+    at d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:15122
+    at aw (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:16908)
+    at a_ (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:49776)
+    at ab (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:11808)
+    at d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:16871
+    at aw (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:16908) {
+  digest: '1522895258'
+}
+TypeError: Cannot read properties of null (reading 'useContext')
+    at t.useContext (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.prod.js:12:109421)
+    at d (d:\GradeMIND\frontend\.next-prod\server\chunks\298.js:1:21705)
+    at h (d:\GradeMIND\frontend\.next-prod\server\chunks\298.js:1:13643)
+    at au (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:10446)
+    at d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:15122
+    at aw (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:16908)
+    at a_ (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:49776)
+    at ab (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:11808)
+    at d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:16871
+    at aw (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:16908)
+
+Error occurred prerendering page "/feedback". Read more: https://nextjs.org/docs/messages/prerender-error
+
+TypeError: Cannot read properties of null (reading 'useContext')
+    at t.useContext (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.prod.js:12:109421)
+    at d (d:\GradeMIND\frontend\.next-prod\server\chunks\298.js:1:21705)
+    at h (d:\GradeMIND\frontend\.next-prod\server\chunks\298.js:1:13643)
+    at au (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:10446)
+    at d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:15122
+    at aw (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:16908)
+    at a_ (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:49776)
+    at ab (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:11808)
+    at d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:16871
+    at aw (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:16908)
+TypeError: Cannot read properties of null (reading 'useContext')
+    at t.useContext (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.prod.js:12:109421)
+    at d (d:\GradeMIND\frontend\.next-prod\server\chunks\298.js:1:21705)
+    at h (d:\GradeMIND\frontend\.next-prod\server\chunks\298.js:1:13643)
+    at au (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:10446)
+    at d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:15122
+    at aw (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:16908)
+    at a_ (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:49776)
+    at ab (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:11808)
+    at d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:16871
+    at aw (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:16908) {
+  digest: '1522895258'
+}
+TypeError: Cannot read properties of null (reading 'useContext')
+    at t.useContext (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.prod.js:12:109421)
+    at d (d:\GradeMIND\frontend\.next-prod\server\chunks\298.js:1:21705)
+    at h (d:\GradeMIND\frontend\.next-prod\server\chunks\298.js:1:13643)
+    at au (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:10446)
+    at d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:15122
+    at aw (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:16908)
+    at a_ (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:49776)
+    at ab (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:11808)
+    at d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:16871
+    at aw (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:16908)
+
+Error occurred prerendering page "/results". Read more: https://nextjs.org/docs/messages/prerender-error
+
+TypeError: Cannot read properties of null (reading 'useContext')
+    at t.useContext (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.prod.js:12:109421)
+    at d (d:\GradeMIND\frontend\.next-prod\server\chunks\298.js:1:21705)
+    at h (d:\GradeMIND\frontend\.next-prod\server\chunks\298.js:1:13643)
+    at au (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:10446)
+    at d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:15122
+    at aw (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:16908)
+    at a_ (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:49776)
+    at ab (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:11808)
+    at d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:16871
+    at aw (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:16908)
+TypeError: Cannot read properties of null (reading 'useContext')
+    at t.useContext (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.prod.js:12:109421)
+    at d (d:\GradeMIND\frontend\.next-prod\server\chunks\298.js:1:21705)
+    at h (d:\GradeMIND\frontend\.next-prod\server\chunks\298.js:1:13643)
+    at au (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:10446)
+    at d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:15122
+    at aw (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:16908)
+    at a_ (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:49776)
+    at ab (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:11808)
+    at d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:16871
+    at aw (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:16908) {
+  digest: '1522895258'
+}
+TypeError: Cannot read properties of null (reading 'useContext')
+    at t.useContext (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.prod.js:12:109421)
+    at d (d:\GradeMIND\frontend\.next-prod\server\chunks\298.js:1:21705)
+    at h (d:\GradeMIND\frontend\.next-prod\server\chunks\298.js:1:13643)
+    at au (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:10446)
+    at d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:15122
+    at aw (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:16908)
+    at a_ (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:49776)
+    at ab (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:11808)
+    at d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:16871
+    at aw (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:16908)
+
+Error occurred prerendering page "/upload". Read more: https://nextjs.org/docs/messages/prerender-error
+
+TypeError: Cannot read properties of null (reading 'useContext')
+    at t.useContext (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.prod.js:12:109421)
+    at d (d:\GradeMIND\frontend\.next-prod\server\chunks\298.js:1:21705)
+    at h (d:\GradeMIND\frontend\.next-prod\server\chunks\298.js:1:13643)
+    at au (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:10446)
+    at d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:15122
+    at aw (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:16908)
+    at a_ (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:49776)
+    at ab (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:11808)
+    at d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:16871
+    at aw (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:16908)
+TypeError: Cannot read properties of null (reading 'useContext')
+    at t.useContext (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.prod.js:12:109421)
+    at d (d:\GradeMIND\frontend\.next-prod\server\chunks\298.js:1:21705)
+    at h (d:\GradeMIND\frontend\.next-prod\server\chunks\298.js:1:13643)
+    at au (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:10446)
+    at d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:15122
+    at aw (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:16908)
+    at a_ (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:49776)
+    at ab (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:11808)
+    at d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:16871
+    at aw (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:16908) {
+  digest: '1522895258'
+}
+TypeError: Cannot read properties of null (reading 'useContext')
+    at t.useContext (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.prod.js:12:109421)
+    at d (d:\GradeMIND\frontend\.next-prod\server\chunks\298.js:1:21705)
+    at h (d:\GradeMIND\frontend\.next-prod\server\chunks\298.js:1:13643)
+    at au (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:10446)
+    at d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:15122
+    at aw (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:16908)
+    at a_ (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:49776)
+    at ab (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:11808)
+    at d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:16871
+    at aw (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:16908)
+
+Error occurred prerendering page "/dashboard". Read more: https://nextjs.org/docs/messages/prerender-error
+
+TypeError: Cannot read properties of null (reading 'useContext')
+    at t.useContext (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.prod.js:12:109421)
+    at d (d:\GradeMIND\frontend\.next-prod\server\chunks\298.js:1:21705)
+    at h (d:\GradeMIND\frontend\.next-prod\server\chunks\298.js:1:13643)
+    at au (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:10446)
+    at d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:15122
+    at aw (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:16908)
+    at a_ (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:49776)
+    at ab (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:11808)
+    at d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:16871
+    at aw (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:16908)
+TypeError: Cannot read properties of null (reading 'useContext')
+    at t.useContext (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.prod.js:12:109421)
+    at d (d:\GradeMIND\frontend\.next-prod\server\chunks\298.js:1:21705)
+    at h (d:\GradeMIND\frontend\.next-prod\server\chunks\298.js:1:13643)
+    at au (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:10446)
+    at d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:15122
+    at aw (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:16908)
+    at a_ (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:49776)
+    at ab (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:11808)
+    at d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:16871
+    at aw (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:16908) {
+  digest: '1522895258'
+}
+TypeError: Cannot read properties of null (reading 'useContext')
+    at t.useContext (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.prod.js:12:109421)
+    at d (d:\GradeMIND\frontend\.next-prod\server\chunks\298.js:1:21705)
+    at h (d:\GradeMIND\frontend\.next-prod\server\chunks\298.js:1:13643)
+    at au (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:10446)
+    at d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:15122
+    at aw (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:16908)
+    at a_ (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:49776)
+    at ab (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:11808)
+    at d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:16871
+    at aw (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:16908)
+
+Error occurred prerendering page "/evaluation". Read more: https://nextjs.org/docs/messages/prerender-error
+
+TypeError: Cannot read properties of null (reading 'useContext')
+    at t.useContext (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.prod.js:12:109421)
+    at d (d:\GradeMIND\frontend\.next-prod\server\chunks\298.js:1:21705)
+    at h (d:\GradeMIND\frontend\.next-prod\server\chunks\298.js:1:13643)
+    at au (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:10446)
+    at d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:15122
+    at aw (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:16908)
+    at a_ (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:49776)
+    at ab (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:11808)
+    at d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:16871
+    at aw (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:16908)
+   Generating static pages (3/12) 
+TypeError: Cannot read properties of null (reading 'useContext')
+    at t.useContext (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.prod.js:12:109421)
+    at d (d:\GradeMIND\frontend\.next-prod\server\chunks\298.js:1:21705)
+    at h (d:\GradeMIND\frontend\.next-prod\server\chunks\298.js:1:13643)
+    at au (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:10446)
+    at d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:15122
+    at aw (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:16908)
+    at a_ (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:49776)
+    at ab (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:11808)
+    at d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:16871
+    at aw (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:16908) {
+  digest: '1522895258'
+}
+TypeError: Cannot read properties of null (reading 'useContext')
+    at t.useContext (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.prod.js:12:109421)
+    at d (d:\GradeMIND\frontend\.next-prod\server\chunks\298.js:1:21705)
+    at h (d:\GradeMIND\frontend\.next-prod\server\chunks\298.js:1:13643)
+    at au (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:10446)
+    at d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:15122
+    at aw (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:16908)
+    at a_ (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:49776)
+    at ab (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:11808)
+    at d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:16871
+    at aw (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:16908)
+
+Error occurred prerendering page "/results". Read more: https://nextjs.org/docs/messages/prerender-error
+
+TypeError: Cannot read properties of null (reading 'useContext')
+    at t.useContext (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.prod.js:12:109421)
+    at d (d:\GradeMIND\frontend\.next-prod\server\chunks\298.js:1:21705)
+    at h (d:\GradeMIND\frontend\.next-prod\server\chunks\298.js:1:13643)
+    at au (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:10446)
+    at d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:15122
+    at aw (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:16908)
+    at a_ (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:49776)
+    at ab (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:11808)
+    at d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:16871
+    at aw (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:16908)
+Error: <Html> should not be imported outside of pages/_document.
+Read more: https://nextjs.org/docs/messages/no-document-import-in-page
+    at Q (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\pages.runtime.prod.js:16:5430)
+    at I (d:\GradeMIND\frontend\.next-prod\server\chunks\682.js:6:1263)
+    at renderWithHooks (d:\GradeMIND\frontend\node_modules\react-dom\cjs\react-dom-server.browser.development.js:5658:16)
+    at renderIndeterminateComponent (d:\GradeMIND\frontend\node_modules\react-dom\cjs\react-dom-server.browser.development.js:5732:15)
+    at renderElement (d:\GradeMIND\frontend\node_modules\react-dom\cjs\react-dom-server.browser.development.js:5957:7)
+    at renderNodeDestructiveImpl (d:\GradeMIND\frontend\node_modules\react-dom\cjs\react-dom-server.browser.development.js:6115:11)
+    at renderNodeDestructive (d:\GradeMIND\frontend\node_modules\react-dom\cjs\react-dom-server.browser.development.js:6087:14)
+    at finishClassComponent (d:\GradeMIND\frontend\node_modules\react-dom\cjs\react-dom-server.browser.development.js:5688:3)
+    at renderClassComponent (d:\GradeMIND\frontend\node_modules\react-dom\cjs\react-dom-server.browser.development.js:5696:3)
+    at renderElement (d:\GradeMIND\frontend\node_modules\react-dom\cjs\react-dom-server.browser.development.js:5954:7)
+
+Error occurred prerendering page "/404". Read more: https://nextjs.org/docs/messages/prerender-error
+
+Error: <Html> should not be imported outside of pages/_document.
+Read more: https://nextjs.org/docs/messages/no-document-import-in-page
+    at Q (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\pages.runtime.prod.js:16:5430)
+    at I (d:\GradeMIND\frontend\.next-prod\server\chunks\682.js:6:1263)
+    at renderWithHooks (d:\GradeMIND\frontend\node_modules\react-dom\cjs\react-dom-server.browser.development.js:5658:16)
+    at renderIndeterminateComponent (d:\GradeMIND\frontend\node_modules\react-dom\cjs\react-dom-server.browser.development.js:5732:15)
+    at renderElement (d:\GradeMIND\frontend\node_modules\react-dom\cjs\react-dom-server.browser.development.js:5957:7)
+    at renderNodeDestructiveImpl (d:\GradeMIND\frontend\node_modules\react-dom\cjs\react-dom-server.browser.development.js:6115:11)
+    at renderNodeDestructive (d:\GradeMIND\frontend\node_modules\react-dom\cjs\react-dom-server.browser.development.js:6087:14)
+    at finishClassComponent (d:\GradeMIND\frontend\node_modules\react-dom\cjs\react-dom-server.browser.development.js:5688:3)
+    at renderClassComponent (d:\GradeMIND\frontend\node_modules\react-dom\cjs\react-dom-server.browser.development.js:5696:3)
+    at renderElement (d:\GradeMIND\frontend\node_modules\react-dom\cjs\react-dom-server.browser.development.js:5954:7)
+   Generating static pages (6/12) 
+Error: <Html> should not be imported outside of pages/_document.
+Read more: https://nextjs.org/docs/messages/no-document-import-in-page
+    at Q (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\pages.runtime.prod.js:16:5430)
+    at I (d:\GradeMIND\frontend\.next-prod\server\chunks\682.js:6:1263)
+    at renderWithHooks (d:\GradeMIND\frontend\node_modules\react-dom\cjs\react-dom-server.browser.development.js:5658:16)
+    at renderIndeterminateComponent (d:\GradeMIND\frontend\node_modules\react-dom\cjs\react-dom-server.browser.development.js:5732:15)
+    at renderElement (d:\GradeMIND\frontend\node_modules\react-dom\cjs\react-dom-server.browser.development.js:5957:7)
+    at renderNodeDestructiveImpl (d:\GradeMIND\frontend\node_modules\react-dom\cjs\react-dom-server.browser.development.js:6115:11)
+    at renderNodeDestructive (d:\GradeMIND\frontend\node_modules\react-dom\cjs\react-dom-server.browser.development.js:6087:14)
+    at finishClassComponent (d:\GradeMIND\frontend\node_modules\react-dom\cjs\react-dom-server.browser.development.js:5688:3)
+    at renderClassComponent (d:\GradeMIND\frontend\node_modules\react-dom\cjs\react-dom-server.browser.development.js:5696:3)
+    at renderElement (d:\GradeMIND\frontend\node_modules\react-dom\cjs\react-dom-server.browser.development.js:5954:7)
+
+Error occurred prerendering page "/500". Read more: https://nextjs.org/docs/messages/prerender-error
+
+Error: <Html> should not be imported outside of pages/_document.
+Read more: https://nextjs.org/docs/messages/no-document-import-in-page
+    at Q (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\pages.runtime.prod.js:16:5430)
+    at I (d:\GradeMIND\frontend\.next-prod\server\chunks\682.js:6:1263)
+    at renderWithHooks (d:\GradeMIND\frontend\node_modules\react-dom\cjs\react-dom-server.browser.development.js:5658:16)
+    at renderIndeterminateComponent (d:\GradeMIND\frontend\node_modules\react-dom\cjs\react-dom-server.browser.development.js:5732:15)
+    at renderElement (d:\GradeMIND\frontend\node_modules\react-dom\cjs\react-dom-server.browser.development.js:5957:7)
+    at renderNodeDestructiveImpl (d:\GradeMIND\frontend\node_modules\react-dom\cjs\react-dom-server.browser.development.js:6115:11)
+    at renderNodeDestructive (d:\GradeMIND\frontend\node_modules\react-dom\cjs\react-dom-server.browser.development.js:6087:14)
+    at finishClassComponent (d:\GradeMIND\frontend\node_modules\react-dom\cjs\react-dom-server.browser.development.js:5688:3)
+    at renderClassComponent (d:\GradeMIND\frontend\node_modules\react-dom\cjs\react-dom-server.browser.development.js:5696:3)
+    at renderElement (d:\GradeMIND\frontend\node_modules\react-dom\cjs\react-dom-server.browser.development.js:5954:7)
+TypeError: Cannot read properties of null (reading 'useContext')
+    at t.useContext (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.prod.js:12:109421)
+    at d (d:\GradeMIND\frontend\.next-prod\server\chunks\298.js:1:21705)
+    at h (d:\GradeMIND\frontend\.next-prod\server\chunks\298.js:1:13643)
+    at au (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:10446)
+    at d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:15122
+    at aw (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:16908)
+    at a_ (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:49776)
+    at ab (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:11808)
+    at d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:16871
+    at aw (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:16908) {
+  digest: '1522895258'
+}
+TypeError: Cannot read properties of null (reading 'useContext')
+    at t.useContext (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.prod.js:12:109421)
+    at d (d:\GradeMIND\frontend\.next-prod\server\chunks\298.js:1:21705)
+    at h (d:\GradeMIND\frontend\.next-prod\server\chunks\298.js:1:13643)
+    at au (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:10446)
+    at d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:15122
+    at aw (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:16908)
+    at a_ (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:49776)
+    at ab (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:11808)
+    at d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:16871
+    at aw (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:16908)
+
+Error occurred prerendering page "/feedback". Read more: https://nextjs.org/docs/messages/prerender-error
+
+TypeError: Cannot read properties of null (reading 'useContext')
+    at t.useContext (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.prod.js:12:109421)
+    at d (d:\GradeMIND\frontend\.next-prod\server\chunks\298.js:1:21705)
+    at h (d:\GradeMIND\frontend\.next-prod\server\chunks\298.js:1:13643)
+    at au (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:10446)
+    at d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:15122
+    at aw (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:16908)
+    at a_ (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:49776)
+    at ab (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:11808)
+    at d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:16871
+    at aw (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:16908)
+TypeError: Cannot read properties of null (reading 'useContext')
+    at t.useContext (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.prod.js:12:109421)
+    at d (d:\GradeMIND\frontend\.next-prod\server\chunks\298.js:1:21705)
+    at h (d:\GradeMIND\frontend\.next-prod\server\chunks\298.js:1:13643)
+    at au (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:10446)
+    at d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:15122
+    at aw (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:16908)
+    at a_ (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:49776)
+    at ab (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:11808)
+    at d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:16871
+    at aw (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:16908) {
+  digest: '1522895258'
+}
+TypeError: Cannot read properties of null (reading 'useContext')
+    at t.useContext (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.prod.js:12:109421)
+    at d (d:\GradeMIND\frontend\.next-prod\server\chunks\298.js:1:21705)
+    at h (d:\GradeMIND\frontend\.next-prod\server\chunks\298.js:1:13643)
+    at au (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:10446)
+    at d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:15122
+    at aw (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:16908)
+    at a_ (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:49776)
+    at ab (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:11808)
+    at d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:16871
+    at aw (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:16908)
+
+Error occurred prerendering page "/". Read more: https://nextjs.org/docs/messages/prerender-error
+
+TypeError: Cannot read properties of null (reading 'useContext')
+    at t.useContext (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.prod.js:12:109421)
+    at d (d:\GradeMIND\frontend\.next-prod\server\chunks\298.js:1:21705)
+    at h (d:\GradeMIND\frontend\.next-prod\server\chunks\298.js:1:13643)
+    at au (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:10446)
+    at d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:15122
+    at aw (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:16908)
+    at a_ (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:49776)
+    at ab (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:11808)
+    at d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:16871
+    at aw (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:16908)
+   Generating static pages (9/12) 
+TypeError: Cannot read properties of null (reading 'useContext')
+    at t.useContext (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.prod.js:12:109421)
+    at d (d:\GradeMIND\frontend\.next-prod\server\chunks\298.js:1:21705)
+    at h (d:\GradeMIND\frontend\.next-prod\server\chunks\298.js:1:13643)
+    at au (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:10446)
+    at d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:15122
+    at aw (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:16908)
+    at a_ (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:49776)
+    at ab (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:11808)
+    at d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:16871
+    at aw (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:16908) {
+  digest: '1522895258'
+}
+TypeError: Cannot read properties of null (reading 'useContext')
+    at t.useContext (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.prod.js:12:109421)
+    at d (d:\GradeMIND\frontend\.next-prod\server\chunks\298.js:1:21705)
+    at h (d:\GradeMIND\frontend\.next-prod\server\chunks\298.js:1:13643)
+    at au (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:10446)
+    at d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:15122
+    at aw (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:16908)
+    at a_ (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:49776)
+    at ab (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:11808)
+    at d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:16871
+    at aw (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:16908)
+
+Error occurred prerendering page "/login". Read more: https://nextjs.org/docs/messages/prerender-error
+
+TypeError: Cannot read properties of null (reading 'useContext')
+    at t.useContext (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.prod.js:12:109421)
+    at d (d:\GradeMIND\frontend\.next-prod\server\chunks\298.js:1:21705)
+    at h (d:\GradeMIND\frontend\.next-prod\server\chunks\298.js:1:13643)
+    at au (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:10446)
+    at d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:15122
+    at aw (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:16908)
+    at a_ (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:49776)
+    at ab (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:11808)
+    at d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:16871
+    at aw (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:16908)
+TypeError: Cannot read properties of null (reading 'useContext')
+    at t.useContext (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.prod.js:12:109421)
+    at d (d:\GradeMIND\frontend\.next-prod\server\chunks\298.js:1:21705)
+    at h (d:\GradeMIND\frontend\.next-prod\server\chunks\298.js:1:13643)
+    at au (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:10446)
+    at d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:15122
+    at aw (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:16908)
+    at a_ (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:49776)
+    at ab (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:11808)
+    at d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:16871
+    at aw (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:16908) {
+  digest: '1522895258'
+}
+TypeError: Cannot read properties of null (reading 'useContext')
+    at t.useContext (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.prod.js:12:109421)
+    at d (d:\GradeMIND\frontend\.next-prod\server\chunks\298.js:1:21705)
+    at h (d:\GradeMIND\frontend\.next-prod\server\chunks\298.js:1:13643)
+    at au (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:10446)
+    at d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:15122
+    at aw (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:16908)
+    at a_ (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:49776)
+    at ab (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:11808)
+    at d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:16871
+    at aw (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:16908)
+
+Error occurred prerendering page "/_not-found". Read more: https://nextjs.org/docs/messages/prerender-error
+
+TypeError: Cannot read properties of null (reading 'useContext')
+    at t.useContext (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.prod.js:12:109421)
+    at d (d:\GradeMIND\frontend\.next-prod\server\chunks\298.js:1:21705)
+    at h (d:\GradeMIND\frontend\.next-prod\server\chunks\298.js:1:13643)
+    at au (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:10446)
+    at d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:15122
+    at aw (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:16908)
+    at a_ (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:49776)
+    at ab (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:11808)
+    at d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:16871
+    at aw (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:16908)
+TypeError: Cannot read properties of null (reading 'useContext')
+    at t.useContext (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.prod.js:12:109421)
+    at d (d:\GradeMIND\frontend\.next-prod\server\chunks\298.js:1:21705)
+    at h (d:\GradeMIND\frontend\.next-prod\server\chunks\298.js:1:13643)
+    at au (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:10446)
+    at d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:15122
+    at aw (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:16908)
+    at a_ (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:49776)
+    at ab (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:11808)
+    at d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:16871
+    at aw (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:16908) {
+  digest: '1522895258'
+}
+TypeError: Cannot read properties of null (reading 'useContext')
+    at t.useContext (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.prod.js:12:109421)
+    at d (d:\GradeMIND\frontend\.next-prod\server\chunks\298.js:1:21705)
+    at h (d:\GradeMIND\frontend\.next-prod\server\chunks\298.js:1:13643)
+    at au (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:10446)
+    at d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:15122
+    at aw (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:16908)
+    at a_ (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:49776)
+    at ab (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:11808)
+    at d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:16871
+    at aw (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:16908)
+
+Error occurred prerendering page "/reports". Read more: https://nextjs.org/docs/messages/prerender-error
+
+TypeError: Cannot read properties of null (reading 'useContext')
+    at t.useContext (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.prod.js:12:109421)
+    at d (d:\GradeMIND\frontend\.next-prod\server\chunks\298.js:1:21705)
+    at h (d:\GradeMIND\frontend\.next-prod\server\chunks\298.js:1:13643)
+    at au (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:10446)
+    at d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:15122
+    at aw (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:16908)
+    at a_ (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:49776)
+    at ab (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:11808)
+    at d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:16871
+    at aw (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:16908)
+ ✓ Generating static pages (12/12)
+
+> Export encountered errors on following paths:
+	/(authenticated)/dashboard/page: /dashboard
+	/(authenticated)/evaluation/page: /evaluation
+	/(authenticated)/feedback/page: /feedback
+	/(authenticated)/reports/page: /reports
+	/(authenticated)/results/page: /results
+	/(authenticated)/upload/page: /upload
+	/_error: /404
+	/_error: /500
+	/_not-found/page: /_not-found
+	/login/page: /login
+	/page: /
+Error: <Html> should not be imported outside of pages/_document.
+Read more: https://nextjs.org/docs/messages/no-document-import-in-page
+    at Q (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\pages.runtime.prod.js:16:5430)
+    at I (d:\GradeMIND\frontend\.next-prod\server\chunks\682.js:6:1263)
+    at renderWithHooks (d:\GradeMIND\frontend\node_modules\react-dom\cjs\react-dom-server.browser.development.js:5658:16)
+    at renderIndeterminateComponent (d:\GradeMIND\frontend\node_modules\react-dom\cjs\react-dom-server.browser.development.js:5732:15)
+    at renderElement (d:\GradeMIND\frontend\node_modules\react-dom\cjs\react-dom-server.browser.development.js:5957:7)
+    at renderNodeDestructiveImpl (d:\GradeMIND\frontend\node_modules\react-dom\cjs\react-dom-server.browser.development.js:6115:11)
+    at renderNodeDestructive (d:\GradeMIND\frontend\node_modules\react-dom\cjs\react-dom-server.browser.development.js:6087:14)
+    at finishClassComponent (d:\GradeMIND\frontend\node_modules\react-dom\cjs\react-dom-server.browser.development.js:5688:3)
+    at renderClassComponent (d:\GradeMIND\frontend\node_modules\react-dom\cjs\react-dom-server.browser.development.js:5696:3)
+    at renderElement (d:\GradeMIND\frontend\node_modules\react-dom\cjs\react-dom-server.browser.development.js:5954:7)
+
+Error occurred prerendering page "/500". Read more: https://nextjs.org/docs/messages/prerender-error
+
+Error: <Html> should not be imported outside of pages/_document.
+Read more: https://nextjs.org/docs/messages/no-document-import-in-page
+    at Q (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\pages.runtime.prod.js:16:5430)
+    at I (d:\GradeMIND\frontend\.next-prod\server\chunks\682.js:6:1263)
+    at renderWithHooks (d:\GradeMIND\frontend\node_modules\react-dom\cjs\react-dom-server.browser.development.js:5658:16)
+    at renderIndeterminateComponent (d:\GradeMIND\frontend\node_modules\react-dom\cjs\react-dom-server.browser.development.js:5732:15)
+    at renderElement (d:\GradeMIND\frontend\node_modules\react-dom\cjs\react-dom-server.browser.development.js:5957:7)
+    at renderNodeDestructiveImpl (d:\GradeMIND\frontend\node_modules\react-dom\cjs\react-dom-server.browser.development.js:6115:11)
+    at renderNodeDestructive (d:\GradeMIND\frontend\node_modules\react-dom\cjs\react-dom-server.browser.development.js:6087:14)
+    at finishClassComponent (d:\GradeMIND\frontend\node_modules\react-dom\cjs\react-dom-server.browser.development.js:5688:3)
+    at renderClassComponent (d:\GradeMIND\frontend\node_modules\react-dom\cjs\react-dom-server.browser.development.js:5696:3)
+    at renderElement (d:\GradeMIND\frontend\node_modules\react-dom\cjs\react-dom-server.browser.development.js:5954:7)
+   Generating static pages (6/12) 
+
+=== Exit Code: 1 ===
+Error: <Html> should not be imported outside of pages/_document.
+Read more: https://nextjs.org/docs/messages/no-document-import-in-page
+    at Q (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\pages.runtime.prod.js:16:5430)
+    at I (d:\GradeMIND\frontend\.next-prod\server\chunks\682.js:6:1263)
+    at renderWithHooks (d:\GradeMIND\frontend\node_modules\react-dom\cjs\react-dom-server.browser.development.js:5658:16)
+    at renderIndeterminateComponent (d:\GradeMIND\frontend\node_modules\react-dom\cjs\react-dom-server.browser.development.js:5732:15)
+    at renderElement (d:\GradeMIND\frontend\node_modules\react-dom\cjs\react-dom-server.browser.development.js:5957:7)
+    at renderNodeDestructiveImpl (d:\GradeMIND\frontend\node_modules\react-dom\cjs\react-dom-server.browser.development.js:6115:11)
+    at renderNodeDestructive (d:\GradeMIND\frontend\node_modules\react-dom\cjs\react-dom-server.browser.development.js:6087:14)
+    at finishClassComponent (d:\GradeMIND\frontend\node_modules\react-dom\cjs\react-dom-server.browser.development.js:5688:3)
+    at renderClassComponent (d:\GradeMIND\frontend\node_modules\react-dom\cjs\react-dom-server.browser.development.js:5696:3)
+    at renderElement (d:\GradeMIND\frontend\node_modules\react-dom\cjs\react-dom-server.browser.development.js:5954:7)
+
+Error occurred prerendering page "/404". Read more: https://nextjs.org/docs/messages/prerender-error
+
+Error: <Html> should not be imported outside of pages/_document.
+Read more: https://nextjs.org/docs/messages/no-document-import-in-page
+    at Q (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\pages.runtime.prod.js:16:5430)
+    at I (d:\GradeMIND\frontend\.next-prod\server\chunks\682.js:6:1263)
+    at renderWithHooks (d:\GradeMIND\frontend\node_modules\react-dom\cjs\react-dom-server.browser.development.js:5658:16)
+    at renderIndeterminateComponent (d:\GradeMIND\frontend\node_modules\react-dom\cjs\react-dom-server.browser.development.js:5732:15)
+    at renderElement (d:\GradeMIND\frontend\node_modules\react-dom\cjs\react-dom-server.browser.development.js:5957:7)
+    at renderNodeDestructiveImpl (d:\GradeMIND\frontend\node_modules\react-dom\cjs\react-dom-server.browser.development.js:6115:11)
+    at renderNodeDestructive (d:\GradeMIND\frontend\node_modules\react-dom\cjs\react-dom-server.browser.development.js:6087:14)
+    at finishClassComponent (d:\GradeMIND\frontend\node_modules\react-dom\cjs\react-dom-server.browser.development.js:5688:3)
+    at renderClassComponent (d:\GradeMIND\frontend\node_modules\react-dom\cjs\react-dom-server.browser.development.js:5696:3)
+    at renderElement (d:\GradeMIND\frontend\node_modules\react-dom\cjs\react-dom-server.browser.development.js:5954:7)
+TypeError: Cannot read properties of null (reading 'useContext')
+    at t.useContext (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.prod.js:12:109421)
+    at d (d:\GradeMIND\frontend\.next-prod\server\chunks\298.js:1:21705)
+    at h (d:\GradeMIND\frontend\.next-prod\server\chunks\298.js:1:13643)
+    at au (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:10446)
+    at d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:15122
+    at aw (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:16908)
+    at a_ (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:49776)
+    at ab (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:11808)
+    at d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:16871
+    at aw (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:16908) {
+  digest: '1522895258'
+}
+TypeError: Cannot read properties of null (reading 'useContext')
+    at t.useContext (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.prod.js:12:109421)
+    at d (d:\GradeMIND\frontend\.next-prod\server\chunks\298.js:1:21705)
+    at h (d:\GradeMIND\frontend\.next-prod\server\chunks\298.js:1:13643)
+    at au (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:10446)
+    at d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:15122
+    at aw (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:16908)
+    at a_ (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:49776)
+    at ab (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:11808)
+    at d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:16871
+    at aw (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:16908)
+
+Error occurred prerendering page "/upload". Read more: https://nextjs.org/docs/messages/prerender-error
+
+TypeError: Cannot read properties of null (reading 'useContext')
+    at t.useContext (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.prod.js:12:109421)
+    at d (d:\GradeMIND\frontend\.next-prod\server\chunks\298.js:1:21705)
+    at h (d:\GradeMIND\frontend\.next-prod\server\chunks\298.js:1:13643)
+    at au (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:10446)
+    at d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:15122
+    at aw (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:16908)
+    at a_ (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:49776)
+    at ab (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:11808)
+    at d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:16871
+    at aw (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:16908)
+   Generating static pages (9/12) 
+TypeError: Cannot read properties of null (reading 'useContext')
+    at t.useContext (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.prod.js:12:109421)
+    at d (d:\GradeMIND\frontend\.next-prod\server\chunks\298.js:1:21705)
+    at h (d:\GradeMIND\frontend\.next-prod\server\chunks\298.js:1:13643)
+    at au (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:10446)
+    at d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:15122
+    at aw (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:16908)
+    at a_ (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:49776)
+    at ab (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:11808)
+    at d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:16871
+    at aw (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:16908) {
+  digest: '1522895258'
+}
+TypeError: Cannot read properties of null (reading 'useContext')
+    at t.useContext (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.prod.js:12:109421)
+    at d (d:\GradeMIND\frontend\.next-prod\server\chunks\298.js:1:21705)
+    at h (d:\GradeMIND\frontend\.next-prod\server\chunks\298.js:1:13643)
+    at au (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:10446)
+    at d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:15122
+    at aw (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:16908)
+    at a_ (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:49776)
+    at ab (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:11808)
+    at d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:16871
+    at aw (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:16908)
+
+Error occurred prerendering page "/". Read more: https://nextjs.org/docs/messages/prerender-error
+
+TypeError: Cannot read properties of null (reading 'useContext')
+    at t.useContext (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.prod.js:12:109421)
+    at d (d:\GradeMIND\frontend\.next-prod\server\chunks\298.js:1:21705)
+    at h (d:\GradeMIND\frontend\.next-prod\server\chunks\298.js:1:13643)
+    at au (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:10446)
+    at d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:15122
+    at aw (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:16908)
+    at a_ (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:49776)
+    at ab (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:11808)
+    at d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:16871
+    at aw (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:16908)
+TypeError: Cannot read properties of null (reading 'useContext')
+    at t.useContext (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.prod.js:12:109421)
+    at d (d:\GradeMIND\frontend\.next-prod\server\chunks\298.js:1:21705)
+    at h (d:\GradeMIND\frontend\.next-prod\server\chunks\298.js:1:13643)
+    at au (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:10446)
+    at d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:15122
+    at aw (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:16908)
+    at a_ (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:49776)
+    at ab (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:11808)
+    at d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:16871
+    at aw (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:16908) {
+  digest: '1522895258'
+}
+TypeError: Cannot read properties of null (reading 'useContext')
+    at t.useContext (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.prod.js:12:109421)
+    at d (d:\GradeMIND\frontend\.next-prod\server\chunks\298.js:1:21705)
+    at h (d:\GradeMIND\frontend\.next-prod\server\chunks\298.js:1:13643)
+    at au (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:10446)
+    at d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:15122
+    at aw (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:16908)
+    at a_ (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:49776)
+    at ab (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:11808)
+    at d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:16871
+    at aw (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:16908)
+
+Error occurred prerendering page "/_not-found". Read more: https://nextjs.org/docs/messages/prerender-error
+
+TypeError: Cannot read properties of null (reading 'useContext')
+    at t.useContext (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.prod.js:12:109421)
+    at d (d:\GradeMIND\frontend\.next-prod\server\chunks\298.js:1:21705)
+    at h (d:\GradeMIND\frontend\.next-prod\server\chunks\298.js:1:13643)
+    at au (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:10446)
+    at d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:15122
+    at aw (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:16908)
+    at a_ (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:49776)
+    at ab (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:11808)
+    at d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:16871
+    at aw (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:16908)
+TypeError: Cannot read properties of null (reading 'useContext')
+    at t.useContext (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.prod.js:12:109421)
+    at d (d:\GradeMIND\frontend\.next-prod\server\chunks\298.js:1:21705)
+    at h (d:\GradeMIND\frontend\.next-prod\server\chunks\298.js:1:13643)
+    at au (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:10446)
+    at d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:15122
+    at aw (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:16908)
+    at a_ (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:49776)
+    at ab (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:11808)
+    at d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:16871
+    at aw (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:16908) {
+  digest: '1522895258'
+}
+TypeError: Cannot read properties of null (reading 'useContext')
+    at t.useContext (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.prod.js:12:109421)
+    at d (d:\GradeMIND\frontend\.next-prod\server\chunks\298.js:1:21705)
+    at h (d:\GradeMIND\frontend\.next-prod\server\chunks\298.js:1:13643)
+    at au (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:10446)
+    at d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:15122
+    at aw (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:16908)
+    at a_ (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:49776)
+    at ab (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:11808)
+    at d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:16871
+    at aw (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:16908)
+
+Error occurred prerendering page "/reports". Read more: https://nextjs.org/docs/messages/prerender-error
+
+TypeError: Cannot read properties of null (reading 'useContext')
+    at t.useContext (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.prod.js:12:109421)
+    at d (d:\GradeMIND\frontend\.next-prod\server\chunks\298.js:1:21705)
+    at h (d:\GradeMIND\frontend\.next-prod\server\chunks\298.js:1:13643)
+    at au (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:10446)
+    at d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:15122
+    at aw (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:16908)
+    at a_ (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:49776)
+    at ab (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:11808)
+    at d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:16871
+    at aw (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:16908)
+TypeError: Cannot read properties of null (reading 'useContext')
+    at t.useContext (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.prod.js:12:109421)
+    at d (d:\GradeMIND\frontend\.next-prod\server\chunks\298.js:1:21705)
+    at h (d:\GradeMIND\frontend\.next-prod\server\chunks\298.js:1:13643)
+    at au (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:10446)
+    at d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:15122
+    at aw (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:16908)
+    at a_ (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:49776)
+    at ab (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:11808)
+    at d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:16871
+    at aw (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:16908) {
+  digest: '1522895258'
+}
+TypeError: Cannot read properties of null (reading 'useContext')
+    at t.useContext (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.prod.js:12:109421)
+    at d (d:\GradeMIND\frontend\.next-prod\server\chunks\298.js:1:21705)
+    at h (d:\GradeMIND\frontend\.next-prod\server\chunks\298.js:1:13643)
+    at au (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:10446)
+    at d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:15122
+    at aw (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:16908)
+    at a_ (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:49776)
+    at ab (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:11808)
+    at d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:16871
+    at aw (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:16908)
+
+Error occurred prerendering page "/evaluation". Read more: https://nextjs.org/docs/messages/prerender-error
+
+TypeError: Cannot read properties of null (reading 'useContext')
+    at t.useContext (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.prod.js:12:109421)
+    at d (d:\GradeMIND\frontend\.next-prod\server\chunks\298.js:1:21705)
+    at h (d:\GradeMIND\frontend\.next-prod\server\chunks\298.js:1:13643)
+    at au (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:10446)
+    at d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:15122
+    at aw (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:16908)
+    at a_ (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:49776)
+    at ab (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:11808)
+    at d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:16871
+    at aw (d:\GradeMIND\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:16908)
+ ✓ Generating static pages (12/12)
+
+> Export encountered errors on following paths:
+	/(authenticated)/dashboard/page: /dashboard
+	/(authenticated)/evaluation/page: /evaluation
+	/(authenticated)/feedback/page: /feedback
+	/(authenticated)/reports/page: /reports
+	/(authenticated)/results/page: /results
+	/(authenticated)/upload/page: /upload
+	/_error: /404
+	/_error: /500
+	/_not-found/page: /_not-found
+	/login/page: /login
+	/page: /
+
+=== Exit Code: 1 ===

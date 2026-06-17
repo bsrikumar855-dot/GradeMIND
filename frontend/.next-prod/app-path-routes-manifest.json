@@ -1,0 +1,12 @@
+{
+  "/_not-found/page": "/_not-found",
+  "/api/run-cmd/route": "/api/run-cmd",
+  "/login/page": "/login",
+  "/page": "/",
+  "/(authenticated)/dashboard/page": "/dashboard",
+  "/(authenticated)/results/page": "/results",
+  "/(authenticated)/feedback/page": "/feedback",
+  "/(authenticated)/reports/page": "/reports",
+  "/(authenticated)/upload/page": "/upload",
+  "/(authenticated)/evaluation/page": "/evaluation"
+}

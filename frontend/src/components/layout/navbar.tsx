@@ -7,10 +7,16 @@ import { GradeMindLogo } from "@/components/brand";
 
 export interface NavbarProps {
   onMenuClick?: () => void;
+  onLogout?: () => void;
+  userDisplayName?: string;
+  userRole?: string;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
   onMenuClick,
+  onLogout,
+  userDisplayName,
+  userRole,
 }) => {
   return (
     <header className="sticky top-0 z-30 flex h-16 w-full items-center justify-between border-b border-gray-100 bg-white/50 backdrop-blur-md px-6">
