@@ -1,7 +1,7 @@
 import { apiClient } from './api.client';
 
 export const ReportService = {
-  getReports: async (filters?: Record<string, unknown>) => {
+  listReports: async (filters?: Record<string, unknown>) => {
     const response = await apiClient.get('/reports', { params: filters });
     return response.data;
   },
@@ -19,5 +19,15 @@ export const ReportService = {
     document.body.appendChild(link);
     link.click();
     link.parentNode?.removeChild(link);
+  },
+
+  generateReport: async (examId: string, format: string) => {
+    const response = await apiClient.post(`/reports/generate`, { examId, format });
+    return response.data;
+  },
+
+  downloadReport: async (reportId: string) => {
+    void reportId;
+    return `/api/reports/${reportId}/download`;
   }
 };

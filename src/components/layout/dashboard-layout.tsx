@@ -28,7 +28,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) =>
       />
 
       {/* Main Content Area */}
-      <div className="flex-1 flex flex-col md:pl-64 min-h-screen">
+      <div className="flex-1 flex flex-col md:pl-80 min-h-screen">
         {/* Navbar */}
         <Navbar
           onMenuClick={toggleSidebar}
