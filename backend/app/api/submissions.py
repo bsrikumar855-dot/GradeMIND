@@ -451,10 +451,10 @@ def download_pdf_report_direct(
         )
     except ValueError as e:
         error_code = str(e)
-        if error_code == "SUBMISSION_NOT_FOUND" or error_code == "EXAM_NOT_FOUND":
+        if error_code in {"SUBMISSION_NOT_FOUND", "EXAM_NOT_FOUND", "PDF_FILE_MISSING", "REPORT_FILE_MISSING"}:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail="Submission or associated exam not found."
+                detail="Submission or associated exam or report PDF not found."
             )
         elif error_code == "ACCESS_DENIED":
             raise HTTPException(

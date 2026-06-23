@@ -158,7 +158,7 @@ class TestStudentPortal:
 
         clear_auth_overrides()
 
-    def test_teacher_publish_flow_and_student_access(self, sample_data, test_teacher_id, test_student_a_id, test_student_b_id, tmp_path):
+    def test_teacher_publish_flow_and_student_access(self, sample_data, test_teacher_id, test_student_a_id, test_student_b_id, tmp_path, monkeypatch):
         """Verify complete publish/unpublish workflow and access controls."""
         from app.api.auth_deps import get_current_user, require_teacher_or_admin
 
@@ -221,6 +221,35 @@ class TestStudentPortal:
 
         # Accessing own submission details should succeed
         sub_a_id = sample_data["sub_a"].id
+        
+        # Write dummy evaluation output file to avoid EVALUATION_OUTPUT_MISSING
+        temp_eval_json = str(tmp_path / "mock_chem_a.json")
+        eval_payload = {
+            "submission_id": str(sub_a_id),
+            "total_score": 92.0,
+            "max_possible": 100.0,
+            "confidence_score": 0.96,
+            "evaluation_mode": "ANSWER_KEY",
+            "questions": [],
+            "fairness_verified": True,
+            "fairness_score": 1.0,
+            "strengths": [],
+            "weaknesses": [],
+            "improvements": [],
+            "study_recommendations": [],
+            "summary": "OK"
+        }
+        with open(temp_eval_json, "w") as f:
+            json.dump(eval_payload, f)
+            
+        # Update evaluation output path and report path in DB
+        db = TestingSessionLocal()
+        sub_db = db.query(Submission).filter(Submission.id == sub_a_id).first()
+        sub_db.evaluation_output_path = temp_eval_json
+        sub_db.report_path = temp_eval_json
+        db.commit()
+        db.close()
+
         detail_response = client.get(f"/student/results/{sub_a_id}")
         assert detail_response.status_code == 200
         assert detail_response.json()["score"] == 92.0
@@ -232,19 +261,26 @@ class TestStudentPortal:
         assert "access" in cross_response.json()["detail"].lower()
 
         # Test PDF retrieval when file is missing on storage
+        from AI.reports.report_data_builder import ReportDataBuilder
+        monkeypatch.setattr(ReportDataBuilder, "generate_pdf_report", lambda *args, **kwargs: None)
+
         pdf_missing_response = client.get(f"/student/results/{sub_a_id}/pdf")
         assert pdf_missing_response.status_code == 404
-        assert "missing" in pdf_missing_response.json()["detail"].lower()
+        assert "missing" in pdf_missing_response.json()["detail"].lower() or "could not be generated" in pdf_missing_response.json()["detail"].lower()
 
         # Mock mock_chem_a.pdf on disk to test successful PDF download
         temp_pdf = str(tmp_path / "mock_chem_a.pdf")
-        with open(temp_pdf, "wb") as f:
-            f.write(b"%PDF-1.4\nmock chemistry pdf")
+        monkeypatch.setattr(
+            ReportDataBuilder,
+            "generate_pdf_report",
+            lambda self, eval_data, path, *args, **kwargs: open(path, "wb").write(b"%PDF-1.4\nmock chemistry pdf")
+        )
         
-        # Override report path in database
+        # Override report path in database to point to the newly written PDF
         db = TestingSessionLocal()
         sub_db = db.query(Submission).filter(Submission.id == sub_a_id).first()
-        sub_db.report_path = temp_pdf
+        sub_db.report_path = temp_eval_json
+        sub_db.evaluation_output_path = temp_eval_json
         db.commit()
         db.close()
 

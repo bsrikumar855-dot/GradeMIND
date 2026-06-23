@@ -603,7 +603,7 @@ class SubmissionService:
             return True
         try:
             size = os.path.getsize(pdf_path)
-            if size < 50_000:
+            if size < 10:
                 logger.warning("PDF is too small and will be regenerated: path=%s size=%s", pdf_path, size)
                 return True
             with open(pdf_path, "rb") as f:

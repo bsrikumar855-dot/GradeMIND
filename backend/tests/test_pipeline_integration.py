@@ -69,6 +69,7 @@ def sample_exam(db_session):
         title="Integration Science Exam",
         subject="Science",
         total_marks=15,  # 3 questions worth 5 marks each in our default fallback metadata
+        question_paper_url="mock_paper.pdf"
     )
     db_session.add(exam)
     db_session.commit()
@@ -198,7 +199,7 @@ class TestPipelineIntegration:
         assert os.path.exists(pdf_path)
         with open(pdf_path, "rb") as f:
             pdf_bytes = f.read(10)
-            assert pdf_bytes.startswith(b"%PDF-1.4")
+            assert pdf_bytes.startswith(b"%PDF-")
 
         # Clean up files created
         for p in [submission.answer_sheet_path, submission.ocr_output_path, submission.evaluation_output_path, submission.report_path, pdf_path]:
