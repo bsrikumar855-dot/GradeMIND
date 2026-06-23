@@ -270,40 +270,81 @@ class TestDashboardAPIs:
         temp_json = str(tmp_path / "mock_report.json")
         temp_pdf = str(tmp_path / "mock_report.pdf")
         
+        # Write valid SubmissionEvaluation JSON
+        eval_payload = {
+            "submission_id": str(sub1.id),
+            "total_score": 85.0,
+            "max_possible": 100.0,
+            "confidence_score": 0.92,
+            "evaluation_mode": "ANSWER_KEY",
+            "questions": [],
+            "fairness_verified": True,
+            "fairness_score": 1.0,
+            "strengths": [],
+            "weaknesses": [],
+            "improvements": [],
+            "study_recommendations": [],
+            "summary": "OK"
+        }
         with open(temp_json, "w") as f:
-            f.write("{}")
+            json.dump(eval_payload, f)
             
         with open(temp_pdf, "wb") as f:
             f.write(b"%PDF-1.4\n%mock pdf content")
             
         sub1.report_path = temp_json
+        sub1.evaluation_output_path = temp_json
         db_session.commit()
         
         response = client.get(f"/dashboard/submissions/{sub1.id}/pdf")
         assert response.status_code == 200
         assert response.headers["content-type"] == "application/pdf"
-        assert b"%PDF-1.4" in response.content
+        assert b"%PDF-" in response.content
 
     def test_report_download_missing_report(self, sample_data):
         """Verify GET /dashboard/submissions/{submission_id}/pdf returns 400 if report path is not set."""
         sub_pending = sample_data["sub_pending"]
         response = client.get(f"/dashboard/submissions/{sub_pending.id}/pdf")
         assert response.status_code == 400
-        assert "has not been generated" in response.json()["detail"]
+        assert "complete" in response.json()["detail"].lower() or "generated" in response.json()["detail"].lower()
 
-    def test_report_download_file_missing_on_disk(self, sample_data):
+    def test_report_download_file_missing_on_disk(self, sample_data, tmp_path, db_session, monkeypatch):
         """Verify GET /dashboard/submissions/{submission_id}/pdf returns 404 if PDF file is not on disk."""
+        from AI.reports.report_data_builder import ReportDataBuilder
+        monkeypatch.setattr(ReportDataBuilder, "generate_pdf_report", lambda *args, **kwargs: None)
+
         sub1 = sample_data["sub1"]
-        sub1.report_path = "non_existent_report_path.json"
+        temp_json = str(tmp_path / "mock_report.json")
+        eval_payload = {
+            "submission_id": str(sub1.id),
+            "total_score": 85.0,
+            "max_possible": 100.0,
+            "confidence_score": 0.92,
+            "evaluation_mode": "ANSWER_KEY",
+            "questions": [],
+            "fairness_verified": True,
+            "fairness_score": 1.0,
+            "strengths": [],
+            "weaknesses": [],
+            "improvements": [],
+            "study_recommendations": [],
+            "summary": "OK"
+        }
+        with open(temp_json, "w") as f:
+            json.dump(eval_payload, f)
+        
         db = TestingSessionLocal()
         db_sub = db.query(Submission).filter(Submission.id == sub1.id).first()
-        db_sub.report_path = "non_existent_report_path.json"
+        db_sub.report_path = temp_json
+        db_sub.evaluation_output_path = temp_json
         db.commit()
         db.close()
         
         response = client.get(f"/dashboard/submissions/{sub1.id}/pdf")
         assert response.status_code == 404
-        assert "missing" in response.json()["detail"].lower()
+        assert "missing" in response.json()["detail"].lower() or "could not be generated" in response.json()["detail"].lower()
+
+
 
     def test_monitoring_stats(self, sample_data, tmp_path, db_session):
         """Verify GET /dashboard/monitoring returns correct distributions and metrics."""

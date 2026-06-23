@@ -108,6 +108,7 @@ def sample_exam(db_session):
         title="Midterm Physics",
         subject="Physics",
         total_marks=100,
+        question_paper_url="mock_paper.pdf"
     )
     db_session.add(exam)
     db_session.commit()

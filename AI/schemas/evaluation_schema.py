@@ -18,6 +18,83 @@ class RubricCriterion(BaseModel):
     met: bool = Field(False, description="Flag indicating if the student met the criteria.")
 
 
+class EvidenceItem(BaseModel):
+    """
+    Supporting evidence for a matched concept or criteria.
+    """
+    concept: str = Field(..., description="Concept or criteria name.")
+    matched_text: str = Field(..., description="Snippet/segment from the student answer matching the concept.")
+    confidence: float = Field(..., description="Confidence score of the match (0.0 to 1.0).")
+
+
+class ExplainabilityResult(BaseModel):
+    """
+    Explainability information for the student answer.
+    """
+    coverage_percentage: float = Field(..., description="Calculated concept coverage percentage.")
+    evidence: List[EvidenceItem] = Field(default_factory=list, description="Evidence items for matched concepts and rubric criteria.")
+    reasoning: List[str] = Field(default_factory=list, description="Positive reasoning statements.")
+    missing_reasoning: List[str] = Field(default_factory=list, description="Negative/missing concept reasoning statements.")
+
+
+class GeminiEvaluation(BaseModel):
+    """
+    Independent secondary evaluation from the Gemini layer.
+    """
+    score: float = Field(..., description="Independent score determined by Gemini.")
+    confidence: float = Field(..., description="Gemini's self-reported confidence score (0.0 to 1.0).")
+    reasoning: str = Field(..., description="Gemini's reasoning for the score.")
+    strengths: List[str] = Field(default_factory=list, description="Strengths identified by Gemini.")
+    weaknesses: List[str] = Field(default_factory=list, description="Weaknesses identified by Gemini.")
+    missing_concepts: List[str] = Field(default_factory=list, description="Missing concepts identified by Gemini.")
+    model: str = Field(..., description="The Gemini model version used for this evaluation.")
+
+
+from enum import Enum
+
+class VerificationStatus(str, Enum):
+    PASS = "PASS"
+    MODERATE_DISAGREEMENT = "MODERATE_DISAGREEMENT"
+    MAJOR_DISAGREEMENT = "MAJOR_DISAGREEMENT"
+    LOW_CONFIDENCE = "LOW_CONFIDENCE"
+    REVIEW_REQUIRED = "REVIEW_REQUIRED"
+
+class VerificationResult(BaseModel):
+    """
+    Anomaly detection result comparing deterministic grading to Gemini evaluation.
+    """
+    status: VerificationStatus = Field(..., description="The classification of the disagreement.")
+    score_difference: float = Field(..., description="Absolute difference between primary and Gemini score.")
+    confidence_difference: float = Field(..., description="Absolute difference between primary and Gemini confidence.")
+    root_cause: str = Field(..., description="Inferred root cause of the disagreement.")
+    review_required: bool = Field(..., description="Whether this evaluation requires manual human review.")
+    reason: str = Field(..., description="Human-readable reason for the verification status.")
+
+
+class SemanticEvaluationResult(BaseModel):
+    """
+    Result from the Semantic Evaluation Engine.
+    """
+    semantic_similarity: float = Field(..., description="Cosine similarity score (0.0 to 1.0).")
+    semantic_confidence: float = Field(..., description="Confidence score for semantic evaluation (0.0 to 1.0).")
+    matched_semantic_concepts: List[str] = Field(default_factory=list, description="Semantic concepts matched in the response.")
+    missing_semantic_concepts: List[str] = Field(default_factory=list, description="Semantic concepts missing from the response.")
+    explanation: str = Field(..., description="Explanation of semantic similarity and matches.")
+
+
+class ConfidenceBreakdown(BaseModel):
+    """
+    Detailed breakdown of the Confidence Engine v2 result.
+    Provides per-signal sub-scores alongside the weighted overall confidence.
+    """
+    overall_confidence: float = Field(..., description="Weighted overall confidence score (0.0 to 1.0).")
+    ocr_confidence: float = Field(..., description="OCR extraction quality score (0.0 to 1.0).")
+    concept_coverage_score: float = Field(..., description="Concept coverage contribution score (0.0 to 1.0).")
+    semantic_alignment_score: float = Field(..., description="Semantic similarity alignment score (0.0 to 1.0).")
+    explainability_score: float = Field(..., description="Evidence-backed explainability score (0.0 to 1.0).")
+    fairness_score: float = Field(..., description="Bias neutrality / fairness score (0.0 to 1.0).")
+
+
 class QuestionEvaluation(BaseModel):
     """
     Detailed evaluation outcome for a single question response.
@@ -38,6 +115,11 @@ class QuestionEvaluation(BaseModel):
     evaluation_mode: Optional[str] = Field(None, description="Evaluation mode used for this question.")
     difficulty: Optional[str] = Field(None, description="Inferred question difficulty.")
     expected_depth: Optional[str] = Field(None, description="Expected answer depth.")
+    explainability: Optional[ExplainabilityResult] = Field(None, description="Explainability layer output with evidence and reasoning.")
+    confidence_breakdown: Optional[ConfidenceBreakdown] = Field(None, description="Confidence Engine v2 detailed breakdown per signal.")
+    gemini_evaluation: Optional[GeminiEvaluation] = Field(None, description="Independent secondary evaluation from the Gemini layer.")
+    verification: Optional[VerificationResult] = Field(None, description="Verification status comparing primary and Gemini evaluation.")
+    semantic_evaluation: Optional[SemanticEvaluationResult] = Field(None, description="Semantic Evaluation Engine result for the response.")
 
 
 class SubmissionEvaluation(BaseModel):

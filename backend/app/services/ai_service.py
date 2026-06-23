@@ -16,12 +16,22 @@ from AI.evaluation.fairness import detect_bias, verify_marking, validate_score_c
 from AI.evaluation.feedback import compile_feedback
 from AI.evaluation.autonomous_evaluator import AutonomousEvaluator
 from AI.evaluation.concept_engine import ConceptCoverageEngine
+from AI.evaluation.explainability import ExplainabilityEngine
+from AI.evaluation.confidence_engine import ConfidenceEngine
+from AI.evaluation.gemini_evaluator import GeminiEvaluator
+from AI.evaluation.verification_engine import VerificationEngine
+from AI.evaluation.semantic_engine import SemanticEvaluationEngine
 
 # Schemas
 from AI.schemas.evaluation_schema import RubricCriterion, QuestionEvaluation, SubmissionEvaluation
 
 logger = logging.getLogger("GradeMIND.AIService")
 _concept_engine = ConceptCoverageEngine()
+_explainability_engine = ExplainabilityEngine()
+_confidence_engine = ConfidenceEngine()
+_gemini_evaluator = GeminiEvaluator()
+_verification_engine = VerificationEngine()
+_semantic_engine = SemanticEvaluationEngine()
 
 def parse_ocr_text(ocr_output: Dict[str, Any], submission_id: str) -> Dict[str, str]:
     """
@@ -186,17 +196,104 @@ def evaluate_with_answer_key(
             
         # Pydantic model for QuestionEvaluation
         q_number_clean = q_id.replace("question_", "")
+
+        # Derive matched/missing concepts from rubric for explainability
+        ak_matched_concepts = [pt.description[:15] for pt in rubric_points if pt.met]
+        ak_missing_concepts = [pt.description[:15] for pt in rubric_points if not pt.met]
+
+        # Compute rubric coverage (fraction of criteria met) as concept_coverage proxy
+        total_pts = len(rubric_points)
+        met_pts = len([pt for pt in rubric_points if pt.met])
+        ak_concept_coverage = (met_pts / total_pts * 100.0) if total_pts > 0 else 0.0
+
+        # Semantic alignment from concept engine (reuses existing logic)
+        try:
+            ak_semantic_alignment = _concept_engine.semantic_similarity(q_text, student_ans)
+        except Exception:
+            ak_semantic_alignment = 0.5
+            logger.warning("Semantic similarity failed for %s; defaulting to 0.5.", q_id)
+
+        # Run Semantic Evaluation Engine (observational only)
+        semantic_eval_res = None
+        try:
+            semantic_eval_res = _semantic_engine.evaluate(
+                question=q_text,
+                reference_answer=ak_text,
+                student_answer=student_ans,
+                expected_concepts=ak_matched_concepts + ak_missing_concepts
+            )
+        except Exception:
+            logger.exception("Semantic Evaluation Engine failed for question %s", q_id)
+
         q_eval = QuestionEvaluation(
             question_number=q_number_clean,
             max_marks=rubric_result["max_score"],
             score_awarded=rubric_result["score"],
             student_answer_extracted=student_ans,
             criteria_feedback=f"Criteria details: {', '.join([f'{pt.criterion_id}({pt.marks_awarded}/{pt.allocated_marks})' for pt in rubric_points])}.",
-            matched_keywords=[pt.description[:15] for pt in rubric_points if pt.met],
+            matched_keywords=ak_matched_concepts,
             rubric_points=rubric_points,
-            confidence=float(bias_check["bias_score"]),
+            confidence=float(bias_check["bias_score"]),  # will be updated below
             evaluation_mode="ANSWER_KEY",
+            semantic_evaluation=semantic_eval_res,
         )
+
+        # --- Explainability layer ---
+        try:
+            q_eval.explainability = _explainability_engine.explain(
+                student_answer=student_ans,
+                rubric_points=rubric_points,
+                matched_concepts=ak_matched_concepts,
+                missing_concepts=ak_missing_concepts,
+                confidence=float(bias_check["bias_score"]),
+            )
+        except Exception:
+            logger.exception("Explainability failed for question %s; skipping.", q_id)
+
+        # --- Confidence Engine v2 ---
+        try:
+            ocr_confidence = ocr_output.get("confidence", 1.0)
+            q_breakdown = _confidence_engine.calculate(
+                ocr_confidence=float(ocr_confidence),
+                concept_coverage=ak_concept_coverage,
+                semantic_alignment=ak_semantic_alignment,
+                explainability_result=q_eval.explainability,
+                fairness_score=float(bias_check["bias_score"]),
+                discrepancy_count=len(marking_check.get("issues", [])),
+            )
+            q_eval.confidence = q_breakdown.overall_confidence
+            q_eval.confidence_breakdown = q_breakdown
+        except Exception:
+            logger.exception("Confidence Engine v2 failed for question %s; keeping legacy value.", q_id)
+
+        # --- Gemini Evaluation Layer ---
+        try:
+            q_eval.gemini_evaluation = _gemini_evaluator.evaluate(
+                question=q_text,
+                student_answer=student_ans,
+                rubric_points=rubric_points,
+                expected_concepts=ak_matched_concepts + ak_missing_concepts,
+                max_marks=rubric_result["max_score"],
+                concept_coverage_percentage=ak_concept_coverage,
+                explainability_result=q_eval.explainability
+            )
+        except Exception:
+            logger.exception("Gemini Evaluation failed for question %s; skipping.", q_id)
+
+        # --- Verification Layer ---
+        try:
+            if q_eval.gemini_evaluation:
+                q_eval.verification = _verification_engine.verify(
+                    gm_score=q_eval.score_awarded,
+                    gemini_score=q_eval.gemini_evaluation.score,
+                    gm_confidence=q_eval.confidence,
+                    gemini_confidence=q_eval.gemini_evaluation.confidence,
+                    gm_missing_concepts=ak_missing_concepts,
+                    gemini_missing_concepts=q_eval.gemini_evaluation.missing_concepts,
+                )
+        except Exception:
+            logger.exception("Verification Engine failed for question %s; skipping.", q_id)
+
         question_evaluations.append(q_eval)
         logger.info(
             "EVALUATION_STAGE question_scored submission_id=%s question=%s score=%s max=%s confidence=%s",
@@ -328,6 +425,83 @@ def evaluate_autonomously(
             matched_concepts,
             missing_concepts,
         )
+
+        # Run Semantic Evaluation Engine (observational only)
+        semantic_eval_res = None
+        try:
+            ref_ans = question_info.get("answer_key") or question_info.get("reference_answer") or ""
+            semantic_eval_res = _semantic_engine.evaluate(
+                question=q_text,
+                reference_answer=ref_ans,
+                student_answer=student_ans,
+                expected_concepts=expected_concepts
+            )
+        except Exception:
+            logger.exception("Semantic Evaluation Engine failed for question %s", q_id)
+
+        q_eval.semantic_evaluation = semantic_eval_res
+
+        # --- Explainability layer ---
+        try:
+            q_eval.explainability = _explainability_engine.explain(
+                student_answer=student_ans,
+                rubric_points=q_eval.rubric_points,
+                matched_concepts=matched_concepts,
+                missing_concepts=missing_concepts,
+                confidence=q_eval.confidence,
+            )
+        except Exception:
+            logger.exception("Explainability failed for question %s; skipping.", q_id)
+
+        # --- Confidence Engine v2 ---
+        try:
+            ocr_confidence = ocr_output.get("confidence", 1.0)
+            # Compute per-question fairness score
+            q_bias = detect_bias({
+                "student_answer_extracted": student_ans,
+                "criteria_feedback": q_eval.criteria_feedback,
+            })
+            q_breakdown = _confidence_engine.calculate(
+                ocr_confidence=float(ocr_confidence),
+                concept_coverage=float(q_eval.concept_coverage or 0.0),
+                semantic_alignment=_concept_engine.semantic_similarity(q_text, student_ans),
+                explainability_result=q_eval.explainability,
+                fairness_score=float(q_bias["bias_score"]),
+                discrepancy_count=len(discrepancies),
+            )
+            q_eval.confidence = q_breakdown.overall_confidence
+            q_eval.confidence_breakdown = q_breakdown
+        except Exception:
+            logger.exception("Confidence Engine v2 failed for question %s; keeping legacy value.", q_id)
+
+        # --- Gemini Evaluation Layer ---
+        try:
+            q_eval.gemini_evaluation = _gemini_evaluator.evaluate(
+                question=q_text,
+                student_answer=student_ans,
+                rubric_points=q_eval.rubric_points,
+                expected_concepts=expected_concepts,
+                max_marks=max_marks,
+                concept_coverage_percentage=float(q_eval.concept_coverage or 0.0),
+                explainability_result=q_eval.explainability
+            )
+        except Exception:
+            logger.exception("Gemini Evaluation failed for question %s; skipping.", q_id)
+
+        # --- Verification Layer ---
+        try:
+            if q_eval.gemini_evaluation:
+                q_eval.verification = _verification_engine.verify(
+                    gm_score=q_eval.score_awarded,
+                    gemini_score=q_eval.gemini_evaluation.score,
+                    gm_confidence=q_eval.confidence,
+                    gemini_confidence=q_eval.gemini_evaluation.confidence,
+                    gm_missing_concepts=missing_concepts,
+                    gemini_missing_concepts=q_eval.gemini_evaluation.missing_concepts,
+                )
+        except Exception:
+            logger.exception("Verification Engine failed for question %s; skipping.", q_id)
+
         question_evaluations.append(q_eval)
         logger.info(
             "EVALUATION_STAGE question_scored submission_id=%s question=%s score=%s max=%s confidence=%s",
