@@ -1,0 +1,51 @@
+name: Tests
+
+"on":
+  push:
+  pull_request:
+
+jobs:
+  test:
+    name: Backend + AI test suites
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+          cache-dependency-path: backend/requirements.txt
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r backend/requirements.txt
+        # Only the core (lightweight) requirements are installed here — the
+        # optional heavy OCR engines in backend/requirements-ocr.txt (torch,
+        # transformers, easyocr, paddleocr) are not required: every module
+        # that depends on them degrades gracefully and the affected tests
+        # skip themselves when the packages are absent. See
+        # backend/README.md, "OCR Engines & Install Profiles".
+
+      - name: Run backend test suite
+        working-directory: backend
+        env:
+          DATABASE_URL: "sqlite:///./ci_test.db"
+          SECRET_KEY: "ci-test-secret-key"
+          AUTH_ENABLED: "True"
+        run: |
+          python -m pytest tests/ -q \
+            --cov=app.services.submission_service \
+            --cov=app.services.dashboard_service \
+            --cov=app.services.storage_service \
+            --cov-report=term-missing
+
+      - name: Run AI test suite
+        env:
+          PYTHONPATH: ${{ github.workspace }}
+        run: |
+          python -m pytest AI/tests/ -q

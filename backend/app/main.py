@@ -5,7 +5,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.core.config import settings, get_cors_allowed_origins
-from app.core.database import check_database_connection, init_db
+from app.core.database import check_database_connection, init_db, is_sqlite_database
 
 from app.api.health import router as health_router
 from app.api.auth import router as auth_router
@@ -29,7 +29,19 @@ async def lifespan(app: FastAPI):
     """
     try:
         check_database_connection()
-        init_db()
+        # Alembic migrations are the source of truth for schema (see
+        # backend/README.md, "Alembic Migrations"). create_all() only runs
+        # for the SQLite test/dev database; real (Postgres) deployments must
+        # run `alembic upgrade head` before starting the app — running both
+        # against the same database is what caused duplicate schema creation.
+        if is_sqlite_database():
+            init_db()
+            logger.info("SQLite database: applied create_all() for the test/dev schema.")
+        else:
+            logger.info(
+                "Non-SQLite database: skipping create_all(). Alembic migrations "
+                "are authoritative — ensure `alembic upgrade head` has been run."
+            )
         logger.info("Database startup checks completed.")
     except Exception as e:
         logger.exception("Database initialization failed during startup: %s", e)

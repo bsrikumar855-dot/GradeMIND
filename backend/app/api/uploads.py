@@ -3,7 +3,7 @@ GradeMIND Uploads API Router.
 Endpoints for storing exam source files used by evaluation.
 """
 
-from datetime import datetime
+from datetime import datetime, timezone
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
@@ -72,7 +72,7 @@ async def upload_question_paper(
         "data": {
             "exam_id": str(exam.id),
             "file_url": file_path,
-            "uploaded_at": datetime.utcnow().isoformat() + "Z",
+            "uploaded_at": datetime.now(timezone.utc).isoformat(),
         },
     }
 
@@ -113,6 +113,6 @@ async def upload_answer_key(
         "data": {
             "exam_id": str(exam.id),
             "file_url": file_path,
-            "uploaded_at": datetime.utcnow().isoformat() + "Z",
+            "uploaded_at": datetime.now(timezone.utc).isoformat(),
         },
     }

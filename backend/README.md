@@ -130,14 +130,25 @@ Interactive API docs are available at:
 
 ## 7. Alembic Migration Commands
 
-1. **Generate the initial migration:**
-   ```bash
-   alembic revision --autogenerate -m "initial"
-   ```
-2. **Apply migrations to the database:**
-   ```bash
-   alembic upgrade head
-   ```
+**Alembic is the source of truth for schema in every real (Postgres)
+deployment.** Run migrations before starting the app:
+```bash
+alembic upgrade head
+```
+
+When you change a model, generate a new migration instead of relying on
+auto-created tables:
+```bash
+alembic revision --autogenerate -m "describe the change"
+```
+
+`app.core.database.init_db()` (SQLAlchemy `create_all()`) is **only** used
+for the SQLite test/dev database — `app/main.py`'s startup lifespan checks
+`is_sqlite_database()` and does not call it for Postgres. Running both
+`create_all()` and Alembic against the same database was the cause of a
+duplicate-schema-creation bug (Alembic migrations recreating tables
+`create_all()` had already made); this split is the fix. Tests use SQLite
+via `tests/conftest.py`'s own in-memory engine and never touch Alembic.
 
 ---
 
