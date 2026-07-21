@@ -10,7 +10,7 @@ This report presents the findings of the comprehensive production-readiness revi
 - **Migration Status**: **Validated & Fixed** (Resolved migration conflict in `9ca611fb35d8_create_users_table.py`)
 - **Integration Status**: **Fully Integrated**
 - **Test Coverage**: **Excellent** (Added test coverage for file-size limit validation)
-- **Groq AI Integration Readiness**: **High** (Orchestration hooks and fallback imports fully prepared in `SubmissionService`)
+- **Gemini AI Integration Readiness**: **High** (Orchestration hooks and fallback imports fully prepared in `SubmissionService`; grading itself needs no LLM)
 
 ---
 

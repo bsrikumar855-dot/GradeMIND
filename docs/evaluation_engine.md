@@ -46,28 +46,55 @@ Calculates the final score for the question by summing the marks awarded for eac
 Drafts constructive feedback detailing why marks were awarded or deducted, citing the exact grading criteria that were or were not met.
 
 ### 6. Confidence & Fairness Validation
-- **Confidence Score**: Compares LLM output parsed parameters against rubric constraints. Discrepancies drop confidence below `0.70`, flagging the submission for teacher review.
+- **Confidence Score**: Combines OCR confidence with grading confidence and applies penalties for detected discrepancies. Scores below `0.70` flag the submission for teacher review.
 - **Anonymization**: Submissions are anonymized (student IDs and names are removed) before evaluation to prevent grading bias.
+
+---
+
+## LLM Usage: Optional, Not Required
+
+**Grading does not require an LLM or any API key.** The primary evaluation pipeline
+(`AI/evaluation/rubric_engine.py`, `concept_engine.py`, `semantic_engine.py`,
+`autonomous_evaluator.py`, `scorer.py`, `feedback.py`, `fairness.py`) is entirely
+local: rule-based rubric matching, keyword/lemmatization checks, and local
+sentence-embedding similarity. It runs fully offline and produces the score that
+is actually awarded.
+
+**Gemini is an optional secondary cross-check**, provided by
+`AI/evaluation/gemini_evaluator.py`. When `GEMINI_API_KEY` is set, it independently
+re-scores the same answer and `AI/evaluation/verification_engine.py` compares its
+score against the primary score to flag disagreements for manual review. It never
+modifies `score_awarded`, `confidence`, or marks — it is purely informational. If
+`GEMINI_API_KEY` is absent (or the API call fails), the evaluator logs a warning and
+returns `None`; the rest of the pipeline proceeds unaffected.
+
+This is the only LLM integration point in the codebase. There is no other provider
+(e.g. Groq) wired into any evaluation code, regardless of what older docs may say.
 
 ---
 
 ## Evaluation Methodologies
 
 ### Rubric Evaluation
-A rule-based evaluation that grades responses step-by-step. The LLM acts as a criteria matching engine, assessing whether the student's answer fulfills the required steps of the rubric.
+A rule-based evaluation that grades responses step-by-step, matching the student's
+answer against each rubric criterion locally.
 
 ### Keyword Evaluation
 Checks for critical terms (e.g., "chloroplast", "mitosis", "photosynthesis") required by the answer key. This is done using exact matching and lemmatization (word normalizations).
 
 ### Semantic Evaluation
-Uses contextual embeddings and LLMs to evaluate conceptual understanding. If a student uses a synonym or alternative explanation (e.g., "cellular powerhouse" instead of "source of cell energy"), the engine recognizes it as correct.
+Uses local contextual sentence embeddings to evaluate conceptual understanding. If a student uses a synonym or alternative explanation (e.g., "cellular powerhouse" instead of "source of cell energy"), the engine recognizes it as correct. This does not call an external LLM.
+
+### Gemini Cross-Check (Optional)
+When configured, provides a second, independent score and reasoning for comparison
+against the primary evaluation. See "LLM Usage" above.
 
 ---
 
 ## Fairness Layer
 
-The Fairness Layer is a set of prompt engineering guidelines designed to ensure objective grading:
-1. **Name Anonymization**: All student identifier details are removed from the payload before sending it to the evaluation model.
-2. **Neatness Neutrality**: The system ignores handwriting style, formatting irregularities, or cross-outs, focusing purely on content correctness.
+The Fairness Layer is implemented as local, deterministic checks (`AI/evaluation/fairness.py`) to ensure objective grading:
+1. **Name Anonymization**: Flags student identifier details (emails, names, roll numbers) detected in extracted text.
+2. **Neatness Neutrality**: Flags feedback that references handwriting style, formatting irregularities, or neatness.
 3. **No Halos**: Each question is graded independently to prevent grading bias from previous answers.
-4. **Adherence to Rubric**: The model is prohibited from awarding extra credit or penalizing students for details not specified in the marking criteria.
+4. **Adherence to Rubric**: Scores are verified to never exceed the rubric's allocated marks and to match the sum of matched criteria.

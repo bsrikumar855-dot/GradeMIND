@@ -26,9 +26,10 @@ class Settings(BaseSettings):
     )
     CORS_ALLOWED_ORIGIN_REGEX: str = r"https://.*\.vercel\.app"
 
-    # Groq API Configuration
-    GROQ_API_KEY: Optional[str] = None
-    GROQ_MODEL: str = "llama3-70b-8192"
+    # Gemini API Configuration (optional secondary/cross-check evaluator;
+    # core grading works with zero LLM keys via the local autonomous evaluator)
+    GEMINI_API_KEY: Optional[str] = None
+    GEMINI_MODEL: str = "gemini-2.5-flash"
 
     @field_validator("DEBUG", mode="before")
     @classmethod
