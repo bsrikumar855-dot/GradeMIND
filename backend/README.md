@@ -37,6 +37,46 @@ pip install -r requirements.txt
 
 ---
 
+## 2b. OCR Engines & Install Profiles
+
+Handwritten answer-sheet OCR is layered so the core app never requires heavy
+ML dependencies:
+
+- **Base install** (`requirements.txt`): gives you **Tesseract** OCR via
+  `pytesseract`. This is enough to run the whole grading pipeline. Tesseract
+  also needs the actual `tesseract-ocr` binary installed on the system
+  (it's not a pip package):
+  - Windows: [UB-Mannheim Tesseract installer](https://github.com/UB-Mannheim/tesseract/wiki)
+  - macOS: `brew install tesseract`
+  - Debian/Ubuntu: `apt-get install tesseract-ocr`
+  - Docker: install `tesseract-ocr` in the image alongside the Python deps.
+
+- **Full OCR profile** (`requirements-ocr.txt`): adds **EasyOCR**,
+  **PaddleOCR**, and **TrOCR** (a handwriting-tuned transformer model) for
+  significantly better handwriting accuracy via the 4-engine content-aware
+  router (`AI/ocr/ocr_router.py`). These pull in **PyTorch**, are much
+  larger installs, and TrOCR downloads ~1.3GB of model weights from
+  HuggingFace on first use. Install with:
+  ```bash
+  pip install -r requirements.txt -r requirements-ocr.txt
+  ```
+
+If an engine's package or model isn't installed, its wrapper raises a clear
+error and the OCR manager/router falls back to whichever engines *are*
+available — grading still works with Tesseract alone, just at lower
+handwriting accuracy.
+
+**Sanity-checking OCR on an image** before trusting it for grading:
+```bash
+python -m AI.ocr.cli path/to/answer_sheet.jpg
+```
+This prints the extracted text with per-line confidence (and any detected
+question segments). Run from the repository root so `AI` is importable, or
+`PYTHONPATH=<repo-root>` from elsewhere. Use `--engine tesseract` to force a
+single engine.
+
+---
+
 ## 3. PostgreSQL Setup
 
 1. **Install PostgreSQL** on your system (if not already installed).
@@ -59,9 +99,16 @@ Ensure `.env` contains:
 DATABASE_URL=postgresql://<username>:<password>@<host>:<port>/grademind
 SECRET_KEY=<your_secret_key>
 DEBUG=True
+AUTH_ENABLED=true
 PROJECT_NAME="GradeMIND Backend"
 PROJECT_VERSION="1.0.0"
 ```
+
+`AUTH_ENABLED` defaults to `true` and should stay that way in any real
+deployment — role guards (Teacher/Admin vs Student) and result-publishing
+access control are only enforced when auth is on. Set it to `false` only
+for a local, no-login demo, where every request is treated as an
+anonymous admin.
 
 ---
 

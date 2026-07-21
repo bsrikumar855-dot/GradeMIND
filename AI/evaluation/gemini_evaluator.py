@@ -19,8 +19,8 @@ class GeminiEvaluator:
     This does NOT replace the primary evaluation pipeline.
     """
     
-    def __init__(self, model_name: str = "gemini-2.5-flash", timeout: int = 15):
-        self.model_name = model_name
+    def __init__(self, model_name: Optional[str] = None, timeout: int = 15):
+        self.model_name = model_name or os.environ.get("GEMINI_MODEL", "gemini-2.5-flash")
         self.timeout = timeout
         self.api_key = os.environ.get("GEMINI_API_KEY")
         self._client_configured = False
@@ -51,7 +51,8 @@ class GeminiEvaluator:
         expected_concepts: List[str],
         max_marks: float,
         concept_coverage_percentage: float = 0.0,
-        explainability_result: Optional[ExplainabilityResult] = None
+        explainability_result: Optional[ExplainabilityResult] = None,
+        curriculum_context: Optional[Any] = None
     ) -> Optional[GeminiEvaluation]:
         """
         Evaluate a student's answer using Gemini.
@@ -85,6 +86,22 @@ class GeminiEvaluator:
             concept_coverage=concept_coverage_percentage,
             explainability_summary=explainability_summary
         )
+
+        if curriculum_context:
+            curriculum_str = (
+                f"\n### CURRICULUM CONTEXT (RAG retrieved)\n"
+                f"**Subject:** {curriculum_context.subject}\n"
+                f"**Chapter:** {curriculum_context.chapter}\n"
+                f"**Topic:** {curriculum_context.topic}\n"
+                f"**Reference Answer:** {curriculum_context.reference_answer}\n"
+                f"**Rubric Title:** {curriculum_context.rubric}\n"
+                f"**Rubric Criteria:** {', '.join(curriculum_context.rubric_criteria)}\n"
+            )
+            instructions_idx = prompt.find("### INSTRUCTIONS")
+            if instructions_idx != -1:
+                prompt = prompt[:instructions_idx] + curriculum_str + "\n" + prompt[instructions_idx:]
+            else:
+                prompt += "\n" + curriculum_str
 
         try:
             import google.generativeai as genai

@@ -21,6 +21,9 @@ from AI.evaluation.confidence_engine import ConfidenceEngine
 from AI.evaluation.gemini_evaluator import GeminiEvaluator
 from AI.evaluation.verification_engine import VerificationEngine
 from AI.evaluation.semantic_engine import SemanticEvaluationEngine
+from AI.evaluation.curriculum_context_engine import CurriculumContextEngine
+from AI.evaluation.or_question_resolver import resolve_or_question
+from AI.analytics.analytics_service import LearningAnalyticsService
 
 # Schemas
 from AI.schemas.evaluation_schema import RubricCriterion, QuestionEvaluation, SubmissionEvaluation
@@ -32,6 +35,8 @@ _confidence_engine = ConfidenceEngine()
 _gemini_evaluator = GeminiEvaluator()
 _verification_engine = VerificationEngine()
 _semantic_engine = SemanticEvaluationEngine()
+_curriculum_context_engine = CurriculumContextEngine()
+_analytics_service = LearningAnalyticsService()
 
 def parse_ocr_text(ocr_output: Dict[str, Any], submission_id: str) -> Dict[str, str]:
     """
@@ -213,6 +218,13 @@ def evaluate_with_answer_key(
             ak_semantic_alignment = 0.5
             logger.warning("Semantic similarity failed for %s; defaulting to 0.5.", q_id)
 
+        # Retrieve Curriculum Context
+        curr_context = None
+        try:
+            curr_context = _curriculum_context_engine.build_context(q_text)
+        except Exception:
+            logger.exception("Failed to build curriculum context for question %s", q_id)
+
         # Run Semantic Evaluation Engine (observational only)
         semantic_eval_res = None
         try:
@@ -220,7 +232,9 @@ def evaluate_with_answer_key(
                 question=q_text,
                 reference_answer=ak_text,
                 student_answer=student_ans,
-                expected_concepts=ak_matched_concepts + ak_missing_concepts
+                expected_concepts=ak_matched_concepts + ak_missing_concepts,
+                topic_context=curr_context.topic if curr_context else "",
+                chapter_context=curr_context.chapter if curr_context else ""
             )
         except Exception:
             logger.exception("Semantic Evaluation Engine failed for question %s", q_id)
@@ -236,6 +250,7 @@ def evaluate_with_answer_key(
             confidence=float(bias_check["bias_score"]),  # will be updated below
             evaluation_mode="ANSWER_KEY",
             semantic_evaluation=semantic_eval_res,
+            curriculum_context=curr_context,
         )
 
         # --- Explainability layer ---
@@ -275,7 +290,8 @@ def evaluate_with_answer_key(
                 expected_concepts=ak_matched_concepts + ak_missing_concepts,
                 max_marks=rubric_result["max_score"],
                 concept_coverage_percentage=ak_concept_coverage,
-                explainability_result=q_eval.explainability
+                explainability_result=q_eval.explainability,
+                curriculum_context=curr_context
             )
         except Exception:
             logger.exception("Gemini Evaluation failed for question %s; skipping.", q_id)
@@ -367,6 +383,12 @@ def evaluate_with_answer_key(
         summary=feedback_results["summary"]
     )
     
+    # 6. Learning Analytics Engine
+    try:
+        submission_eval.learning_analytics = _analytics_service.analyze_submission(submission_eval)
+    except Exception:
+        logger.exception("Failed to run learning analytics engine in answer key mode")
+
     return submission_eval.model_dump()
 
 
@@ -399,7 +421,28 @@ def evaluate_autonomously(
             discrepancies.append(f"No question text available for {q_id}.")
             continue
 
-        q_text = question_info.get("text", "").strip()
+        # ── OR-question resolution ────────────────────────────────────────
+        # Detect whether this question has OR-type alternatives and, if so,
+        # select the alternative that best matches the student's answer.
+        # This prevents evaluating the student against concepts from the
+        # unchosen alternative.
+        resolved_q_text, chosen_label, or_match_score = resolve_or_question(
+            q_id=q_id,
+            question_info=question_info,
+            student_answer=student_ans,
+        )
+        if chosen_label != q_id:
+            logger.info(
+                "OR_RESOLUTION q_id=%s chosen_alternative=%s match_score=%.3f "
+                "student_answer_snippet=%r",
+                q_id,
+                chosen_label,
+                or_match_score,
+                student_ans[:80],
+            )
+        # ── End OR-question resolution ────────────────────────────────────
+
+        q_text = resolved_q_text.strip()
         max_marks = float(question_info.get("marks") or per_question_marks.get(q_id) or total_marks)
         q_number_clean = q_id.replace("question_", "")
         q_eval = evaluator.evaluate_answer(
@@ -426,20 +469,32 @@ def evaluate_autonomously(
             missing_concepts,
         )
 
+        # Retrieve Curriculum Context
+        curr_context = None
+        try:
+            curr_context = _curriculum_context_engine.build_context(q_text)
+        except Exception:
+            logger.exception("Failed to build curriculum context for question %s", q_id)
+
         # Run Semantic Evaluation Engine (observational only)
         semantic_eval_res = None
         try:
             ref_ans = question_info.get("answer_key") or question_info.get("reference_answer") or ""
+            if not ref_ans.strip() and curr_context and curr_context.reference_answer.strip():
+                ref_ans = curr_context.reference_answer
             semantic_eval_res = _semantic_engine.evaluate(
                 question=q_text,
                 reference_answer=ref_ans,
                 student_answer=student_ans,
-                expected_concepts=expected_concepts
+                expected_concepts=expected_concepts,
+                topic_context=curr_context.topic if curr_context else "",
+                chapter_context=curr_context.chapter if curr_context else ""
             )
         except Exception:
             logger.exception("Semantic Evaluation Engine failed for question %s", q_id)
 
         q_eval.semantic_evaluation = semantic_eval_res
+        q_eval.curriculum_context = curr_context
 
         # --- Explainability layer ---
         try:
@@ -483,7 +538,8 @@ def evaluate_autonomously(
                 expected_concepts=expected_concepts,
                 max_marks=max_marks,
                 concept_coverage_percentage=float(q_eval.concept_coverage or 0.0),
-                explainability_result=q_eval.explainability
+                explainability_result=q_eval.explainability,
+                curriculum_context=curr_context
             )
         except Exception:
             logger.exception("Gemini Evaluation failed for question %s; skipping.", q_id)
@@ -582,6 +638,13 @@ def evaluate_autonomously(
             f"Average concept coverage was {avg_concept_coverage:.1f}%."
         ),
     )
+    
+    # 6. Learning Analytics Engine
+    try:
+        submission_eval.learning_analytics = _analytics_service.analyze_submission(submission_eval)
+    except Exception:
+        logger.exception("Failed to run learning analytics engine in autonomous mode")
+
     return submission_eval.model_dump()
 
 

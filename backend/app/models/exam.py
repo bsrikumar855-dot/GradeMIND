@@ -1,8 +1,7 @@
 import uuid
 from datetime import datetime
 from sqlalchemy import Column, String, Integer, DateTime, Boolean, Enum
-from sqlalchemy.dialects.postgresql import UUID
-from app.core.database import Base
+from app.core.database import Base, GUID
 
 
 class EvaluationMode:
@@ -13,8 +12,8 @@ class EvaluationMode:
 class Exam(Base):
     __tablename__ = "exams"
 
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    teacher_id = Column(UUID(as_uuid=True), nullable=False)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
+    teacher_id = Column(GUID(), nullable=False)
     title = Column(String(200), nullable=False)
     subject = Column(String(100), nullable=False)
     total_marks = Column(Integer, nullable=False)

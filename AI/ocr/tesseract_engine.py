@@ -35,6 +35,10 @@ class TesseractOCREngine:
     def __init__(self):
         _init_tesseract()
 
+    def is_available(self) -> bool:
+        """Whether pytesseract and the Tesseract binary are installed and working."""
+        return _has_pytesseract
+
     def extract(self, image_path: str, submission_id: str) -> OCRDocument:
         """
         Run Tesseract OCR text recognition on an image.

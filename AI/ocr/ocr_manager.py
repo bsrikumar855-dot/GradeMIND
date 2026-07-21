@@ -1,6 +1,7 @@
 """
 GradeMIND OCR Manager.
-Orchestrates text extraction across multiple OCR engines and chooses the best result using voting strategies.
+Orchestrates text extraction across multiple OCR engines.
+Now uses OCRRouter for content-aware handwriting vs printed text routing.
 """
 
 import os
@@ -94,13 +95,16 @@ class OCRManager:
 
     def extract_text(self, image_path: str, submission_id: str) -> OCRDocument:
         """
-        Extract text from an image by executing all available OCR engines,
-        running the voting strategy, and returning the unified best output.
-        
+        Extract text from an image.
+
+        Uses the OCRRouter (content-aware: TrOCR for handwriting, EasyOCR for
+        printed text) when available.  Falls back to the legacy all-engines +
+        strategy_vote approach if the router cannot be initialised.
+
         Args:
-            image_path: Path to preprocessed image.
+            image_path:    Path to the answer-sheet image.
             submission_id: Submission ID.
-            
+
         Returns:
             The selected unified OCRDocument.
         """
@@ -109,22 +113,42 @@ class OCRManager:
 
         logger.info("OCR_STAGE manager_start submission_id=%s path=%s", submission_id, image_path)
 
+        # ── PDF: try embedded text first ─────────────────────────────────
         if image_path.lower().endswith(".pdf"):
             logger.info("PDF_TEXT_STAGE start submission_id=%s path=%s", submission_id, image_path)
             pdf_doc = self.extract_pdf_text(image_path, submission_id)
             if pdf_doc.lines:
                 logger.info(
                     "PDF_TEXT_STAGE completed submission_id=%s lines=%s",
-                    submission_id,
-                    len(pdf_doc.lines),
+                    submission_id, len(pdf_doc.lines),
                 )
                 return pdf_doc
             logger.warning(
-                "PDF_TEXT_STAGE no_embedded_text submission_id=%s path=%s; falling_back_to_ocr",
+                "PDF_TEXT_STAGE no_embedded_text submission_id=%s; falling_back_to_ocr",
                 submission_id,
-                image_path,
             )
 
+        # ── Primary: content-aware OCR Router ────────────────────────────
+        try:
+            from AI.ocr.ocr_router import OCRRouter
+            router = OCRRouter(preprocess=True)
+            doc = router.route(image_path, submission_id)
+            logger.info(
+                "OCR_STAGE router_completed submission_id=%s engine_confidence=%.3f lines=%d",
+                submission_id, doc.confidence, len(doc.lines),
+            )
+            return doc
+        except Exception as router_exc:
+            logger.warning(
+                "OCR_STAGE router_failed submission_id=%s error=%s; falling back to legacy path",
+                submission_id, router_exc,
+            )
+
+        # ── Fallback: legacy all-engines + vote ──────────────────────────
+        return self._legacy_extract(image_path, submission_id)
+
+    def _legacy_extract(self, image_path: str, submission_id: str) -> OCRDocument:
+        """Legacy fallback: run all three engines and pick the highest-confidence result."""
         results = []
         failures = []
         for engine_name, extractor in [
@@ -137,19 +161,14 @@ class OCRManager:
                 result = extractor(image_path, submission_id)
                 logger.info(
                     "OCR_STAGE engine_completed submission_id=%s engine=%s confidence=%s lines=%s",
-                    submission_id,
-                    engine_name,
-                    result.confidence,
-                    len(result.lines),
+                    submission_id, engine_name, result.confidence, len(result.lines),
                 )
                 results.append(result)
             except Exception as exc:
                 failures.append(f"{engine_name}: {exc}")
                 logger.exception(
                     "OCR_STAGE engine_failed submission_id=%s engine=%s error=%s",
-                    submission_id,
-                    engine_name,
-                    exc,
+                    submission_id, engine_name, exc,
                 )
 
         if not results:

@@ -5,6 +5,15 @@ Defines response models for teacher dashboard overview, exam analytics, and subm
 
 from pydantic import BaseModel
 from typing import List, Dict, Any, Optional
+from AI.schemas.evaluation_schema import (
+    ExplainabilityResult,
+    ConfidenceBreakdown,
+    GeminiEvaluation,
+    VerificationResult,
+    SemanticEvaluationResult,
+    CurriculumContext,
+    LearningAnalyticsResult
+)
 
 
 class DashboardOverviewResponse(BaseModel):
@@ -40,6 +49,12 @@ class QuestionBreakdownItem(BaseModel):
     confidence: float
     concept_coverage: Optional[float] = None
     evaluation_mode: Optional[str] = None
+    explainability: Optional[ExplainabilityResult] = None
+    confidence_breakdown: Optional[ConfidenceBreakdown] = None
+    gemini_evaluation: Optional[GeminiEvaluation] = None
+    verification: Optional[VerificationResult] = None
+    semantic_evaluation: Optional[SemanticEvaluationResult] = None
+    curriculum_context: Optional[CurriculumContext] = None
 
 
 class FeedbackDetails(BaseModel):
@@ -62,6 +77,7 @@ class SubmissionReviewResponse(BaseModel):
     question_breakdown: List[QuestionBreakdownItem]
     feedback: FeedbackDetails
     fairness_checks: List[FairnessCheckItem]
+    learning_analytics: Optional[LearningAnalyticsResult] = None
 
 
 class MonitoringAnalytics(BaseModel):

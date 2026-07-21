@@ -17,6 +17,20 @@ services:
       dockerfile: backend/Dockerfile
     restart: always
     environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-grademind}:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}@db:5432/${POSTGRES_DB:-grademind}
+      SECRET_KEY: ${SECRET_KEY:?Set SECRET_KEY in .env}
+      DEBUG: "${DEBUG:-False}"
+      PROJECT_NAME: "GradeMIND Backend"
+      PROJECT_VERSION: "1.0.0"
+      # Optional: enables the Gemini secondary cross-check evaluator. Core
+      # grading works with zero API keys via the local autonomous evaluator.
+      GEMINI_API_KEY: "${GEMINI_API_KEY}"
+      GEMINI_MODEL: "${GEMINI_MODEL:-gemini-2.5-flash}"
+      # Secure by default. Demo mode (no login, every request treated as
+      # admin) is an explicit opt-in — set AUTH_ENABLED=False in .env only
+      # for local demos, never in a shared/real deployment.
+      AUTH_ENABLED: "${AUTH_ENABLED:-True}"
+      CORS_ALLOWED_ORIGINS: "${CORS_ALLOWED_ORIGINS:-http://localhost:3000,http://127.0.0.1:3000}"
       DATABASE_URL: postgresql://grademind:password123@db:5432/grademind
       SECRET_KEY: "change_me_in_production"
       DEBUG: "True"
@@ -37,6 +51,10 @@ services:
       context: .
       dockerfile: frontend/Dockerfile
       args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:8000}
+    restart: always
+    environment:
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:8000}
         NEXT_PUBLIC_API_URL: http://localhost:8000
     restart: always
     environment:

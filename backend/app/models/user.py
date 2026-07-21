@@ -1,8 +1,7 @@
 from sqlalchemy import Column, String, DateTime, Boolean, Enum, Integer
-from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.sql import func
 import uuid
-from app.core.database import Base
+from app.core.database import Base, GUID
 from app.utils.roles import Roles
 
 
@@ -13,7 +12,7 @@ class User(Base):
     """
     __tablename__ = "users"
 
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4, index=True)
     name = Column(String(100), nullable=False)
     email = Column(String(255), unique=True, index=True, nullable=False)
     password_hash = Column(String, nullable=False)

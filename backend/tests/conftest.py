@@ -44,9 +44,14 @@ app.dependency_overrides[get_db] = override_get_db
 def reset_dependency_overrides():
     """
     Automatically reset dependency overrides after each test to prevent settings leakage.
+    Also force AUTH_ENABLED to True for the test session.
     """
+    from app.core.config import settings
+    prev_auth = settings.AUTH_ENABLED
+    settings.AUTH_ENABLED = True
     # Keep the default overrides
     default_overrides = app.dependency_overrides.copy()
     yield
     # Restore overrides back to default after each test
     app.dependency_overrides = default_overrides
+    settings.AUTH_ENABLED = prev_auth

@@ -21,8 +21,14 @@ venv/
 # VS Code
 .vscode/
 
-# Storage
-storage/
+# Storage (keep directory markers, ignore actual uploaded content)
+storage/*
+!storage/answer_keys/
+!storage/answer_sheets/
+storage/answer_keys/*
+storage/answer_sheets/*
+!storage/answer_keys/.gitkeep
+!storage/answer_sheets/.gitkeep
 
 # Generated Reports
 AI/tests/test_pipeline_output.json

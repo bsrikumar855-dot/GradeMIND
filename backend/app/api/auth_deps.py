@@ -28,7 +28,7 @@ def get_mvp_anonymous_user() -> dict:
     return {
         "id": MVP_ANONYMOUS_USER_ID,
         "name": "MVP Anonymous",
-        "email": None,
+        "email": "e2e_teacher@grademind.edu",
         "role": Roles.ADMIN.value,
         "auth_disabled": True,
     }
@@ -41,6 +41,13 @@ def get_current_user(
 ) -> dict:
     if not settings.AUTH_ENABLED:
         return get_mvp_anonymous_user()
+
+    if not token:
+        auth_header = request.headers.get("Authorization")
+        if auth_header:
+            parts = auth_header.split()
+            if len(parts) == 2 and parts[0].lower() == "bearer":
+                token = parts[1]
 
     if not token:
         token = request.query_params.get("token")
