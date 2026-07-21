@@ -14,6 +14,7 @@ from app.api.uploads import router as uploads_router
 from app.api.submissions import router as submissions_router
 from app.api.dashboard import router as dashboard_router, root_router as dashboard_root_router
 from app.api.student import student_router, results_router, feedback_router
+from app.api.evaluation import router as evaluation_router
 
 from app.middleware.logger import LoggingMiddleware
 from app.middleware.auth import JWTAuthMiddleware
@@ -84,3 +85,4 @@ app.include_router(dashboard_root_router)
 app.include_router(student_router)
 app.include_router(results_router)
 app.include_router(feedback_router)
+app.include_router(evaluation_router)
