@@ -91,11 +91,22 @@ SessionLocal = sessionmaker(
     bind=engine
 )
 
+def is_sqlite_database() -> bool:
+    """True when running against the SQLite test/dev database."""
+    return DATABASE_URL.startswith("sqlite")
+
+
 def init_db() -> None:
     """
-    Initialize database schemas.
-    Note: In production and standard workflows, Alembic is preferred.
-    This function supports quick local initialization.
+    Create all tables via SQLAlchemy metadata (create_all).
+
+    This is ONLY the schema path for the SQLite test/dev database (see
+    is_sqlite_database() and main.py's lifespan, which does not call this
+    for any other database). Alembic migrations (alembic/versions/) are the
+    single source of truth for real (Postgres) deployments — run
+    `alembic upgrade head` before starting the app against Postgres.
+    Running both create_all and Alembic against the same database is what
+    caused the duplicate-schema-creation bug this split fixes.
     """
     import app.models  # noqa: F401
     Base.metadata.create_all(bind=engine)
@@ -106,6 +117,9 @@ def ensure_compatible_schema() -> None:
     """
     Add route-critical columns when a deployed database was created before
     the latest models. This keeps GET endpoints from failing on schema drift.
+
+    Only invoked from init_db() (SQLite path). Real deployments manage
+    schema drift via new Alembic migrations, not this function.
     """
     inspector = inspect(engine)
     table_names = set(inspector.get_table_names())

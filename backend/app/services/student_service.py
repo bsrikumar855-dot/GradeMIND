@@ -7,7 +7,7 @@ import os
 import json
 import logging
 from uuid import UUID
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Dict, Any, List, Optional
 from sqlalchemy.orm import Session
 
@@ -33,7 +33,7 @@ class StudentService:
         if not exam:
             return None
         exam.results_published = True
-        exam.published_at = datetime.utcnow()
+        exam.published_at = datetime.now(timezone.utc)
         self.db.commit()
         self.db.refresh(exam)
         logger.info(f"Published results for exam {exam_id}")
