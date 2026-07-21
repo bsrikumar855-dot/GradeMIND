@@ -82,6 +82,19 @@ class SemanticEvaluationResult(BaseModel):
     explanation: str = Field(..., description="Explanation of semantic similarity and matches.")
 
 
+class CurriculumContext(BaseModel):
+    """
+    Academic context retrieved from the knowledge base and vector store.
+    """
+    subject: str = Field("", description="Retrieved subject context description.")
+    chapter: str = Field("", description="Retrieved chapter context description.")
+    topic: str = Field("", description="Retrieved topic context description.")
+    reference_answer: str = Field("", description="Retrieved reference answer.")
+    rubric: str = Field("", description="Retrieved rubric title.")
+    rubric_criteria: List[str] = Field(default_factory=list, description="Retrieved rubric criteria statements.")
+    retrieval_score: float = Field(0.0, description="Highest similarity score from context retrieval (0.0 to 1.0).")
+
+
 class ConfidenceBreakdown(BaseModel):
     """
     Detailed breakdown of the Confidence Engine v2 result.
@@ -109,8 +122,8 @@ class QuestionEvaluation(BaseModel):
         default_factory=list,
         description="Detailed breakdown of scoring criteria."
     )
-    confidence: float = Field(1.0, description="Grading confidence score (0.0 to 1.0) for this question.")
-    concept_coverage: Optional[float] = Field(None, description="Concept coverage percentage for autonomous evaluation.")
+    confidence: float = Field(1.0, description="Field indicating grading confidence score (0.0 to 1.0).")
+    concept_coverage: Optional[float] = Field(None, description="Concept coverage percentage.")
     missing_concepts: List[str] = Field(default_factory=list, description="Expected concepts not found in the answer.")
     evaluation_mode: Optional[str] = Field(None, description="Evaluation mode used for this question.")
     difficulty: Optional[str] = Field(None, description="Inferred question difficulty.")
@@ -120,6 +133,37 @@ class QuestionEvaluation(BaseModel):
     gemini_evaluation: Optional[GeminiEvaluation] = Field(None, description="Independent secondary evaluation from the Gemini layer.")
     verification: Optional[VerificationResult] = Field(None, description="Verification status comparing primary and Gemini evaluation.")
     semantic_evaluation: Optional[SemanticEvaluationResult] = Field(None, description="Semantic Evaluation Engine result for the response.")
+    curriculum_context: Optional[CurriculumContext] = Field(None, description="Retrieved curriculum context details.")
+
+
+class TopicMastery(BaseModel):
+    """
+    Represents mastery status of a specific topic.
+    """
+    topic: str = Field(..., description="Topic name.")
+    mastery_score: float = Field(..., description="Calculated mastery score (0.0 to 1.0).")
+    confidence: float = Field(..., description="Confidence score in the evaluation (0.0 to 1.0).")
+    status: str = Field(..., description="Status: MASTERED, DEVELOPING, WEAK, CRITICAL.")
+
+
+class KnowledgeGap(BaseModel):
+    """
+    Identifies missing concepts and severity within a topic.
+    """
+    topic: str = Field(..., description="Topic name.")
+    missing_concepts: List[str] = Field(default_factory=list, description="Missing concept keywords.")
+    severity: str = Field(..., description="Severity: LOW, MEDIUM, HIGH.")
+
+
+class LearningAnalyticsResult(BaseModel):
+    """
+    Aggregated student learning analytics results.
+    """
+    mastered_topics: List[str] = Field(default_factory=list, description="Topics mastered by the student.")
+    weak_topics: List[str] = Field(default_factory=list, description="Topics where student is weak.")
+    knowledge_gaps: List[KnowledgeGap] = Field(default_factory=list, description="Detected knowledge gaps.")
+    recommendations: List[str] = Field(default_factory=list, description="Actionable learning recommendations.")
+    overall_mastery: float = Field(0.0, description="Overall mastery percentage (0.0 to 1.0).")
 
 
 class SubmissionEvaluation(BaseModel):
@@ -145,6 +189,7 @@ class SubmissionEvaluation(BaseModel):
     improvements: List[str] = Field(default_factory=list, description="Areas of recommended improvement.")
     study_recommendations: List[str] = Field(default_factory=list, description="Recommended study actions.")
     summary: str = Field("", description="A general constructive summary of student performance.")
+    learning_analytics: Optional[LearningAnalyticsResult] = Field(None, description="Detailed learning analytics output.")
 
 
 class ReportPayload(BaseModel):

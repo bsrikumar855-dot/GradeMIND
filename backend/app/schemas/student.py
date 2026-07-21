@@ -6,6 +6,15 @@ Defines validation schemas for student overview, report lists, and detailed subm
 from pydantic import BaseModel
 from typing import List, Dict, Any, Optional
 from datetime import datetime
+from AI.schemas.evaluation_schema import (
+    ExplainabilityResult,
+    ConfidenceBreakdown,
+    GeminiEvaluation,
+    VerificationResult,
+    SemanticEvaluationResult,
+    CurriculumContext,
+    LearningAnalyticsResult
+)
 
 
 class StudentReportItem(BaseModel):
@@ -34,6 +43,12 @@ class StudentQuestionBreakdownItem(BaseModel):
     confidence: float
     concept_coverage: Optional[float] = None
     evaluation_mode: Optional[str] = None
+    explainability: Optional[ExplainabilityResult] = None
+    confidence_breakdown: Optional[ConfidenceBreakdown] = None
+    gemini_evaluation: Optional[GeminiEvaluation] = None
+    verification: Optional[VerificationResult] = None
+    semantic_evaluation: Optional[SemanticEvaluationResult] = None
+    curriculum_context: Optional[CurriculumContext] = None
 
 
 class StudentSubmissionReviewResponse(BaseModel):
@@ -43,3 +58,4 @@ class StudentSubmissionReviewResponse(BaseModel):
     confidence: float
     feedback: Dict[str, Any]
     question_breakdown: List[StudentQuestionBreakdownItem]
+    learning_analytics: Optional[LearningAnalyticsResult] = None

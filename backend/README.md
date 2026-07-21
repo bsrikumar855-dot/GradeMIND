@@ -99,9 +99,16 @@ Ensure `.env` contains:
 DATABASE_URL=postgresql://<username>:<password>@<host>:<port>/grademind
 SECRET_KEY=<your_secret_key>
 DEBUG=True
+AUTH_ENABLED=true
 PROJECT_NAME="GradeMIND Backend"
 PROJECT_VERSION="1.0.0"
 ```
+
+`AUTH_ENABLED` defaults to `true` and should stay that way in any real
+deployment — role guards (Teacher/Admin vs Student) and result-publishing
+access control are only enforced when auth is on. Set it to `false` only
+for a local, no-login demo, where every request is treated as an
+anonymous admin.
 
 ---
 

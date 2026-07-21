@@ -17,7 +17,10 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60  # default to 60 minutes
     REFRESH_TOKEN_EXPIRE_DAYS: int = 7
     DEBUG: bool = False
-    AUTH_ENABLED: bool = False
+    # Secure by default. Demo/no-auth mode is an explicit opt-in: set
+    # AUTH_ENABLED=False only for local demos where every request should be
+    # treated as an anonymous admin (see auth_deps.get_mvp_anonymous_user).
+    AUTH_ENABLED: bool = True
     CORS_ALLOWED_ORIGINS: str = (
         "http://localhost:3000,"
         "http://127.0.0.1:3000,"

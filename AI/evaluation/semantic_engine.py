@@ -55,7 +55,9 @@ class SemanticEvaluationEngine:
         question: str, 
         reference_answer: str, 
         student_answer: str, 
-        expected_concepts: List[str]
+        expected_concepts: List[str],
+        topic_context: str = "",
+        chapter_context: str = ""
     ) -> SemanticEvaluationResult:
         """
         Performs semantic evaluation of student_answer against reference_answer.
@@ -65,6 +67,8 @@ class SemanticEvaluationEngine:
             "Starting semantic evaluation. Concepts: %s, Student length: %d", 
             expected_concepts, len(student_answer or "")
         )
+        if topic_context or chapter_context:
+            logger.info("Curriculum details provided - Topic: %r, Chapter: %r", topic_context, chapter_context)
         
         clean_student = (student_answer or "").strip()
         clean_reference = (reference_answer or "").strip()

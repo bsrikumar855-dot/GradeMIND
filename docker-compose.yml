@@ -26,9 +26,10 @@ services:
       # grading works with zero API keys via the local autonomous evaluator.
       GEMINI_API_KEY: "${GEMINI_API_KEY}"
       GEMINI_MODEL: "${GEMINI_MODEL:-gemini-2.5-flash}"
-      # AUTH_ENABLED must be "True" in any non-demo deployment. It defaults to
-      # False only to support the local/demo mode described in the project README.
-      AUTH_ENABLED: "${AUTH_ENABLED:-False}"
+      # Secure by default. Demo mode (no login, every request treated as
+      # admin) is an explicit opt-in — set AUTH_ENABLED=False in .env only
+      # for local demos, never in a shared/real deployment.
+      AUTH_ENABLED: "${AUTH_ENABLED:-True}"
       CORS_ALLOWED_ORIGINS: "${CORS_ALLOWED_ORIGINS:-http://localhost:3000,http://127.0.0.1:3000}"
     volumes:
       - backend_storage:/app/backend/storage

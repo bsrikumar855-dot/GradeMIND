@@ -161,7 +161,13 @@ class StudentService:
                         "criteria_feedback": q.get("criteria_feedback"),
                         "confidence": q.get("confidence"),
                         "concept_coverage": q.get("concept_coverage"),
-                        "evaluation_mode": q.get("evaluation_mode") or eval_data.get("evaluation_mode")
+                        "evaluation_mode": q.get("evaluation_mode") or eval_data.get("evaluation_mode"),
+                        "explainability": q.get("explainability"),
+                        "confidence_breakdown": q.get("confidence_breakdown"),
+                        "gemini_evaluation": q.get("gemini_evaluation"),
+                        "verification": q.get("verification"),
+                        "semantic_evaluation": q.get("semantic_evaluation"),
+                        "curriculum_context": q.get("curriculum_context"),
                     })
 
                 # Build feedback
@@ -181,5 +187,6 @@ class StudentService:
             "score": submission.obtained_marks or 0.0,
             "confidence": submission.evaluation_confidence or 0.0,
             "feedback": feedback,
-            "question_breakdown": question_breakdown
+            "question_breakdown": question_breakdown,
+            "learning_analytics": eval_data.get("learning_analytics") if 'eval_data' in locals() else None
         }

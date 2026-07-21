@@ -235,7 +235,7 @@ class SubmissionService:
             self.repo.update_status(
                 submission_id=submission_id,
                 status=SubmissionStatus.FAILED,
-                error_message="Evaluation could not be completed. Please retry the submission."
+                error_message="Processing could not be completed. Please retry the submission."
             )
 
     # ────────────────────────────────────────────
@@ -741,35 +741,15 @@ class SubmissionService:
         return text
 
     def _parse_question_context(self, question_text: str, total_marks: float) -> dict:
-        """Parse plain-text question papers into a question map."""
-        text = re.sub(r"\s+", " ", question_text or "").strip()
-        if not text:
-            raise ValueError("Question text is required for evaluation.")
+        """Parse plain-text question papers into a question map.
 
-        matches = list(re.finditer(r"\b(?:Q|Question)\s*\.?\s*(\d+)\b|(?:^|\s)(\d+)[\.\)]\s+", text, re.IGNORECASE))
-        if not matches:
-            marks = self._extract_marks(text) or total_marks
-            return {"question_1": {"text": text, "marks": marks}}
-
-        questions = {}
-        for idx, match in enumerate(matches):
-            q_num = match.group(1) or match.group(2) or str(idx + 1)
-            start = match.start()
-            end = matches[idx + 1].start() if idx + 1 < len(matches) else len(text)
-            q_text = text[start:end].strip()
-            if q_text:
-                questions[f"question_{q_num}"] = {
-                    "text": q_text,
-                    "marks": self._extract_marks(q_text),
-                }
-
-        unresolved = [key for key, value in questions.items() if value["marks"] is None]
-        if unresolved:
-            per_question = round(total_marks / len(questions), 2)
-            for key in unresolved:
-                questions[key]["marks"] = per_question
-
-        return questions
+        Delegates to the OR-aware resolver so that questions containing
+        'OR', 'Either', or 'Any One' separators are correctly split into
+        alternative groups instead of being treated as a single monolithic
+        question text.
+        """
+        from AI.evaluation.or_question_resolver import parse_questions_with_or
+        return parse_questions_with_or(question_text, total_marks)
 
     def _extract_marks(self, text: str) -> Optional[float]:
         match = re.search(r"[\[\(]\s*(\d+(?:\.\d+)?)\s*(?:marks?|m)\s*[\]\)]", text, re.IGNORECASE)
