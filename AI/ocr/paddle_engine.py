@@ -49,6 +49,10 @@ class PaddleOCREngine:
     def __init__(self):
         _init_paddle()
 
+    def is_available(self) -> bool:
+        """Whether the paddleocr package and model initialised successfully."""
+        return _ocr_model is not None
+
     def extract(self, image_path: str, submission_id: str) -> OCRDocument:
         """
         Run PaddleOCR text recognition on an image.
