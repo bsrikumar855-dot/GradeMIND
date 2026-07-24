@@ -418,10 +418,12 @@ function ResultsContent() {
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="border-b-2 border-gray-100">
-                <th className="pb-4 text-xs font-bold text-gray-400 uppercase tracking-wider w-1/4">Question</th>
-                <th className="pb-4 text-xs font-bold text-gray-400 uppercase tracking-wider w-32">Status</th>
-                <th className="pb-4 text-xs font-bold text-gray-400 uppercase tracking-wider w-24">Marks</th>
-                <th className="pb-4 text-xs font-bold text-gray-400 uppercase tracking-wider">AI Feedback</th>
+                <th className="pb-4 text-xs font-bold text-gray-400 uppercase tracking-wider w-1/5">Question</th>
+                <th className="pb-4 text-xs font-bold text-gray-400 uppercase tracking-wider w-28">Status</th>
+                <th className="pb-4 text-xs font-bold text-gray-400 uppercase tracking-wider w-20">Marks</th>
+                <th className="pb-4 text-xs font-bold text-gray-400 uppercase tracking-wider w-32">Concept Coverage</th>
+                <th className="pb-4 text-xs font-bold text-gray-400 uppercase tracking-wider w-24">Confidence</th>
+                <th className="pb-4 text-xs font-bold text-gray-400 uppercase tracking-wider">AI Feedback &amp; Concepts</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
@@ -429,9 +431,13 @@ function ResultsContent() {
                 const score = row.score_awarded ?? 0;
                 const max = row.max_marks ?? 1;
                 const status = score === max ? 'Correct' : score > 0 ? 'Partial' : 'Incorrect';
+                const coverage = row.concept_coverage;
+                const confidence = row.confidence;
+                const matched: string[] = Array.isArray(row.matched_keywords) ? row.matched_keywords : [];
+                const missing: string[] = Array.isArray(row.missing_concepts) ? row.missing_concepts : [];
 
                 return (
-                  <tr key={idx} className="hover:bg-brand-background/50 transition-colors">
+                  <tr key={idx} className="hover:bg-brand-background/50 transition-colors align-top">
                     <td className="py-5 pr-4 font-semibold text-brand-dark">Question {row.question_number}</td>
                     <td className="py-5">
                       <span className={`px-3 py-1.5 rounded-full text-xs font-bold ${
@@ -443,7 +449,61 @@ function ResultsContent() {
                       </span>
                     </td>
                     <td className="py-5 font-bold text-brand-dark">{score} / {max}</td>
-                    <td className="py-5 text-sm text-gray-600 leading-relaxed pr-4">{row.criteria_feedback || 'Evaluation feedback is not available for this question.'}</td>
+                    <td className="py-5">
+                      {coverage !== null && coverage !== undefined ? (
+                        <div className="flex items-center gap-2 w-24">
+                          <div className="flex-1 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                            <div
+                              className="h-full bg-brand-primary rounded-full"
+                              style={{ width: `${Math.max(0, Math.min(100, coverage))}%` }}
+                            />
+                          </div>
+                          <span className="text-xs font-bold text-brand-dark shrink-0">{Math.round(coverage)}%</span>
+                        </div>
+                      ) : (
+                        <span className="text-xs text-gray-400">N/A</span>
+                      )}
+                    </td>
+                    <td className="py-5">
+                      {confidence !== null && confidence !== undefined ? (
+                        <span className={`px-2.5 py-1 rounded-full text-xs font-bold ${
+                          confidence >= 0.85 ? 'bg-[#EEF7E8] text-[#2F5A3A]' :
+                          confidence >= 0.7 ? 'bg-blue-50 text-blue-700' :
+                          'bg-amber-50 text-amber-700'
+                        }`}>
+                          {Math.round(confidence * 100)}%
+                        </span>
+                      ) : (
+                        <span className="text-xs text-gray-400">N/A</span>
+                      )}
+                    </td>
+                    <td className="py-5 text-sm text-gray-600 leading-relaxed pr-4">
+                      <p>{row.criteria_feedback || 'Evaluation feedback is not available for this question.'}</p>
+                      {(matched.length > 0 || missing.length > 0) && (
+                        <div className="mt-3 flex flex-col gap-2">
+                          {matched.length > 0 && (
+                            <div className="flex flex-wrap items-center gap-1.5">
+                              <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400 mr-1">Matched:</span>
+                              {matched.map((concept, cIdx) => (
+                                <span key={cIdx} className="px-2 py-0.5 bg-[#EEF7E8] text-[#2F5A3A] rounded text-xs font-semibold">
+                                  {concept}
+                                </span>
+                              ))}
+                            </div>
+                          )}
+                          {missing.length > 0 && (
+                            <div className="flex flex-wrap items-center gap-1.5">
+                              <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400 mr-1">Missing:</span>
+                              {missing.map((concept, cIdx) => (
+                                <span key={cIdx} className="px-2 py-0.5 bg-red-50 text-red-700 rounded text-xs font-semibold">
+                                  {concept}
+                                </span>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </td>
                   </tr>
                 );
               })}

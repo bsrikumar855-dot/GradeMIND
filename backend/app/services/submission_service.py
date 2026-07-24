@@ -387,11 +387,20 @@ class SubmissionService:
             )
             logger.info("EVALUATION_STAGE output_saved submission_id=%s path=%s", submission_id, eval_output_path)
 
-            # Update submission with evaluation results
+            # Update submission with evaluation results. total_marks is
+            # re-synced to max_possible here because autonomous evaluation
+            # derives per-question marks from the (OCR'd) question paper —
+            # this can legitimately differ from the exam's nominal
+            # total_marks (e.g. OCR misreads a mark allocation, or the
+            # question paper's own bracketed marks don't sum to the exam
+            # total). Leaving total_marks frozen at the stale exam-level
+            # value produces a mismatched, confusing "106 / 20"-style
+            # score display wherever the submission is listed.
             self.repo.update_results(
                 submission_id=submission_id,
                 evaluation_output_path=eval_output_path,
                 obtained_marks=evaluation_result.get("total_score", 0.0),
+                total_marks=evaluation_result.get("max_possible"),
                 evaluation_confidence=evaluation_result.get("confidence_score", 0.0)
             )
             self._update_status(

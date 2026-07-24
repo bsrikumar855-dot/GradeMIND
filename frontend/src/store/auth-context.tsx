@@ -2,9 +2,10 @@
 
 import * as React from "react";
 import { User } from "@/types";
+import { AuthService } from "@/services/auth.service";
 
 interface AuthState {
-  user: User;
+  user: User | null;
   token: string | null;
   isAuthenticated: boolean;
   isLoading: boolean;
@@ -16,27 +17,48 @@ interface AuthContextType extends AuthState {
   clearError: () => void;
 }
 
-const demoUser: User = {
-  id: "demo-user",
-  email: "demo@grademind.local",
-  name: "Demo Teacher",
-  role: "teacher",
-  createdAt: "",
-};
-
 const AuthContext = React.createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [state, setState] = React.useState<AuthState>({
-    user: demoUser,
+    user: null,
     token: null,
-    isAuthenticated: true,
-    isLoading: false,
+    isAuthenticated: false,
+    isLoading: true,
     error: null,
   });
 
+  React.useEffect(() => {
+    let active = true;
+
+    AuthService.getCurrentSession()
+      .then((session) => {
+        if (!active) return;
+        if (session) {
+          setState({
+            user: session.user,
+            token: session.token,
+            isAuthenticated: true,
+            isLoading: false,
+            error: null,
+          });
+        } else {
+          setState((prev) => ({ ...prev, isLoading: false, isAuthenticated: false, user: null, token: null }));
+        }
+      })
+      .catch(() => {
+        if (!active) return;
+        setState((prev) => ({ ...prev, isLoading: false, isAuthenticated: false, user: null, token: null }));
+      });
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
   const logout = async () => {
     setState((prev) => ({ ...prev, error: null }));
+    await AuthService.logout();
   };
 
   const clearError = () => {
@@ -57,4 +79,3 @@ export const useAuth = () => {
   }
   return context;
 };
-

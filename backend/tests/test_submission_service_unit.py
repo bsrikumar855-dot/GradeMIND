@@ -189,6 +189,59 @@ class TestPipelineFailurePaths:
 
 
 # ─────────────────────────────────────────────────────────────────────────
+# trigger_evaluation re-syncs total_marks to what was actually evaluated.
+#
+# Regression test: autonomous evaluation derives per-question marks from the
+# (OCR'd) question paper, which can legitimately differ from the exam's
+# nominal total_marks — e.g. OCR misreads a bracketed mark allocation.
+# Before this fix, submission.total_marks stayed frozen at the stale
+# exam-level value, producing a nonsensical "106 / 20" (score exceeding max)
+# display anywhere the submission was listed, even though the results page's
+# own report data (which reads max_possible directly) was internally
+# consistent. Caught via manual browser verification of the real upload
+# flow, not by any previously-existing test.
+# ─────────────────────────────────────────────────────────────────────────
+
+class TestTriggerEvaluationSyncsTotalMarks:
+    def test_total_marks_updated_to_match_evaluation_max_possible(
+        self, service, db, exam, submission, tmp_path, monkeypatch
+    ):
+        ocr_path = tmp_path / "ocr.json"
+        ocr_path.write_text(json.dumps({
+            "submission_id": str(submission.id),
+            "confidence": 0.9,
+            "lines": [{"text": "Q1. Some answer.", "confidence": 0.9, "bounding_box": []}],
+            "regions": [],
+        }), encoding="utf-8")
+        submission.ocr_output_path = str(ocr_path)
+
+        question_paper = tmp_path / "questions.txt"
+        question_paper.write_text("Q1. Explain photosynthesis. [50 Marks]", encoding="utf-8")
+        exam.question_paper_url = str(question_paper)
+        db.commit()
+
+        # exam.total_marks is 50 (see fixture); simulate evaluation computing
+        # a different max (e.g. from a misread question-paper mark allocation).
+        fake_result = {
+            "total_score": 42.0,
+            "max_possible": 120.0,
+            "confidence_score": 0.85,
+            "evaluation_mode": "AI_AUTONOMOUS",
+            "questions": [],
+        }
+        monkeypatch.setattr("app.services.ai_service.evaluate_submission", lambda **kwargs: fake_result)
+
+        service.trigger_evaluation(submission.id)
+
+        updated = service.get_submission(submission.id)
+        assert updated.obtained_marks == 42.0
+        assert updated.total_marks == 120.0, (
+            "total_marks must be re-synced to the evaluation's own max_possible, "
+            "not left at the stale exam-level value"
+        )
+
+
+# ─────────────────────────────────────────────────────────────────────────
 # ensure_report_artifacts / _is_broken_pdf — report regeneration logic
 # ─────────────────────────────────────────────────────────────────────────
 
