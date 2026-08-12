@@ -1,6 +1,7 @@
 # GradeMIND — Baseline Audit
 
 **Date:** 2026-08-12
+**Revised:** 2026-08-12 — §3 N1 (git-history forensics) was wrong and has been replaced. See §0.
 **Auditor:** Claude Code (read-only pass; no files modified, no commits, no pushes during audit)
 **Base audited:** `2e12467` (`Merge pull request #12`) — the tip of `origin/post-round2-dev`
 **Reference base in spec:** `d799b0f` (`origin/main`, `origin/release/ai-platform-v1`)
@@ -8,6 +9,73 @@
 
 Scope per instruction: D1/D2/D3/D6/D10 accepted as pre-verified and not re-derived. Everything
 else verified against working-tree code. New findings from the 730-file delta are recorded in §3.
+
+---
+
+## 0. Correction notice — retracted finding
+
+The first revision of this document claimed ~3.95 GB of `tmp/backend-server.err.log` blobs in git
+history, an 82 MB `.git`, and a credential scan performed against those blobs. **That finding is
+retracted.** Nothing under `tmp/` has ever been committed to this repository.
+
+The command and its output were real and are reproducible, but they were **mis-scoped**, and the
+conclusion drawn from them was wrong. Root cause, established by command:
+
+```
+$ git for-each-ref --format='%(refname) -> %(objecttype)' | grep '^refs/codex/' | head -3
+refs/codex/turn-diffs/checkpoints/02d2140a…/f18f0654-… -> tree
+refs/codex/turn-diffs/checkpoints/055f1e6c…/5bbbcbbf-… -> tree
+refs/codex/turn-diffs/checkpoints/333d584d…/da3e2044-… -> tree
+
+$ git ls-remote origin | wc -l          # 29 refs on the remote
+29
+$ git ls-remote origin | grep -c codex  # none of them are codex refs
+0
+```
+
+Nine `refs/codex/turn-diffs/checkpoints/*` refs exist in this local clone, written by a local tool.
+They point **directly at trees, not commits**, and they snapshot the untracked working directory —
+including `tmp/`, which `.gitignore` correctly excludes from ever being committed.
+
+That explains the contradiction between the two commands exactly:
+
+| Command | Result | Why |
+|---|---|---|
+| `git log --all --pretty=format: --name-only \| grep -c '^tmp/'` | `0` | `git log` walks **commits**. A ref pointing at a tree contributes none. Correct answer for repository history. |
+| `git rev-list --objects --all \| …` | finds the blobs | `--all` means every ref under `refs/`, and `rev-list --objects` traverses **objects**, so tree-refs are included. Correct answer for "what is in this local object store". |
+
+Both are correct; they answer different questions. The audit asked the second and reported the
+answer as if it were the first. The 82 MB `.git` measured locally is inflated by these local-only
+refs; a clean clone is 25 MB.
+
+**A second, independent methodological error** in the same section: `git rev-list --objects`
+emits each object **once**, keyed by SHA, with only the first path at which it was found. Counting
+its output therefore counts distinct *blobs*, not distinct *paths*. The audit labelled those counts
+as paths, which produced "474 distinct paths" and the claim "there are not 99 PDFs in history."
+Corrected inventory, path-based:
+
+```
+$ git log --all --pretty=format: --name-only | grep '^backend/storage/' | sort -u | sed 's/.*\.//' | sort | uniq -c | sort -rn
+    300 json
+     99 pdf
+     11 png
+      7 gitkeep
+$ git log --all --pretty=format: --name-only | grep '^backend/storage/' | sort -u | wc -l
+417
+$ git rev-list --objects --all | grep -i '\.pdf$' | awk '{print $1}' | sort -u | wc -l
+1
+```
+
+There **are** 99 PDF paths in history. They deduplicate to **one distinct blob** — one test document
+committed 99 times. The underlying observation (a single PDF blob) was right; the framing drawn from
+it was wrong.
+
+**Method rule adopted for the rest of the engagement** (master spec §0 rule 9, with one addition):
+history claims must carry their command and raw output — *and* must be scoped to what the remote
+actually has. `--all` is not a safe proxy for repository history in a working clone. Verify with
+`git ls-remote origin`, `git log --remotes=origin`, or a fresh clone before asserting anything is
+"in history." Rule 9 as written would not have caught this error, because the command and output
+were present and genuine; the scope was the defect.
 
 ---
 
@@ -40,7 +108,7 @@ Legend: **PRESENT** = confirmed in working tree · **FIXED** = confirmed absent 
 |----|--------|----------|
 | D1 RCE | FIXED (pre-verified) | Re-swept anyway: `frontend/src/app/api/` **does not exist**; no `child_process` / `exec(` / `eval(` / `spawn(` / `rmSync` anywhere under `frontend/src/`. See §3 N7 on what this means for Gate 0(a). |
 | D2 auth bypass | FIXED (pre-verified) | `config.py:23` `AUTH_ENABLED: bool = True`; `config.py:15` `SECRET_KEY: str` (no default). See N8 — the Phase 0.6 hardening is *not* yet implemented. |
-| D3 student data in history | **PARTIAL — and materially misdescribed.** | See §3 N1. Tree is clean (`.gitkeep` only). History still exposes student PII, but **not** 99 PDFs. |
+| D3 student data in history | **PARTIAL** | Tree is clean (`.gitkeep` only). History exposes student PII via 300 `backend/storage/*.json` blobs; the 99 PDF paths deduplicate to one test document. See §3 N1. |
 | D4 requirements | **PARTIAL** | `numpy`, `opencv-python-headless`, `google-generativeai`, `pytest-cov` present. Still undeclared: `sentence-transformers` (`AI/evaluation/embeddings.py:33,44`), `reportlab` (`AI/reports/report_data_builder.py:940`), `paddleocr` (`AI/ocr/paddle_engine.py:21`, `AI/paddle_ocr_reader.py:34`). `paddleocr`/`easyocr`/`torch`/`transformers` are declared in `requirements-ocr.txt` (optional profile) — `sentence-transformers` and `reportlab` are in **neither** file. Also: every dep is `>=`-pinned, none exact; no `requirements/` split; no lockfile. |
 | D5 name-based authz | **PRESENT — broader than stated** | `student_service.py:124`. Two further name-keyed paths found; see N4. |
 | D6 no CI | FIXED, but shallow | `.github/workflows/tests.yml` exists and **does** gate. See N6 for what it does not cover. |
@@ -55,24 +123,25 @@ Legend: **PRESENT** = confirmed in working tree · **FIXED** = confirmed absent 
 
 ## 3. New findings
 
-### N1 — D3 is misdescribed; the real exposure is different and the purge scope is wider
+### N1 — D3: the exposure is the JSON, not the PDFs; and the rewrite is PII-justified only
 
-Full-history object inventory under `backend/storage/`: **474 distinct paths**, by extension:
+*(This section replaces a retracted earlier version — see §0.)*
 
-```
-102 .json
-  2 .gitkeep
-  1 .png
-  1 .pdf
-```
+Corrected inventory of `backend/storage/` across all history, path-based:
 
-A whole-history sweep for `*.pdf` **anywhere** in the repo returns exactly one blob
-(`backend/storage/answer_sheets/003340e0-.../CS005_fe7deca0.pdf`). **There are not 99 PDFs in this
-repository's history.** Either they were never committed, or they live in a repo/remote this clone
-does not have.
+| Extension | Distinct paths |
+|---|---|
+| `.json` | 300 |
+| `.pdf` | 99 paths / **1 distinct blob** |
+| `.png` | 11 |
+| `.gitkeep` | 7 |
+| **Total** | **417** |
 
-That does not make the purge optional. The 102 JSON blobs are the real exposure —
-`backend/storage/reports/*.json` carry identity fields directly:
+The 99 PDF paths are one test document committed 99 times, not 99 student scripts. Real, but a
+single document.
+
+**The 300 JSON files are the actual exposure.** `backend/storage/reports/*.json` carry identity
+fields directly:
 
 ```json
 { "submission_id": "3c1e31a4-…", "student_name": "Status Test",
@@ -80,32 +149,16 @@ That does not make the purge optional. The 102 JSON blobs are the real exposure 
 ```
 
 and `backend/storage/ocr_outputs/*.json` carry extracted answer text with bounding boxes. Names +
-roll numbers + answer content is precisely the DPDP-relevant set. **Purge still required** — the
-justification is the JSON, not the PDFs.
+roll numbers + answer content is precisely the DPDP-relevant set.
 
-**Separately, and larger:** the dominant history objects are not in the spec's purge list at all.
+**Purge remains in scope, justified by PII alone.** Two consequences:
 
-```
-1455404037  tmp/backend-server.err.log
-1455049569  tmp/backend-server.err.log
-1045189169  tmp/backend-server.err.log
-  62114076  frontend/.next-prod/cache/webpack/client-production/0.pack
-  61966154  frontend/.next-prod/cache/webpack/client-production/0.pack
-   …
-```
+- **Gate 0(e) already passes.** A clean clone's `.git` is 25 MB against a 50 MB target, with no
+  purge performed. Repository size is **not** a justification for the rewrite and must not be cited
+  as one.
+- **Scope is `backend/storage/**` only.** Not `tmp/**` — see §0.
 
-**~3.95 GB of uvicorn dev-server logs across three blobs.** They pack down small (`.git` is 82 MB)
-because the files are mostly whitespace padding, but they are in history and they are the reason
-`.git` will not reach the Gate 0(e) `< 50 MB` target from a `.next-prod`-only purge.
-
-I scanned the first 40 MB of the largest blob for credential patterns — `SECRET_KEY`,
-`DATABASE_URL`, `postgresql://`, `GEMINI_API_KEY`, `GROQ_API_KEY`, `AIza`, `Bearer `, `password`,
-`Authorization` — **zero hits**. Content is uvicorn request lines (`[INFO] GET /dashboard/overview
-403 81ms`). Not a credential incident on the evidence sampled; still 3.95 GB of junk that must go.
-
-> **Spec amendment required:** Phase 0.3's `git filter-repo` scope must add `tmp/**`. Purging only
-> `backend/storage/**`, `frontend/.next-prod/**`, `frontend_backup/**` leaves the largest objects
-> in place and will miss Gate 0(e).
+Rewrite stays last, behind its approval gate, with `docs/HISTORY_REWRITE.md` written first.
 
 ### N2 — `.gitignore` is `backend/`-anchored; the app's test tooling writes to repo root
 
@@ -242,11 +295,11 @@ Dropped (verified complete): D1, D2 (default only — see N8), D10 tree cleanup.
 | 0.2 | D11: drop the `.vercel.app` regex, explicit env allowlist | D11 |
 | 0.3 | D12: stream-and-reject before buffering, all **3** sites | D12 |
 | 0.4 | `.githooks/pre-commit` + `core.hooksPath` | Phase 0.2 |
-| 0.5 | `.gitignore`: root `/storage/`, `/e2e_results.json`, `tmp/`, `*.pack`, `*.pack.old` | N1, N2 |
+| 0.5 | `.gitignore`: root `/storage/`, `/e2e_results.json`, `/tmp/`, `.next-prod/`, `*.pack`, `*.pack.old` | N2 |
 | 0.6 | Implement the `AUTH_ENABLED`/`DEBUG`/`ENVIRONMENT=local` triple-gate; add `ENVIRONMENT` setting | N8 |
 | 0.7 | Delete `backend/scratch_fix_db.py`, `backend/e2e_qa_test.py` | N3 |
 | 0.8 | `docs/CREDENTIAL_ROTATION.md` (human checklist, no rotation performed by me) | Phase 0.4 |
-| 0.9 | `docs/HISTORY_REWRITE.md` — **scope amended to include `tmp/**`** — then ask before force-push | Phase 0.3, N1 |
+| 0.9 | `docs/HISTORY_REWRITE.md` — scope `backend/storage/**`, PII-justified only (not size) — then ask before force-push | Phase 0.3, N1 |
 | 0.10 | Widen Gate 0(a) grep to `frontend/src/**` | N7 |
 
 Deferred to Phase 1 (recorded here, not fixed in Phase 0): D5/N4, D7, D8, D9, N5, N6.
@@ -268,5 +321,5 @@ Stated plainly rather than assumed:
   `sentence-transformers`/`reportlab` is inferred from import sites vs. declared deps, not from a
   build. Gate 0(b) will settle it.
 - **Branch protection / required-check status on the remote** — not inspectable locally (N6).
-- **Credential exposure beyond the first 40 MB** of the largest log blob (N1). The remaining
-  ~1.4 GB of that blob, and the two other log blobs, were not scanned.
+- **Full PII content of the 300 storage JSONs.** Two were sampled (one `reports/`, one
+  `ocr_outputs/`). The rest are inferred from path and naming convention, not read.
