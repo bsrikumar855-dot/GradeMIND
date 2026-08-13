@@ -132,6 +132,54 @@ def test_environment_parsing_is_case_and_space_insensitive(raw, expected):
     assert Settings(ENVIRONMENT=raw, _env_file=None, **REQUIRED).ENVIRONMENT is expected
 
 
+@pytest.mark.parametrize(
+    "environment", [Environment.CI, Environment.STAGING, Environment.PRODUCTION]
+)
+def test_local_dev_user_unreachable_outside_local(monkeypatch, environment):
+    """Defence in depth: the anonymous ADMIN must refuse to exist elsewhere.
+
+    Settings already blocks the combination that reaches this function, so this
+    covers the case where that gate is bypassed — a mutated settings object, a
+    reload, a refactor that builds Settings by another path.
+
+    The identity is a per-process UUID. An audit row attributing a mark to it
+    is unattributable once the process exits.
+    """
+    from app.api import auth_deps
+
+    monkeypatch.setattr(auth_deps.settings, "ENVIRONMENT", environment, raising=False)
+
+    with pytest.raises(RuntimeError, match="must never author an audit record"):
+        auth_deps.get_local_dev_user()
+
+
+def test_local_dev_user_allowed_in_local(monkeypatch):
+    from app.api import auth_deps
+
+    monkeypatch.setattr(
+        auth_deps.settings, "ENVIRONMENT", Environment.LOCAL, raising=False
+    )
+
+    user = auth_deps.get_local_dev_user()
+    assert user["role"] == "ADMIN"
+    assert user["auth_disabled"] is True
+
+
+def test_ci_is_not_an_accepted_bypass_environment():
+    """Named explicitly, not just covered by the matrix.
+
+    If someone later sets AUTH_ENABLED=False in CI to make a test pass, the
+    gate must refuse rather than let the suite run without authorization.
+    """
+    with pytest.raises(AuthBypassNotPermitted):
+        _build(False, True, Environment.CI)
+
+    # And the combination CI actually runs with must construct fine.
+    settings = _build(True, False, Environment.CI)
+    assert settings.AUTH_ENABLED is True
+    assert settings.ENVIRONMENT is Environment.CI
+
+
 def test_error_names_which_conditions_were_unmet():
     """The message has to be actionable — this fires during a deploy."""
     with pytest.raises(AuthBypassNotPermitted) as exc_info:

@@ -278,8 +278,44 @@ $ PYTHONPATH=. pytest AI/tests/ -q
 167 passed, 6 skipped, 4 warnings in 62.70s (0:01:02)
 ```
 
-**331 passed, 0 failed, 6 skipped.** The 6 skips are the baselined optional-engine
-guards (`scripts/self_skipping_tests_baseline.txt`), not new.
+**331 passed, 0 failed, 6 skipped.**
+
+### Suppressed tests — two different numbers, do not conflate them
+
+| | Count | What it is |
+|---|---|---|
+| Runtime skips | **6** | Optional-engine guards that fire when OpenCV / an OCR engine is absent. Legitimate. |
+| **Baselined self-skipping tests** | **7** | Tests that decline to assert. `scripts/self_skipping_tests_baseline.txt`. |
+
+The 7 baselined entries are **suppressed failures**, not passes, and
+"331 passed, 0 failed" must not be read as absorbing them. The ratchet
+(`scripts/check_no_self_skipping_tests.py`) stops new ones appearing — but a
+ratchet with no burn-down owner is a permanent exemption with extra steps.
+
+**Target: baseline count 0 by end of Track C.** It may shrink, never grow.
+
+Current entries:
+
+```
+AI/tests/test_ocr_benchmark.py::test_content_type_classifier_printed
+AI/tests/test_ocr_benchmark.py::test_preprocessing_pipeline_runs
+AI/tests/test_ocr_pipeline_cli.py::test_adaptive_threshold_produces_binary_output
+AI/tests/test_ocr_pipeline_cli.py::test_full_pipeline_real_engine_returns_nonempty_text
+AI/tests/test_ocr_pipeline_cli.py::test_preprocess_for_engine_binarize_flag_changes_output
+AI/tests/test_ocr_pipeline_cli.py::test_preprocess_for_engine_unknown_falls_back_to_tesseract_profile
+AI/tests/test_semantic_engine.py::TestSemanticEngineIntegration
+```
+
+Six of the seven are OCR-engine dependent and land naturally in Phase 3, where
+the engines become a declared dependency rather than an optional import. The
+seventh, `TestSemanticEngineIntegration`, is disabled by
+`@pytest.mark.skipif(True, ...)` — an unconditional off switch, not a
+capability guard — and `requirements/ai.txt` now installs the dependency it was
+waiting for. That one has no excuse left and should go first.
+
+`test_or_question_resolver.py::test_ocr_noisy_or_still_resolves` was the eighth
+and is already fixed: it called `pytest.skip("acceptable fallback")` in the
+else-branch of an assertion, on a branch that was also dead. It now asserts.
 
 The previously reported "120 passed / 1 failed" is superseded and must not be
 carried forward. That single failure was the D12 fix working — the cap returns

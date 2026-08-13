@@ -7,7 +7,7 @@ from typing import List
 from app.db.session import get_db
 from app.repositories.user_repository import UserRepository
 from app.services.auth_service import AuthService
-from app.core.config import settings
+from app.core.config import Environment, settings
 from app.core.security import decode_access_token
 from app.utils.roles import Roles
 
@@ -41,6 +41,22 @@ def get_local_dev_user() -> dict:
     so audit rows written during development were indistinguishable from each
     other and from anything that leaked in from another environment.
     """
+    # Defence in depth. Settings already refuses to construct unless
+    # ENVIRONMENT=local, so reaching here otherwise means that gate was
+    # bypassed — a mutated settings object in a test, a reload, a future
+    # refactor that constructs Settings differently. Assert rather than serve.
+    #
+    # The specific harm: this identity is a per-process UUID that dies with the
+    # process. An audit row attributing a mark to it is unattributable, and
+    # unattributable marks are exactly what the audit log exists to prevent.
+    if settings.ENVIRONMENT is not Environment.LOCAL:
+        raise RuntimeError(
+            "get_local_dev_user() reached with "
+            f"ENVIRONMENT={settings.ENVIRONMENT.value!r}. This anonymous ADMIN "
+            "identity is a per-process UUID and must never author an audit "
+            "record outside local development."
+        )
+
     return {
         "id": _LOCAL_DEV_USER_ID,
         "name": "Local Dev (auth disabled)",
