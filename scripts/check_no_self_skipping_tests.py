@@ -20,7 +20,7 @@ import sys
 from pathlib import Path
 from typing import Iterator, List, Tuple
 
-Finding = Tuple[Path, int, str]
+Finding = Tuple[Path, int, str, str]  # path, line, message, kind
 
 TEST_DIRS = ("AI/tests", "backend/tests")
 
@@ -56,6 +56,36 @@ def _is_unconditional_skip_marker(node: ast.expr) -> str | None:
     return None
 
 
+def _is_xfail_marker(node: ast.expr) -> str | None:
+    """Return a reason if the decorator is an xfail.
+
+    Tracked because xfail is a suppression mechanism too, and this checker
+    would otherwise create a loophole: removing a tracked `skipif` and adding
+    an untracked `xfail` would be a net loss in the coverage this script
+    exists to provide.
+
+    Counted separately from skips in the baseline — they mean different
+    things. A skip does not run. An xfail runs, is expected to fail, and with
+    strict=True fails the build if it ever passes. A non-strict xfail is much
+    closer to a skip and is flagged as such.
+    """
+    call = node if isinstance(node, ast.Call) else None
+    target = call.func if call else node
+
+    if not isinstance(target, ast.Attribute) or target.attr != "xfail":
+        return None
+
+    strict = False
+    if call:
+        for kw in call.keywords:
+            if kw.arg == "strict" and isinstance(kw.value, ast.Constant):
+                strict = bool(kw.value.value)
+
+    if strict:
+        return "@pytest.mark.xfail(strict=True)"
+    return "@pytest.mark.xfail (NOT strict — can silently start passing)"
+
+
 def _walk_tests(tree: ast.AST) -> Iterator[ast.AST]:
     for node in ast.walk(tree):
         if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
@@ -69,14 +99,21 @@ def check_file(path: Path) -> List[Finding]:
     try:
         tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
     except SyntaxError as exc:
-        return [(path, exc.lineno or 0, f"could not parse: {exc.msg}")]
+        return [(path, exc.lineno or 0, f"could not parse: {exc.msg}", "skip")]
 
     for node in _walk_tests(tree):
         for decorator in getattr(node, "decorator_list", []):
             reason = _is_unconditional_skip_marker(decorator)
             if reason:
                 findings.append(
-                    (path, decorator.lineno, f"{node.name} is disabled by {reason}")
+                    (path, decorator.lineno, f"{node.name} is disabled by {reason}", "skip")
+                )
+                continue
+
+            xfail_reason = _is_xfail_marker(decorator)
+            if xfail_reason:
+                findings.append(
+                    (path, decorator.lineno, f"{node.name} is {xfail_reason}", "xfail")
                 )
 
         if isinstance(node, ast.ClassDef):
@@ -90,19 +127,23 @@ def check_file(path: Path) -> List[Finding]:
                         inner.lineno,
                         f"{node.name} calls pytest.skip() in its own body — "
                         "assert or delete the case instead",
+                        "skip",
                     )
                 )
 
     return findings
 
 
-def _key(path: Path, message: str) -> str:
+def _key(path: Path, message: str, kind: str) -> str:
     """Identity of a finding, deliberately excluding the line number.
 
-    Editing a file above a known skip must not look like a new one.
+    Editing a file above a known suppression must not look like a new one.
+    The kind is part of the identity so that converting a skip into an xfail
+    shows up as one entry leaving and another arriving, rather than silently
+    reusing the same slot.
     """
     test_name = message.split(" ", 1)[0]
-    return f"{path.as_posix()}::{test_name}"
+    return f"{kind}:{path.as_posix()}::{test_name}"
 
 
 def _load_baseline(path: Path) -> set:
@@ -129,42 +170,60 @@ def main(argv: List[str]) -> int:
         for path in sorted(root.rglob("test_*.py")):
             findings.extend(check_file(path))
 
-    current = {_key(p, m) for p, _, m in findings}
+    current = {_key(p, m, k) for p, _, m, k in findings}
+
+    def _counts(keys):
+        skips = sum(1 for k in keys if k.startswith("skip:"))
+        xfails = sum(1 for k in keys if k.startswith("xfail:"))
+        return skips, xfails
 
     if write_baseline:
+        skips, xfails = _counts(current)
         baseline_path.parent.mkdir(parents=True, exist_ok=True)
         baseline_path.write_text(
-            "# Known self-skipping tests, recorded at Phase 0.\n"
-            "# This list may shrink, never grow. A new entry fails CI.\n"
-            "# Remove a line by making the test assert or deleting it.\n"
+            "# Known suppressed tests. This list may shrink, never grow —\n"
+            "# a new entry fails CI. Remove a line by making the test assert,\n"
+            "# fixing what it caught, or deleting it.\n"
+            "#\n"
+            "# Two kinds, counted separately because they mean different things:\n"
+            "#\n"
+            "#   skip:   does not run at all. Nothing is verified.\n"
+            "#   xfail:  runs, is expected to fail, and with strict=True fails\n"
+            "#           the build if it ever passes. A declared defect with a\n"
+            "#           reason attached, not a hidden one.\n"
+            "#\n"
+            f"# Current: {skips} skip, {xfails} xfail. Target: 0 skip by end of Track C.\n"
             + "\n".join(sorted(current))
             + "\n",
             encoding="utf-8",
         )
-        print(f"wrote {len(current)} entries to {baseline_path}")
+        print(f"wrote {len(current)} entries ({skips} skip, {xfails} xfail) to {baseline_path}")
         return 0
 
     baseline = _load_baseline(baseline_path)
     new = current - baseline
 
     if new:
-        for path, line, message in findings:
-            if _key(path, message) in new:
-                print(f"{path}:{line}: {message}", file=sys.stderr)
+        for path, line, message, kind in findings:
+            if _key(path, message, kind) in new:
+                print(f"{path}:{line}: [{kind}] {message}", file=sys.stderr)
+        new_skips, new_xfails = _counts(new)
         print(
-            f"\n{len(new)} NEW self-skipping test(s). The baseline in "
-            f"{baseline_path} may shrink, never grow.",
+            f"\n{len(new)} NEW suppressed test(s) — {new_skips} skip, "
+            f"{new_xfails} xfail. The baseline in {baseline_path} may shrink, "
+            "never grow.",
             file=sys.stderr,
         )
         return 1
 
     resolved = baseline - current
     if resolved:
-        print(f"{len(resolved)} baselined skip(s) resolved — remove from baseline:")
+        print(f"{len(resolved)} baselined suppression(s) resolved — remove from baseline:")
         for entry in sorted(resolved):
             print(f"  {entry}")
 
-    print(f"no new self-skipping tests ({len(current)} baselined)")
+    skips, xfails = _counts(current)
+    print(f"no new suppressed tests ({skips} skip, {xfails} xfail baselined)")
     return 0
 
 

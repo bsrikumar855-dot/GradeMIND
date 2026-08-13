@@ -125,44 +125,89 @@ def test_schema_validation(mock_embedding_service):
 # 2. Real Integration Tests with all-MiniLM-L6-v2
 # ---------------------------------------------------------
 
-# Why these are xfail rather than skipped, and rather than deleted.
-#
 # This class was disabled by `@pytest.mark.skipif(True, ...)` — an
 # unconditional off switch, not a capability guard. Enabling it (now that
 # sentence-transformers is a declared dependency in requirements/ai.txt)
-# surfaced a real defect that had been hidden for the life of the marker:
+# surfaced SIX failures with THREE distinct root causes. They are marked
+# separately: a shared reason string would have buried two of them.
 #
-#   ConceptCoverage matches a concept by embedding the concept string on its
-#   own and comparing cosine similarity against segments of the answer. Short
-#   terms do not survive that comparison. Measured with all-MiniLM-L6-v2
-#   against "Mitochondria produce ATP and generate cellular energy.", the
-#   sentence that contains both terms verbatim:
+# strict=True throughout: if one starts passing, the build fails and the
+# marker must be removed deliberately. An xfail that silently starts passing
+# is the same rot as the skipif that hid all of this.
 #
-#       'ATP'             -> 0.651
-#       'cellular energy' -> 0.638
-#       threshold          0.68
+# ---------------------------------------------------------------------------
+# A. Concept matching cannot detect literal containment.
 #
-#   So an identical answer scores semantic_similarity 1.0 while reporting
-#   BOTH concepts as MISSING.
+# ConceptCoverage embeds the concept string on its own and compares cosine
+# similarity against segments of the answer. Short terms do not survive that.
+# Measured with all-MiniLM-L6-v2 against "Mitochondria produce ATP and
+# generate cellular energy." — the sentence containing both terms verbatim:
 #
-# This is not a threshold to nudge. Comparing a 3-character term and a full
-# sentence in the same embedding space does not detect literal containment,
-# and lowering the threshold far enough to catch "ATP" would match nearly
-# anything. It is the argument for Phase 2's ValuePointMatcher, where
-# match_mode=EXACT with acceptable_variants handles exactly this case and
-# SEMANTIC is reserved for claims that actually need it (Track C3).
+#     'ATP'             -> 0.651
+#     'cellular energy' -> 0.638
+#     threshold            0.68
 #
-# It matters now because this concept-coverage path still feeds marks. Under
-# the current engine a student who writes the expected term verbatim can be
-# scored as having missed it.
-#
-# strict=True: if one of these starts passing, the build fails and the marker
-# must be removed deliberately. An xfail that silently starts passing is the
-# same rot as the skipif that hid this in the first place.
-CONCEPT_MATCH_DEFECT = (
+# So a byte-identical answer scores semantic_similarity 1.0 while reporting
+# BOTH concepts as MISSING. Not a threshold to nudge: comparing a
+# 3-character term against a full sentence in one embedding space does not
+# detect containment, and lowering the bar to catch 0.651 would match nearly
+# anything. This is the argument for match_mode=EXACT in Track C3.
+# ---------------------------------------------------------------------------
+CONCEPT_CONTAINMENT_DEFECT = (
     "ConceptCoverage cannot match short concept terms via whole-string "
-    "embedding similarity; superseded by ValuePointMatcher EXACT mode "
-    "(Track C3). See comment above."
+    "embedding similarity — 'ATP' scores 0.651 against the sentence "
+    "containing it verbatim, under a 0.68 threshold. Superseded by "
+    "ValuePointMatcher match_mode=EXACT (Track C3)."
+)
+
+# ---------------------------------------------------------------------------
+# B. semantic_similarity ranks topical relatedness, not correctness.
+#
+# The more serious of the three, and NOT the same defect as A. Measured:
+#
+#   CORRECT paraphrase                                            0.6239
+#     "Photosynthesis converts sunlight into chemical energy."
+#     vs "Plants use solar energy to create food."
+#
+#   WRONG but topical                                             0.6782
+#     "Mitochondria produce ATP."
+#     vs "Mitochondria are found inside cells."
+#
+# The wrong answer outscores the correct one. No threshold separates them,
+# because the metric is not measuring what marks depend on — it ranks by how
+# much two sentences are about the same subject, and a false statement about
+# the right subject wins.
+#
+# If this feeds marks, and it does today, a student who paraphrases correctly
+# can score below one who writes something topically adjacent and wrong. That
+# is a fairness defect, not only an accuracy one.
+#
+# Also visible: OCR-noised text collapses to 0.1503 (expected >0.65), so the
+# metric is not robust to the input this system actually receives.
+# ---------------------------------------------------------------------------
+SIMILARITY_NOT_CORRECTNESS = (
+    "semantic_similarity ranks topical relatedness, not correctness — a wrong "
+    "topical answer (0.678) outscores a correct paraphrase (0.624), and OCR "
+    "noise collapses it to 0.150. No threshold separates these. Superseded by "
+    "deterministic value-point scoring (Track C2/C3)."
+)
+
+# ---------------------------------------------------------------------------
+# C. The test swallows its own failures.
+#
+# test_real_integration_run_if_installed wraps the real integration run in
+# `try/except Exception`, prints the assertion error, and runs a MOCKED
+# sequence instead. It cannot fail on the real path — it calls the same six
+# assertions marked above and converts all of them into a print statement.
+#
+# The right fix is deletion: it duplicates the class's tests and then hides
+# their result. Marked rather than deleted only because removing a test is
+# outside A1's scope.
+# ---------------------------------------------------------------------------
+SWALLOWS_OWN_FAILURES = (
+    "Test catches its own assertion failures with `except Exception`, prints "
+    "them, and substitutes a mocked run — it cannot fail on the real path. "
+    "Duplicates the class tests above; should be deleted, not repaired."
 )
 
 
@@ -184,7 +229,7 @@ class TestSemanticEngineIntegration:
             concept_matching_threshold=0.68
         )
 
-    @pytest.mark.xfail(strict=True, reason=CONCEPT_MATCH_DEFECT)
+    @pytest.mark.xfail(strict=True, reason=CONCEPT_CONTAINMENT_DEFECT)
     def test_exact_match(self):
         """Scenario 1: Exact match."""
         ref = "Mitochondria produce ATP and generate cellular energy."
@@ -200,7 +245,7 @@ class TestSemanticEngineIntegration:
         assert "cellular energy" in res.matched_semantic_concepts
         assert not res.missing_semantic_concepts
 
-    @pytest.mark.xfail(strict=True, reason=CONCEPT_MATCH_DEFECT)
+    @pytest.mark.xfail(strict=True, reason=SIMILARITY_NOT_CORRECTNESS)
     def test_strong_paraphrase(self):
         """Scenario 2: Strong paraphrase."""
         # Example 1: Photosynthesis
@@ -229,7 +274,7 @@ class TestSemanticEngineIntegration:
         # Power generation is semantically weak to producing ATP, but overall similarity is moderate
         assert 0.40 <= res.semantic_similarity <= 0.85
 
-    @pytest.mark.xfail(strict=True, reason=CONCEPT_MATCH_DEFECT)
+    @pytest.mark.xfail(strict=True, reason=SIMILARITY_NOT_CORRECTNESS)
     def test_unrelated_answer(self):
         """Scenario 4: Unrelated answer."""
         ref = "Mitochondria produce ATP."
@@ -242,7 +287,7 @@ class TestSemanticEngineIntegration:
         )
         assert res.semantic_similarity < 0.50
 
-    @pytest.mark.xfail(strict=True, reason=CONCEPT_MATCH_DEFECT)
+    @pytest.mark.xfail(strict=True, reason=SIMILARITY_NOT_CORRECTNESS)
     def test_ocr_noisy_text(self):
         """Scenario 6: OCR noisy text."""
         ref = "Photosynthesis converts sunlight into chemical energy."
@@ -256,7 +301,7 @@ class TestSemanticEngineIntegration:
         # Should still maintain high similarity and map concepts despite character substitutions
         assert res.semantic_similarity > 0.65
 
-    @pytest.mark.xfail(strict=True, reason=CONCEPT_MATCH_DEFECT)
+    @pytest.mark.xfail(strict=True, reason=SIMILARITY_NOT_CORRECTNESS)
     def test_long_answer(self):
         """Scenario 7: Long answer."""
         ref = "Newton's first law states that an object at rest stays at rest unless acted upon by a force."
@@ -279,7 +324,7 @@ class TestSemanticEngineIntegration:
 # ---------------------------------------------------------
 # Helper runner to run integration tests dynamically
 # ---------------------------------------------------------
-@pytest.mark.xfail(strict=True, reason=CONCEPT_MATCH_DEFECT)
+@pytest.mark.xfail(strict=True, reason=SWALLOWS_OWN_FAILURES)
 def test_real_integration_run_if_installed():
     """
     Runs the integration scenarios using a real all-MiniLM-L6-v2 model if installed.

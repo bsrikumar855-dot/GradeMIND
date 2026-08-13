@@ -425,64 +425,98 @@ The same variable was added to `backend/.env.example`, `.env.example`, and
 
 ---
 
-## 10. Finding: concept matching cannot match terms the student wrote verbatim
+## 10. Findings from removing `skipif(True, ...)`
 
-Surfaced by removing the `skipif(True, ...)` from `TestSemanticEngineIntegration`.
-That marker had been suppressing a live defect in the scoring path.
+Removing that one marker surfaced **six failures with three distinct root
+causes**. The first pass characterised only one and applied a single shared
+xfail reason to all six, which would have buried the other two. Corrected —
+each is marked with its own reason.
 
-`ConceptCoverage` decides whether a concept is present by embedding the concept
-string **on its own** and comparing cosine similarity against segments of the
-answer. Short terms do not survive that comparison. Measured with
-`all-MiniLM-L6-v2` against `"Mitochondria produce ATP and generate cellular
-energy."` — the sentence containing both terms **verbatim**:
+### A. Concept matching cannot detect literal containment
+
+`ConceptCoverage` embeds the concept string on its own and compares cosine
+similarity against answer segments. Measured with `all-MiniLM-L6-v2` against
+`"Mitochondria produce ATP and generate cellular energy."` — the sentence
+containing both terms **verbatim**:
 
 ```
-$ python -c "...generate_embedding(concept) vs generate_embedding(sentence)..."
 'ATP'             vs full sentence: 0.651
 'cellular energy' vs full sentence: 0.638
-threshold used:                     0.68
+threshold:                          0.68
 ```
 
-So `test_exact_match` — where reference and student answer are **byte
-identical** — produces:
+A byte-identical answer scores `semantic_similarity=1.0` while reporting
+**both concepts as missing**. Affects `test_exact_match`.
+
+### B. `semantic_similarity` ranks topical relatedness, not correctness
+
+**The most serious finding in Phase 0, and not the same defect as A.**
 
 ```
-semantic_similarity      = 1.0
-matched_semantic_concepts = []
-missing_semantic_concepts = ['ATP', 'cellular energy']
+CORRECT paraphrase   0.6239
+  "Photosynthesis converts sunlight into chemical energy."
+  vs "Plants use solar energy to create food."
+
+WRONG but topical    0.6782
+  "Mitochondria produce ATP."
+  vs "Mitochondria are found inside cells."
 ```
 
-**A student who writes the expected term exactly can be scored as having missed
-it.** This path still feeds marks (it is the concept-coverage proxy that D8/D9
-sit alongside), so this is a live marking defect, not a test-only issue.
+**The wrong answer outscores the correct one.** No threshold separates them,
+because the metric does not measure what marks depend on — it ranks how much
+two sentences are about the same subject, and a false statement about the
+right subject wins.
 
-### Not a threshold to nudge
+If this feeds marks, and it does today, a student who paraphrases correctly can
+score below one who writes something topically adjacent and wrong. That is a
+fairness defect, not only an accuracy one.
 
-Comparing a 3-character term against a full sentence in the same embedding
-space does not detect literal containment. Lowering the threshold far enough to
-catch `ATP` at 0.651 would match nearly anything — it is not a tuning problem,
-it is the wrong operation.
+Also visible: OCR-noised text collapses to `0.1503` against an expected `>0.65`,
+so the metric is not robust to the input this system actually receives.
 
-It is a direct argument for Phase 2 / Track C3: `ValuePointMatcher` with
-`match_mode=EXACT` plus `acceptable_variants` handles this case correctly, and
-`SEMANTIC` is reserved for claims that genuinely need it.
+Affects `test_strong_paraphrase`, `test_unrelated_answer`, `test_ocr_noisy_text`,
+`test_long_answer`.
 
-### Why xfail rather than skip or delete
+### C. A test that swallows its own failures
 
-The six failing tests carry `@pytest.mark.xfail(strict=True)` with this reason.
-`strict=True` means that if one starts passing, **the build fails** and the
-marker must be removed deliberately. An xfail that silently starts passing
-would be the same rot as the `skipif` that hid this in the first place.
+`test_real_integration_run_if_installed` wraps the real integration run in
+`try/except Exception`, prints the assertion error, and runs a **mocked**
+sequence instead. It calls the same six assertions above and converts all of
+them into a print statement — it cannot fail on the real path.
 
-They are visible in test output as `xfailed`, not absorbed into a pass count:
+The right fix is deletion: it duplicates the class's tests and hides their
+result. Marked rather than deleted only because removing a test is outside
+A1's scope.
+
+### Why this matters for Track C
+
+A and B together are the empirical case for the Phase 2 architecture, not an
+abstract design preference: `match_mode=EXACT` with `acceptable_variants`
+handles A; deterministic value-point scoring replaces B entirely. Worth putting
+in the C2/C3 PR description.
+
+### Suppression accounting
+
+The ratchet now tracks **`xfail` as well as `skip`, counted separately** — the
+previous version tracked only skips, so removing a tracked `skipif` and adding
+an untracked `xfail` was a net loss in exactly the coverage the script exists
+to provide.
+
+| Kind | Count | Meaning |
+|---|---|---|
+| `skip` | **6** | Does not run. Nothing verified. Target **0 by end of Track C**. |
+| `xfail` | **6** | Runs, expected to fail, `strict=True` fails the build if it passes. Declared defect with a reason. |
+
+Non-strict `xfail` is flagged distinctly, since it is much closer to a skip.
+Verified the ratchet catches a newly added one:
 
 ```
-167 passed, 6 xfailed, 10 warnings in 53.54s
+$ python scripts/check_no_self_skipping_tests.py     # after injecting @pytest.mark.xfail
+AI/tests/test_or_question_resolver.py:305: [xfail] test_ocr_noisy_or_still_resolves is
+  @pytest.mark.xfail (NOT strict — can silently start passing)
+
+1 NEW suppressed test(s) — 0 skip, 1 xfail.
+EXIT=1
 ```
 
-### Gap in the ratchet
-
-`scripts/check_no_self_skipping_tests.py` tracks `pytest.skip` and
-`skipif`/`skip` markers. It does **not** track `xfail`. These six are recorded
-here and in the source comment, but nothing mechanically stops an `xfail` being
-added elsewhere. Worth extending the checker in Track C.
+AI suite: `167 passed, 6 xfailed, 0 failed`.
