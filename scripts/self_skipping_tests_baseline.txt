@@ -7,4 +7,3 @@ AI/tests/test_ocr_pipeline_cli.py::test_adaptive_threshold_produces_binary_outpu
 AI/tests/test_ocr_pipeline_cli.py::test_full_pipeline_real_engine_returns_nonempty_text
 AI/tests/test_ocr_pipeline_cli.py::test_preprocess_for_engine_binarize_flag_changes_output
 AI/tests/test_ocr_pipeline_cli.py::test_preprocess_for_engine_unknown_falls_back_to_tesseract_profile
-AI/tests/test_semantic_engine.py::TestSemanticEngineIntegration

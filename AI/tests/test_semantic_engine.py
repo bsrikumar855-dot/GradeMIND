@@ -125,14 +125,50 @@ def test_schema_validation(mock_embedding_service):
 # 2. Real Integration Tests with all-MiniLM-L6-v2
 # ---------------------------------------------------------
 
-@pytest.mark.skipif(
-    True,
-    reason="Optional integration tests that need downloaded models (run when environment is ready)"
+# Why these are xfail rather than skipped, and rather than deleted.
+#
+# This class was disabled by `@pytest.mark.skipif(True, ...)` — an
+# unconditional off switch, not a capability guard. Enabling it (now that
+# sentence-transformers is a declared dependency in requirements/ai.txt)
+# surfaced a real defect that had been hidden for the life of the marker:
+#
+#   ConceptCoverage matches a concept by embedding the concept string on its
+#   own and comparing cosine similarity against segments of the answer. Short
+#   terms do not survive that comparison. Measured with all-MiniLM-L6-v2
+#   against "Mitochondria produce ATP and generate cellular energy.", the
+#   sentence that contains both terms verbatim:
+#
+#       'ATP'             -> 0.651
+#       'cellular energy' -> 0.638
+#       threshold          0.68
+#
+#   So an identical answer scores semantic_similarity 1.0 while reporting
+#   BOTH concepts as MISSING.
+#
+# This is not a threshold to nudge. Comparing a 3-character term and a full
+# sentence in the same embedding space does not detect literal containment,
+# and lowering the threshold far enough to catch "ATP" would match nearly
+# anything. It is the argument for Phase 2's ValuePointMatcher, where
+# match_mode=EXACT with acceptable_variants handles exactly this case and
+# SEMANTIC is reserved for claims that actually need it (Track C3).
+#
+# It matters now because this concept-coverage path still feeds marks. Under
+# the current engine a student who writes the expected term verbatim can be
+# scored as having missed it.
+#
+# strict=True: if one of these starts passing, the build fails and the marker
+# must be removed deliberately. An xfail that silently starts passing is the
+# same rot as the skipif that hid this in the first place.
+CONCEPT_MATCH_DEFECT = (
+    "ConceptCoverage cannot match short concept terms via whole-string "
+    "embedding similarity; superseded by ValuePointMatcher EXACT mode "
+    "(Track C3). See comment above."
 )
+
+
 class TestSemanticEngineIntegration:
     """
     Integration tests using the lightweight all-MiniLM-L6-v2 local model.
-    Runs only if sentence-transformers is fully installed and working.
     """
     
     @classmethod
@@ -148,6 +184,7 @@ class TestSemanticEngineIntegration:
             concept_matching_threshold=0.68
         )
 
+    @pytest.mark.xfail(strict=True, reason=CONCEPT_MATCH_DEFECT)
     def test_exact_match(self):
         """Scenario 1: Exact match."""
         ref = "Mitochondria produce ATP and generate cellular energy."
@@ -163,6 +200,7 @@ class TestSemanticEngineIntegration:
         assert "cellular energy" in res.matched_semantic_concepts
         assert not res.missing_semantic_concepts
 
+    @pytest.mark.xfail(strict=True, reason=CONCEPT_MATCH_DEFECT)
     def test_strong_paraphrase(self):
         """Scenario 2: Strong paraphrase."""
         # Example 1: Photosynthesis
@@ -191,6 +229,7 @@ class TestSemanticEngineIntegration:
         # Power generation is semantically weak to producing ATP, but overall similarity is moderate
         assert 0.40 <= res.semantic_similarity <= 0.85
 
+    @pytest.mark.xfail(strict=True, reason=CONCEPT_MATCH_DEFECT)
     def test_unrelated_answer(self):
         """Scenario 4: Unrelated answer."""
         ref = "Mitochondria produce ATP."
@@ -203,6 +242,7 @@ class TestSemanticEngineIntegration:
         )
         assert res.semantic_similarity < 0.50
 
+    @pytest.mark.xfail(strict=True, reason=CONCEPT_MATCH_DEFECT)
     def test_ocr_noisy_text(self):
         """Scenario 6: OCR noisy text."""
         ref = "Photosynthesis converts sunlight into chemical energy."
@@ -216,6 +256,7 @@ class TestSemanticEngineIntegration:
         # Should still maintain high similarity and map concepts despite character substitutions
         assert res.semantic_similarity > 0.65
 
+    @pytest.mark.xfail(strict=True, reason=CONCEPT_MATCH_DEFECT)
     def test_long_answer(self):
         """Scenario 7: Long answer."""
         ref = "Newton's first law states that an object at rest stays at rest unless acted upon by a force."
@@ -238,6 +279,7 @@ class TestSemanticEngineIntegration:
 # ---------------------------------------------------------
 # Helper runner to run integration tests dynamically
 # ---------------------------------------------------------
+@pytest.mark.xfail(strict=True, reason=CONCEPT_MATCH_DEFECT)
 def test_real_integration_run_if_installed():
     """
     Runs the integration scenarios using a real all-MiniLM-L6-v2 model if installed.

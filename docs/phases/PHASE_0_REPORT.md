@@ -53,7 +53,7 @@ done.
 | compose duplicate-key lint | LOCALLY-VERIFIED | PASS |
 | self-skipping-test ratchet | LOCALLY-VERIFIED | PASS |
 | backend test suite | LOCALLY-VERIFIED | **164 passed, 0 failed** |
-| AI test suite | LOCALLY-VERIFIED | **167 passed, 6 skipped (baselined)** |
+| AI test suite | LOCALLY-VERIFIED | **167 passed, 6 xfailed (declared defect — §10), 0 failed** |
 
 ---
 
@@ -120,7 +120,7 @@ $ python scripts/check_compose_duplicate_keys.py docker-compose.yml
 docker-compose.yml: no duplicate keys
 
 $ python scripts/check_no_self_skipping_tests.py
-no new self-skipping tests (7 baselined)
+no new self-skipping tests (6 baselined)
 ```
 
 ### Body limit unit tests
@@ -307,11 +307,13 @@ AI/tests/test_semantic_engine.py::TestSemanticEngineIntegration
 ```
 
 Six of the seven are OCR-engine dependent and land naturally in Phase 3, where
-the engines become a declared dependency rather than an optional import. The
-seventh, `TestSemanticEngineIntegration`, is disabled by
-`@pytest.mark.skipif(True, ...)` — an unconditional off switch, not a
-capability guard — and `requirements/ai.txt` now installs the dependency it was
-waiting for. That one has no excuse left and should go first.
+the engines become a declared dependency rather than an optional import.
+
+**The seventh is now removed — baseline is 6.** `TestSemanticEngineIntegration`
+was disabled by `@pytest.mark.skipif(True, ...)`, an unconditional off switch
+rather than a capability guard. `requirements/ai.txt` now installs the
+dependency it was nominally waiting for, so the marker came off. See §10 — it
+was hiding a live scoring defect.
 
 `test_or_question_resolver.py::test_ocr_noisy_or_still_resolves` was the eighth
 and is already fixed: it called `pytest.skip("acceptable fallback")` in the
@@ -420,3 +422,67 @@ ENVIRONMENT=local
 
 The same variable was added to `backend/.env.example`, `.env.example`, and
 `docker-compose.yml` (defaulting to `production` in both non-local places).
+
+---
+
+## 10. Finding: concept matching cannot match terms the student wrote verbatim
+
+Surfaced by removing the `skipif(True, ...)` from `TestSemanticEngineIntegration`.
+That marker had been suppressing a live defect in the scoring path.
+
+`ConceptCoverage` decides whether a concept is present by embedding the concept
+string **on its own** and comparing cosine similarity against segments of the
+answer. Short terms do not survive that comparison. Measured with
+`all-MiniLM-L6-v2` against `"Mitochondria produce ATP and generate cellular
+energy."` — the sentence containing both terms **verbatim**:
+
+```
+$ python -c "...generate_embedding(concept) vs generate_embedding(sentence)..."
+'ATP'             vs full sentence: 0.651
+'cellular energy' vs full sentence: 0.638
+threshold used:                     0.68
+```
+
+So `test_exact_match` — where reference and student answer are **byte
+identical** — produces:
+
+```
+semantic_similarity      = 1.0
+matched_semantic_concepts = []
+missing_semantic_concepts = ['ATP', 'cellular energy']
+```
+
+**A student who writes the expected term exactly can be scored as having missed
+it.** This path still feeds marks (it is the concept-coverage proxy that D8/D9
+sit alongside), so this is a live marking defect, not a test-only issue.
+
+### Not a threshold to nudge
+
+Comparing a 3-character term against a full sentence in the same embedding
+space does not detect literal containment. Lowering the threshold far enough to
+catch `ATP` at 0.651 would match nearly anything — it is not a tuning problem,
+it is the wrong operation.
+
+It is a direct argument for Phase 2 / Track C3: `ValuePointMatcher` with
+`match_mode=EXACT` plus `acceptable_variants` handles this case correctly, and
+`SEMANTIC` is reserved for claims that genuinely need it.
+
+### Why xfail rather than skip or delete
+
+The six failing tests carry `@pytest.mark.xfail(strict=True)` with this reason.
+`strict=True` means that if one starts passing, **the build fails** and the
+marker must be removed deliberately. An xfail that silently starts passing
+would be the same rot as the `skipif` that hid this in the first place.
+
+They are visible in test output as `xfailed`, not absorbed into a pass count:
+
+```
+167 passed, 6 xfailed, 10 warnings in 53.54s
+```
+
+### Gap in the ratchet
+
+`scripts/check_no_self_skipping_tests.py` tracks `pytest.skip` and
+`skipif`/`skip` markers. It does **not** track `xfail`. These six are recorded
+here and in the source comment, but nothing mechanically stops an `xfail` being
+added elsewhere. Worth extending the checker in Track C.
