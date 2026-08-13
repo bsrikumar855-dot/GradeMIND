@@ -80,6 +80,46 @@ def test_token_in_query_string_is_redacted(captured):
     assert "page=1" in records[0], "non-sensitive params must survive"
 
 
+JWT = "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJDUzIwMjQwMDEifQ.abc123signature"
+
+
+@pytest.mark.parametrize(
+    "label,message",
+    [
+        # The three live sites: results/page.tsx:201, reports/page.tsx:82,
+        # feedback/page.tsx:149 all build `${API_URL}/submissions/${id}/pdf?token=${token}`.
+        ("download url", f"GET /submissions/8f2a/pdf?token={JWT} 200 81ms"),
+        # refresh_token was MISSED by the first version of the filter, which
+        # matched token/key/api_key/access_token by name. This app issues
+        # refresh tokens.
+        ("refresh_token param", f"POST /auth/refresh?refresh_token={JWT}"),
+        # A token does not stop being a credential because it is in a path
+        # segment rather than a query string.
+        ("path segment", f"GET /download/{JWT}/file.pdf"),
+        ("bare in message", f"issuing token {JWT} for user"),
+        ("authorization header", f"Authorization: Bearer {JWT}"),
+        # The point of matching JWT shape rather than parameter name: a
+        # parameter nobody anticipated still gets redacted.
+        ("unanticipated param", f"GET /x?wibble={JWT}"),
+    ],
+)
+def test_jwt_is_redacted_wherever_it_appears(captured, label, message):
+    logger, records = captured
+    logger.info("%s", message)
+
+    assert JWT not in records[0], f"{label}: {records[0]}"
+    assert "abc123signature" not in records[0], f"{label}: signature leaked"
+
+
+def test_non_credential_query_params_survive(captured):
+    """Redaction must not eat ordinary telemetry."""
+    logger, records = captured
+    logger.info("GET /results?page=1&sort=name&exam_id=8f2a 200")
+
+    assert "page=1" in records[0]
+    assert "sort=name" in records[0]
+
+
 def test_ordinary_message_is_untouched(captured):
     logger, records = captured
     logger.info("Application startup complete")

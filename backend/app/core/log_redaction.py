@@ -43,9 +43,31 @@ _PATTERNS: List[Tuple[Pattern[str], str]] = [
     ),
     # Bare roll numbers in the CS######## / 2-4 letters + 3-10 digits shape.
     (re.compile(r"\b[A-Z]{2,4}\d{3,10}\b"), REDACTED),
-    # Bearer tokens and API keys that end up in URLs or headers.
+    # JWTs, matched STRUCTURALLY rather than by the parameter name carrying
+    # them. A JWT is three base64url segments separated by dots, and the header
+    # `{"` always base64url-encodes to a leading `eyJ`, which makes this
+    # specific enough not to eat ordinary text.
+    #
+    # This is the primary token rule. Name-based rules below are a backstop,
+    # and they are the wrong primary defence: the first version of this file
+    # matched `?token=`, `?key=`, `?api_key=` and `?access_token=` — and missed
+    # `?refresh_token=`, which this application actually issues. A token does
+    # not stop being a credential because it arrived under a parameter name
+    # nobody thought of, or in a path segment instead of a query string.
+    (
+        re.compile(r"\beyJ[A-Za-z0-9_-]{4,}\.[A-Za-z0-9_-]{4,}\.[A-Za-z0-9_-]{4,}"),
+        REDACTED,
+    ),
+    # Bearer tokens and API keys in URLs or headers.
     (re.compile(r"(Bearer\s+)[A-Za-z0-9._\-]+", re.IGNORECASE), r"\1" + REDACTED),
-    (re.compile(r"([?&](?:token|key|api_key|access_token)=)[^&\s]+", re.IGNORECASE), r"\1" + REDACTED),
+    (
+        re.compile(
+            r"([?&](?:token|key|api_key|apikey|access_token|refresh_token|id_token"
+            r"|auth|authorization|secret|password|signature|sig)=)[^&\s]+",
+            re.IGNORECASE,
+        ),
+        r"\1" + REDACTED,
+    ),
 ]
 
 
