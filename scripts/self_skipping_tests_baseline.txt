@@ -9,7 +9,12 @@
 #           the build if it ever passes. A declared defect with a
 #           reason attached, not a hidden one.
 #
-# Current: 6 skip, 6 xfail. Target: 0 skip by end of Track C.
+# BOTH counts target zero by end of Track C. The xfails document
+# defects in a scoring path that Track C REPLACES — they are not
+# fixed, they are rewritten against value-point scoring. An xfail
+# that outlives the code it documents is a skip with better manners.
+#
+# Current: 6 skip, 6 xfail. Target: 0 / 0 by end of Track C.
 skip:AI/tests/test_ocr_benchmark.py::test_content_type_classifier_printed
 skip:AI/tests/test_ocr_benchmark.py::test_preprocessing_pipeline_runs
 skip:AI/tests/test_ocr_pipeline_cli.py::test_adaptive_threshold_produces_binary_output

@@ -488,6 +488,25 @@ The right fix is deletion: it duplicates the class's tests and hides their
 result. Marked rather than deleted only because removing a test is outside
 A1's scope.
 
+### Results produced by this engine are not defensible
+
+**Any evaluation output produced before value-point scoring lands must not be cited as evidence
+that the system works.** Not in a competition submission, not in a demo, not in a report to a
+school, not as a baseline to measure future accuracy against.
+
+The reason is finding B, not general caution: the scoring path can rank a wrong answer above a
+correct one. A number derived from an inverted metric is not a weak number, it is a meaningless
+one, and quoting it would be claiming an accuracy the system has never had.
+
+This includes the ~300 report JSONs under `backend/storage/reports/` in git history — they are
+outputs of this engine. They are being purged in A4 for PII reasons regardless, so no separate
+action is needed. But **if any of those results were ever shown to a student or a teacher, that is
+worth knowing about**, and it is a question for the repository owner rather than something
+determinable from the repo.
+
+It also sharpens the assist-only posture recorded in `CLAUDE.md`: `AUTO` being disabled at config
+level is not conservatism, it is the only defensible setting until Track C lands.
+
 ### Why this matters for Track C
 
 A and B together are the empirical case for the Phase 2 architecture, not an
@@ -504,8 +523,12 @@ to provide.
 
 | Kind | Count | Meaning |
 |---|---|---|
-| `skip` | **6** | Does not run. Nothing verified. Target **0 by end of Track C**. |
-| `xfail` | **6** | Runs, expected to fail, `strict=True` fails the build if it passes. Declared defect with a reason. |
+| `skip` | **6** | Does not run. Nothing verified. |
+| `xfail` | **6** | Runs, expected to fail; `strict=True` fails the build if it passes. Declared defect with a reason. |
+
+**Both target zero by end of Track C.** The xfails document defects in a scoring path that Track C
+*replaces* — they are not fixed, they are rewritten against value-point scoring. An xfail that
+outlives the code it documents has become a skip with better manners.
 
 Non-strict `xfail` is flagged distinctly, since it is much closer to a skip.
 Verified the ratchet catches a newly added one:

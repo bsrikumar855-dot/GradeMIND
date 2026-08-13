@@ -305,6 +305,47 @@ C2 (`ScoreComputer`) consumes it. C3 (`ValuePointMatcher`) produces it.
   scheme can be built up row by row inside one transaction. Test that a mid-transaction
   inconsistent state is permitted and a commit-time one is rejected.
 
+### C5 — concept coverage is DISPLAY-ONLY, not a confidence input
+
+The earlier version of C5 said the concept-coverage path "becomes a secondary signal feeding
+CONFIDENCE only, never marks." **That is now too weak, and it must not be inherited.**
+
+It assumed the metric was noisy but directionally sound — imprecise, yet higher score means more
+likely correct. Measurement says otherwise (`docs/phases/PHASE_0_REPORT.md` §10 B):
+
+```
+CORRECT paraphrase   0.6239
+WRONG but topical    0.6782
+```
+
+On that pair the metric is not weakly correlated with correctness, it is **inverted**. A confidence
+signal that is anti-correlated with correctness is worse than no signal at all: it would
+confidently route exactly the wrong questions to `AUTO` the moment `AUTO` is enabled.
+
+**Therefore:** concept-coverage output is retained for **display and diagnostics only** — shown to
+an examiner as "here is what the previous engine thought," clearly labelled as such. It must
+**never** feed lane assignment, and **never** feed a confidence score, until it has been measured
+against a labelled set and *demonstrated* to correlate with correctness. Not assumed to. Measured.
+
+Enforce with a test that fails if concept-coverage output reaches the lane-assignment or
+confidence inputs, in the same spirit as the identity-boundary test in §2.5.
+
+### C5 — delete `test_real_integration_run_if_installed`
+
+In scope for C5: **delete it, do not repair it.** It wraps six assertions in
+`try/except Exception`, prints the error, and substitutes a mocked run, so it cannot fail on the
+real path. This is the test-suite equivalent of the silent embedding fallback removed in Phase 0
+item 1.2 — same defect class, same fix. It also duplicates the class tests above it.
+
+### Suppression baseline targets
+
+`scripts/self_skipping_tests_baseline.txt` — **both** counts target **zero by end of Track C**:
+
+- **skip (6)** — tests that do not run. Nothing is verified.
+- **xfail (6)** — these document defects in a scoring path that C5 *replaces*. They are not fixed,
+  they are rewritten against value-point scoring. An xfail that outlives the code it documents has
+  become a skip with better manners.
+
 ---
 
 ## Standing constraints
@@ -322,8 +363,14 @@ C2 (`ScoreComputer`) consumes it. C3 (`ValuePointMatcher`) produces it.
   the shape this should take: raise, record provenance, let the job retry or dead-letter.)
 - Migrations reversible and tested against a production-shaped dataset.
 - **Every PR states its blast radius:** what breaks if this is wrong.
-- Self-skipping tests are ratcheted by `scripts/check_no_self_skipping_tests.py` against
-  `scripts/self_skipping_tests_baseline.txt`. The baseline may shrink, never grow.
+- Suppressed tests are ratcheted by `scripts/check_no_self_skipping_tests.py` against
+  `scripts/self_skipping_tests_baseline.txt`, tracking `skip` **and** `xfail` as separate counts.
+  The baseline may shrink, never grow.
+- **Bulk source edits: line-based or AST, not regex.** A regex substitution across
+  `test_semantic_engine.py` silently injected a `U+0001` control character and produced a file that
+  looked correct in a diff and failed to parse. Regex edits over source fail in ways that do not
+  look like failures. **Re-run the affected suite immediately after any bulk edit**, not after the
+  next logical step — the gap is where a broken file gets committed.
 
 ## Output format per phase
 

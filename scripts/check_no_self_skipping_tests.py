@@ -192,7 +192,12 @@ def main(argv: List[str]) -> int:
             "#           the build if it ever passes. A declared defect with a\n"
             "#           reason attached, not a hidden one.\n"
             "#\n"
-            f"# Current: {skips} skip, {xfails} xfail. Target: 0 skip by end of Track C.\n"
+            "# BOTH counts target zero by end of Track C. The xfails document\n"
+            "# defects in a scoring path that Track C REPLACES — they are not\n"
+            "# fixed, they are rewritten against value-point scoring. An xfail\n"
+            "# that outlives the code it documents is a skip with better manners.\n"
+            "#\n"
+            f"# Current: {skips} skip, {xfails} xfail. Target: 0 / 0 by end of Track C.\n"
             + "\n".join(sorted(current))
             + "\n",
             encoding="utf-8",
