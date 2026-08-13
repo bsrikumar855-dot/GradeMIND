@@ -1,6 +1,6 @@
 # Git History Rewrite — Plan and Coordination
 
-**Status: NOT EXECUTED. Awaiting approval.**
+**Status: NOT EXECUTED — and the case for executing it has collapsed. See §0.**
 **Phase:** 0 (Containment), item 1.9
 **Approver required:** Shreekumar
 **Affected collaborators:** Vishi, Prabhu, Suchit, Santheesh, Tharun
@@ -11,7 +11,36 @@ without warning is its own incident.
 
 ---
 
-## 1. Why
+## 0. RECOMMENDATION: do not run this
+
+Added after the data under `backend/storage/` was actually inspected rather than assumed. §1 below
+is the original justification and is now **superseded** — kept for the record, not as a rationale.
+
+**The PII this rewrite exists to remove is synthetic.** Full evidence in
+`docs/phases/PHASE_0_REPORT.md` §11. In summary:
+
+| Artifact | What it actually is |
+|---|---|
+| 100 report/evaluation JSONs | 7 distinct names, 5 of them literal `"Test"` variants, 2 canonical placeholders. **All 100 have `obtained_marks: 0.0`.** |
+| OCR outputs | 8 distinct lines of textbook fixture text (`"Q3. Solve: 2x + 5 = 15."`) |
+| The single answer-sheet PDF | **76 bytes.** `%PDF-1.4` header, no `/Image`, no `/Font`. A stub. |
+| PNG blobs | **67 bytes** each. Stubs. |
+
+So the trade this document proposes is: a coordinated force-push across six collaborators,
+breaking every commit SHA, every PR ref, and every clone — in order to delete 76-byte stub files
+and test records containing zero marks.
+
+Repository size was already ruled out as a justification (`.git` on a clean clone is 25 MB against
+a 50 MB target). With the PII justification gone too, **there is no remaining reason to run this.**
+
+**Recommendation: close this out as "not required," and do not sequence Track C behind it.**
+
+If it is run anyway — for tidiness, or because something outside this repository turns out to
+warrant it — everything below still applies and must be followed exactly.
+
+---
+
+## 1. Why (SUPERSEDED — see §0)
 
 **PII, and only PII.** Repository size is *not* a justification and must not be
 cited as one — a clean clone is 25 MB against a 50 MB target, so Gate 0(e)

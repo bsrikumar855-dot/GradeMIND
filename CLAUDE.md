@@ -84,7 +84,7 @@ Read these before starting anything:
 |----|--------|
 | D1 RCE | FIXED — `frontend/src/app/api/` no longer exists at all |
 | D2 auth bypass | FIXED (default only) — see `ENVIRONMENT` gate below, still outstanding |
-| D3 student data in history | **Tree clean, history not.** 300 JSONs with `student_name` + `student_roll_number`; 99 PDF paths → **1 distinct blob** (one test document). Purge is PII-justified only. |
+| D3 student data in history | **NOT A DEFECT — data is synthetic.** The 99 PDF paths resolve to 1 blob, and that blob is a **76-byte stub**. All 100 report records have `obtained_marks: 0.0` and test-fixture names. See `PHASE_0_REPORT.md` §11. **A4 is not required** — see below. |
 | D4 requirements | FIXED — `requirements/{base,ai,htr,dev}.txt`, exact pins |
 | D5 name-based authz | **PRESENT — 3 sites.** `student_service.py:66` (unescaped `ilike`), `:96` (returns `student_id = student_name`), `:124` (name equality). Phase 1.1. |
 | D6 no CI | FIXED, hardened in Phase 0 |
@@ -251,14 +251,17 @@ data — no accuracy claim made."
 Phase 1's async rewrite comes **after** Track C, not before — landing a queue on top of an
 evaluation core about to be replaced is work partly redone.
 
-**Order: A1 → A2 → A4 → A3.** B1 and Track C spawn only **after A4 lands.**
+**Order: A1 → A2 → A3.** B1 and Track C spawn after A2. **A4 is no longer in the critical path.**
 
-A4 rewrites every commit hash in the repository, `post-round2-dev` and
-`prod/phase-0-containment` included. Any long-lived branch created before it is orphaned from the
-rewritten history and needs a coordinated rebase — across Track C's four branches plus B1, held by
-multiple people. Running it while exactly one branch exists is the cheapest this will ever be, and
-it gets more expensive with every commit stacked on top. A3's lockfile then lands on rewritten
-history, which is fine: that is new work, not history.
+A4 was moved ahead of A3 on the reasoning that it rewrites every commit hash, so running it while
+exactly one branch exists avoids a coordinated rebase across six. That cost argument was sound —
+but the *reason to run it at all* has since collapsed. The data it would purge is synthetic: a
+76-byte stub PDF, 67-byte stub PNGs, and 100 report records with test names and zero marks. Repo
+size was already ruled out (25 MB clean vs a 50 MB target).
+
+**Recommendation: close A4 as "not required."** Do not hold Track C behind it. Full evidence in
+`docs/phases/PHASE_0_REPORT.md` §11; `docs/HISTORY_REWRITE.md` §0 carries the recommendation and
+retains the full procedure in case something outside this repository ever warrants it.
 
 | Track | Content | Depends on |
 |---|---|---|

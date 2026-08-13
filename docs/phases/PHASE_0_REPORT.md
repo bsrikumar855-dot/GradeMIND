@@ -543,3 +543,60 @@ EXIT=1
 ```
 
 AI suite: `167 passed, 6 xfailed, 0 failed`.
+
+---
+
+## 11. Was any of this ever shown to a student? Evidence says no.
+
+The open question was whether evaluation outputs produced by the inverted metric (§10 B) ever
+reached a real student. Checkable from the repository, and the answer is **no**.
+
+Every artifact under `backend/storage/` in git history is a synthetic fixture.
+
+**Report / evaluation JSONs (100 records):**
+
+```
+student_name fields: 100   distinct: 7
+    40x  'Test'
+    10x  'Status Test'
+    10x  'Relationship Test'
+    10x  'Admin Upload Test'
+    10x  'Default Status Test'
+    10x  'Priya Patel'
+    10x  'Aarav Sharma'
+
+roll numbers distinct: 10   (all CS###)
+obtained_marks:  [('0.0', 100)]      <-- every record
+status:          [('COMPLETED', 100)]
+```
+
+Five of the seven names are literally "Test" variants. The remaining two are the canonical
+placeholder names used in Indian software examples. **Every single record scored 0.0** — the engine
+never persisted a non-zero mark for anyone.
+
+**OCR outputs (8 distinct lines):** textbook fixtures — `"Q1. What is Photosynthesis?"`,
+`"Q3. Solve: 2x + 5 = 15."` — authored test content, not transcribed handwriting.
+
+**Answer sheets:** the single PDF blob is **76 bytes** with a `%PDF-1.4` header, no `/Image`
+XObject and no `/Font` — a stub, not a scan. The PNG blobs are **67 bytes** each.
+
+### Consequences
+
+1. **The §10 non-defensibility note stays a documentation item.** No correction to issue, no
+   student to notify. No student was ever marked by this system.
+
+2. **A4's justification collapses, and A4 should probably not happen.** The history rewrite was
+   justified "PII only" after repository size was ruled out (`.git` is 25 MB clean against a 50 MB
+   target). That PII is synthetic. What remains is a coordinated force-push across six
+   collaborators — breaking every commit SHA, PR ref, and clone — to delete 76-byte stub files and
+   test records containing zero marks. **That is a bad trade.** See `docs/HISTORY_REWRITE.md`.
+
+3. The original D3 defect — "99 real student answer-sheet PDFs committed, present in git history" —
+   was wrong twice over: the 99 paths resolve to **1** blob, and that blob is a 76-byte stub.
+
+### Scope of this check
+
+Covers everything reachable under `backend/storage/` in this repository's history. It says nothing
+about a database that ran outside the repo, or about any deployed environment. If real submissions
+were ever processed, their records live in a Postgres instance, not here — and that is still a
+question for the repository owner.
