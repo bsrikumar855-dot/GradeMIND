@@ -1,0 +1,54 @@
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+exclude = [
+    "backend/venv",
+    "frontend",
+    "**/migrations/versions",
+    "**/__pycache__",
+]
+
+[tool.ruff.lint]
+# ENFORCED SET — deliberately narrow, and a ratchet.
+#
+# Running ruff's default rules over this codebase reports 1065 findings. Gating
+# CI on all of them would mean Phase 0 could never go green, and clearing them
+# would mean editing several hundred files outside this phase's declared scope.
+# Neither is acceptable, so the enforced set starts at the rules that indicate
+# an actual defect rather than a style preference:
+#
+#   E9    syntax / IO errors that stop the file being parsed
+#   F821  undefined name — a NameError waiting to happen
+#   F811  redefinition of an unused name — usually a lost edit or bad merge
+#   F502+ format-string errors that raise at runtime
+#
+# The backlog (F401 unused imports ×68, F841 unused variables ×8, F541, and the
+# E/W style families) is real and is scheduled to be folded in during Phase 1,
+# one family at a time. This list may grow, never shrink — the same ratchet
+# discipline as scripts/self_skipping_tests_baseline.txt.
+select = ["E9", "F821", "F811", "F502", "F506", "F522", "F524", "F525"]
+
+[tool.mypy]
+# Matches the CI runner. Pinned rather than inferred: numpy's bundled stubs use
+# 3.12-only syntax, so a lower value fails inside site-packages before it
+# reaches any of our code.
+python_version = "3.12"
+# AI/ is checked with explicit package bases because the package is imported as
+# `AI.*` from a repository root that is not itself a package.
+explicit_package_bases = true
+mypy_path = "."
+exclude = ["backend/venv", "AI/tests", "backend/tests"]
+
+# --strict across all of AI/ is the standing target (master spec §4) but is not
+# achievable today: the package is almost entirely unannotated, and mypy stops
+# at the first module it cannot resolve. Strictness is applied per-module and
+# extended as modules are rewritten, starting with the ones Phase 0 touched.
+ignore_missing_imports = true
+follow_imports = "silent"
+
+[[tool.mypy.overrides]]
+module = ["AI.evaluation.embeddings"]
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+warn_return_any = true
+strict_equality = true

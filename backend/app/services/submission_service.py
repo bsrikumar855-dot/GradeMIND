@@ -43,7 +43,7 @@ class SubmissionService:
         exam_id: UUID,
         student_name: str,
         student_roll_number: str,
-        file_content: bytes,
+        upload,
         original_filename: str
     ) -> Submission:
         """
@@ -53,7 +53,11 @@ class SubmissionService:
             exam_id: UUID of the exam this submission belongs to.
             student_name: Full name of the student.
             student_roll_number: Student roll/ID number.
-            file_content: Raw bytes of the uploaded file.
+            upload: The UploadFile, streamed to disk a chunk at a time. This
+                takes the file object rather than ``bytes`` on purpose: the
+                previous signature required the caller to have already buffered
+                the entire body in memory before the size limit was checked
+                (D12).
             original_filename: Original filename for extension detection.
 
         Returns:
@@ -61,6 +65,7 @@ class SubmissionService:
 
         Raises:
             ValueError: If the referenced exam does not exist.
+            storage_service.UploadTooLarge: If the stream exceeds the size cap.
         """
         # Verify the exam exists
         exam = self.db.query(Exam).filter(Exam.id == exam_id).first()
@@ -80,8 +85,8 @@ class SubmissionService:
             student_roll_number,
             file_path,
         )
-        await storage_service.save_file(file_content, file_path)
-        logger.info("UPLOAD_STAGE file_saved path=%s bytes=%s", file_path, len(file_content))
+        written = await storage_service.stream_upload_to_file(upload, file_path)
+        logger.info("UPLOAD_STAGE file_saved path=%s bytes=%s", file_path, written)
 
         # Create database record
         submission = Submission(

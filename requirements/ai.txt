@@ -1,0 +1,26 @@
+# GradeMIND — evaluation and reporting dependencies.
+#
+# Required for the semantic scoring path and PDF report generation. These are
+# NOT optional: without them the modules below raise on import or on first
+# call, and before Phase 0 they were declared nowhere at all while being
+# imported at runtime — so the container built cleanly and died the first time
+# an answer was scored or a report was rendered.
+#
+#   sentence-transformers  AI/evaluation/embeddings.py
+#   reportlab              AI/reports/report_data_builder.py
+#
+# See docs/audit/BASELINE_AUDIT.md D4.
+#
+# Install:  pip install -r requirements/base.txt -r requirements/ai.txt
+
+-r base.txt
+
+numpy==2.2.1
+sentence-transformers==3.3.1
+reportlab==4.2.5
+Pillow==11.1.0
+opencv-python-headless==4.10.0.84
+
+# Secondary/cross-check evaluator. The deterministic scorer runs without it;
+# a missing key degrades the lane toward human review, never the mark.
+google-generativeai==0.8.3

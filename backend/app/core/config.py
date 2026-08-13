@@ -27,7 +27,12 @@ class Settings(BaseSettings):
         "http://localhost:3001,"
         "http://127.0.0.1:3001"
     )
-    CORS_ALLOWED_ORIGIN_REGEX: str = r"https://.*\.vercel\.app"
+    # Deliberately no origin *regex*. The previous value was
+    # r"https://.*\.vercel\.app", which combined with allow_credentials=True
+    # matched any third party's Vercel deployment and let it make credentialed
+    # cross-origin calls against this API. Preview deployments must be listed
+    # explicitly in CORS_ALLOWED_ORIGINS like any other origin.
+    # See docs/audit/BASELINE_AUDIT.md D11.
 
     # Gemini API Configuration (optional secondary/cross-check evaluator;
     # core grading works with zero LLM keys via the local autonomous evaluator)

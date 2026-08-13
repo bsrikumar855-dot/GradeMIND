@@ -19,7 +19,14 @@ from __future__ import annotations
 import logging
 import os
 import re
-from typing import List, Optional, Tuple
+from typing import TYPE_CHECKING, List, Optional, Tuple
+
+if TYPE_CHECKING:
+    # Annotation-only. numpy and PIL are imported lazily inside the functions
+    # that use them so this module stays importable without the optional HTR
+    # profile (requirements/htr.txt) installed.
+    import numpy as np
+    from PIL.Image import Image
 
 from AI.schemas.ocr_schema import OCRDocument, OCRLine, OCRRegion
 

@@ -6,7 +6,7 @@ Endpoints for storing exam source files used by evaluation.
 from datetime import datetime, timezone
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile, status
 from sqlalchemy.orm import Session
 
 from app.api.auth_deps import require_teacher_or_admin
@@ -21,24 +21,39 @@ QUESTION_PAPER_EXTENSIONS = {".pdf", ".png", ".jpg", ".jpeg"}
 ANSWER_KEY_EXTENSIONS = {".pdf", ".png", ".jpg", ".jpeg", ".txt", ".json"}
 
 
-def _validate_upload(filename: str, file_size: int, allowed_extensions: set[str]) -> str | None:
-    if not filename:
-        return "Filename is empty."
+def _reject_before_reading(
+    request: Request, filename: str, allowed_extensions: set[str]
+) -> None:
+    """Extension + declared-size checks that run before any bytes are read.
 
-    ext = "." + filename.rsplit(".", 1)[-1].lower() if "." in filename else ""
-    if ext not in allowed_extensions:
-        return f"File type '{ext}' is not allowed. Allowed types: {', '.join(sorted(allowed_extensions))}"
+    Raises HTTPException. The authoritative size limit is enforced while
+    streaming (storage_service.stream_upload_to_file); this only avoids
+    reading a body we already know we will reject.
+    """
+    error = storage_service.validate_filename(filename, allowed_extensions)
+    if error:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=error)
 
-    if file_size > storage_service.MAX_FILE_SIZE_BYTES:
-        size_mb = file_size / (1024 * 1024)
-        return f"File size ({size_mb:.1f} MB) exceeds the maximum allowed size of 20 MB."
-
-    return None
+    declared = request.headers.get("content-length")
+    if declared is not None:
+        try:
+            declared_bytes = int(declared)
+        except ValueError:
+            declared_bytes = None
+        if storage_service.declared_size_exceeds_limit(declared_bytes):
+            raise HTTPException(
+                status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+                detail=(
+                    "File size exceeds the maximum allowed size of "
+                    f"{storage_service.MAX_FILE_SIZE_BYTES // (1024 * 1024)} MB."
+                ),
+            )
 
 
 @router.post("/question-paper")
 @router.post("/question_paper", include_in_schema=False)
 async def upload_question_paper(
+    request: Request,
     exam_id: UUID = Form(...),
     file: UploadFile = File(...),
     db: Session = Depends(get_db),
@@ -48,10 +63,7 @@ async def upload_question_paper(
     if not exam:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Exam not found")
 
-    file_content = await file.read()
-    validation_error = _validate_upload(file.filename, len(file_content), QUESTION_PAPER_EXTENSIONS)
-    if validation_error:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=validation_error)
+    _reject_before_reading(request, file.filename, QUESTION_PAPER_EXTENSIONS)
 
     file_path = storage_service.generate_file_path(
         category="question_papers",
@@ -59,7 +71,12 @@ async def upload_question_paper(
         identifier="question_paper",
         original_filename=file.filename,
     )
-    await storage_service.save_file(file_content, file_path)
+    try:
+        await storage_service.stream_upload_to_file(file, file_path)
+    except storage_service.UploadTooLarge as exc:
+        raise HTTPException(
+            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE, detail=str(exc)
+        ) from exc
 
     exam.question_paper_url = file_path
     exam.status = "READY"
@@ -80,6 +97,7 @@ async def upload_question_paper(
 @router.post("/answer-key")
 @router.post("/answer_key", include_in_schema=False)
 async def upload_answer_key(
+    request: Request,
     exam_id: UUID = Form(...),
     file: UploadFile = File(...),
     db: Session = Depends(get_db),
@@ -89,10 +107,7 @@ async def upload_answer_key(
     if not exam:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Exam not found")
 
-    file_content = await file.read()
-    validation_error = _validate_upload(file.filename, len(file_content), ANSWER_KEY_EXTENSIONS)
-    if validation_error:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=validation_error)
+    _reject_before_reading(request, file.filename, ANSWER_KEY_EXTENSIONS)
 
     file_path = storage_service.generate_file_path(
         category="answer_keys",
@@ -100,7 +115,12 @@ async def upload_answer_key(
         identifier="answer_key",
         original_filename=file.filename,
     )
-    await storage_service.save_file(file_content, file_path)
+    try:
+        await storage_service.stream_upload_to_file(file, file_path)
+    except storage_service.UploadTooLarge as exc:
+        raise HTTPException(
+            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE, detail=str(exc)
+        ) from exc
 
     exam.answer_key_url = file_path
     exam.evaluation_mode = EvaluationMode.ANSWER_KEY

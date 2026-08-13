@@ -1,0 +1,132 @@
+#!/usr/bin/env bash
+#
+# GradeMIND pre-commit hook (Phase 0).
+#
+# Enable with:
+#   git config core.hooksPath .githooks
+#
+# Blocks the classes of defect this repository has actually shipped before:
+# an unauthenticated shell-exec route in the frontend, secrets and key
+# material, build artefacts and student data, and the duplicate-key
+# docker-compose merge that silently reverted AUTH_ENABLED to False.
+#
+# Deliberately conservative: every check is a grep or a stat, no network, no
+# dependency on anything outside coreutils and git. A hook that is slow or
+# flaky gets bypassed with --no-verify, and then it protects nothing.
+
+set -uo pipefail
+
+FAIL=0
+MAX_FILE_BYTES=$((5 * 1024 * 1024))
+
+# Staged, added/copied/modified only. Deletions and renames-away are not
+# interesting and would otherwise fail on paths that no longer exist.
+staged_files() {
+    git diff --cached --name-only --diff-filter=ACM
+}
+
+fail() {
+    printf 'pre-commit: %s\n' "$1" >&2
+    FAIL=1
+}
+
+# ---------------------------------------------------------------------------
+# 1. No shell-exec surface anywhere in the frontend.
+#
+# Scoped to frontend/src/** rather than frontend/src/app/api/**: the API route
+# directory that once held the RCE no longer exists, so a path-scoped check
+# passes vacuously and would not notice the route being reintroduced somewhere
+# else. See docs/audit/BASELINE_AUDIT.md N7.
+# ---------------------------------------------------------------------------
+while IFS= read -r f; do
+    [ -n "$f" ] || continue
+    case "$f" in
+        frontend/src/*) ;;
+        *) continue ;;
+    esac
+    [ -f "$f" ] || continue
+
+    if grep -nE "child_process|execAsync|[^a-zA-Z_.]exec\(|[^a-zA-Z_.]spawn\(|[^a-zA-Z_.]eval\(" "$f" >/dev/null 2>&1; then
+        fail "shell-exec surface in $f"
+        grep -nE "child_process|execAsync|[^a-zA-Z_.]exec\(|[^a-zA-Z_.]spawn\(|[^a-zA-Z_.]eval\(" "$f" >&2
+    fi
+done < <(staged_files)
+
+# ---------------------------------------------------------------------------
+# 2. No key material or environment files (except the committed example).
+# ---------------------------------------------------------------------------
+while IFS= read -r f; do
+    [ -n "$f" ] || continue
+    base=$(basename "$f")
+
+    case "$base" in
+        *.pem|*.key|*.p12|*.pfx)
+            fail "key material staged: $f"
+            ;;
+    esac
+
+    case "$base" in
+        .env.example) ;;
+        .env|.env.*)
+            fail "environment file staged: $f (only .env.example may be committed)"
+            ;;
+    esac
+done < <(staged_files)
+
+# ---------------------------------------------------------------------------
+# 3. No file over 5 MB.
+#
+# Catches build caches and answer-sheet PDFs before they reach history, where
+# removing them costs a coordinated force-push.
+# ---------------------------------------------------------------------------
+while IFS= read -r f; do
+    [ -n "$f" ] || continue
+    [ -f "$f" ] || continue
+
+    size=$(wc -c < "$f" 2>/dev/null | tr -d '[:space:]')
+    [ -n "$size" ] || continue
+
+    if [ "$size" -gt "$MAX_FILE_BYTES" ]; then
+        fail "$f is $((size / 1024 / 1024)) MB, over the 5 MB limit"
+    fi
+done < <(staged_files)
+
+# ---------------------------------------------------------------------------
+# 4. No duplicate top-level keys in docker-compose.yml.
+#
+# Commit a6a1107 fixed exactly this: a merge concatenated two versions of the
+# file, producing duplicate keys where YAML silently takes the last one. That
+# reverted AUTH_ENABLED to "False" and restored hardcoded secrets without any
+# visible conflict.
+# ---------------------------------------------------------------------------
+if staged_files | grep -q '^docker-compose\.yml$'; then
+    dupes=$(git show :docker-compose.yml 2>/dev/null \
+        | grep -nE '^[a-zA-Z_][a-zA-Z0-9_-]*:' \
+        | sed 's/^[0-9]*://' \
+        | sort | uniq -d)
+
+    if [ -n "$dupes" ]; then
+        fail "duplicate top-level keys in docker-compose.yml: $(echo "$dupes" | tr '\n' ' ')"
+    fi
+
+    # Service-level duplicates matter just as much (AUTH_ENABLED lived under
+    # environment:), so check indented keys within each block too.
+    env_dupes=$(git show :docker-compose.yml 2>/dev/null \
+        | awk '/^[[:space:]]+environment:/{inenv=1; next}
+               /^[[:space:]]*[^[:space:]]/{ if (inenv && $0 !~ /^[[:space:]]{6,}/) inenv=0 }
+               inenv {print}' \
+        | grep -oE '^[[:space:]]*[A-Z_][A-Z0-9_]*:' \
+        | tr -d ' :' \
+        | sort | uniq -d)
+
+    if [ -n "$env_dupes" ]; then
+        fail "duplicate environment keys in docker-compose.yml: $(echo "$env_dupes" | tr '\n' ' ')"
+    fi
+fi
+
+if [ "$FAIL" -ne 0 ]; then
+    printf '\npre-commit: commit rejected. Fix the above, or use --no-verify only if you can say why.\n' >&2
+    exit 1
+fi
+
+exit 0

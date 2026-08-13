@@ -268,7 +268,13 @@ class TestFileValidation:
             files={"file": ("large.pdf", io.BytesIO(oversized_content), "application/pdf")},
         )
 
-        assert response.status_code == 400
+        # 413, not 400: the body cap is now enforced by
+        # BodySizeLimitMiddleware on the raw ASGI receive stream, before the
+        # multipart parser has spooled the body anywhere. Previously the
+        # handler buffered the whole file with `await file.read()` and only
+        # then measured it, which is what made a 20 MB cap cost 20 MB of
+        # process memory per concurrent upload (D12).
+        assert response.status_code == 413
         assert "exceeds" in response.json()["detail"].lower()
 
 

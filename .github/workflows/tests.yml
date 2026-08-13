@@ -5,6 +5,49 @@ name: Tests
   pull_request:
 
 jobs:
+  lint:
+    name: Lint, type-check, compose-lint
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      # ai.txt as well as dev.txt: mypy resolves numpy and the evaluation
+      # imports, and stops at the first module it cannot resolve. Installing
+      # dev.txt alone passes locally in a venv that happens to have numpy and
+      # fails on a clean runner.
+      - name: Install lint tooling
+        run: pip install -r requirements/ai.txt -r requirements/dev.txt
+
+      # Scoped rule set — see pyproject.toml [tool.ruff.lint] for why, and for
+      # the backlog this ratchets toward.
+      - name: ruff
+        run: ruff check backend/app AI scripts
+
+      # Per-module strictness, not --strict across AI/. The standing target is
+      # the whole package; the reachable gate today is the modules Phase 0
+      # rewrote. Widened per phase in pyproject.toml [[tool.mypy.overrides]].
+      - name: mypy
+        run: mypy AI/evaluation/embeddings.py
+
+      # Commit a6a1107 fixed a merge that concatenated two docker-compose.yml
+      # versions, producing duplicate keys where YAML silently keeps the last.
+      # That reverted AUTH_ENABLED to "False" and restored hardcoded secrets.
+      # Nothing detected it at the time.
+      - name: compose-lint (duplicate keys)
+        run: python scripts/check_compose_duplicate_keys.py docker-compose.yml
+
+      # A test that skips itself is a test that does not gate. AI/tests
+      # currently contains a skipif(True) class and a pytest.skip() inside a
+      # test body that fired on a failing assertion.
+      - name: no self-skipping tests
+        run: python scripts/check_no_self_skipping_tests.py
+
   test:
     name: Backend + AI test suites
     runs-on: ubuntu-latest
@@ -18,18 +61,17 @@ jobs:
         with:
           python-version: "3.12"
           cache: "pip"
-          cache-dependency-path: backend/requirements.txt
+          cache-dependency-path: requirements/*.txt
 
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -r backend/requirements.txt
-        # Only the core (lightweight) requirements are installed here — the
-        # optional heavy OCR engines in backend/requirements-ocr.txt (torch,
-        # transformers, easyocr, paddleocr) are not required: every module
-        # that depends on them degrades gracefully and the affected tests
-        # skip themselves when the packages are absent. See
-        # backend/README.md, "OCR Engines & Install Profiles".
+          pip install -r requirements/base.txt -r requirements/ai.txt -r requirements/dev.txt
+        # requirements/htr.txt (torch, easyocr, paddleocr, transformers) is
+        # deliberately not installed: it is multi-gigabyte and the modules that
+        # need it are optional engines. requirements/ai.txt IS installed, so
+        # sentence-transformers and reportlab are present and the semantic and
+        # report suites actually run instead of skipping.
 
       - name: Run backend test suite
         working-directory: backend
@@ -37,15 +79,57 @@ jobs:
           DATABASE_URL: "sqlite:///./ci_test.db"
           SECRET_KEY: "ci-test-secret-key"
           AUTH_ENABLED: "True"
+          ENVIRONMENT: "ci"
         run: |
           python -m pytest tests/ -q \
             --cov=app.services.submission_service \
             --cov=app.services.dashboard_service \
             --cov=app.services.storage_service \
-            --cov-report=term-missing
+            --cov-report=term-missing \
+            --cov-fail-under=60
 
       - name: Run AI test suite
         env:
           PYTHONPATH: ${{ github.workspace }}
+        run: python -m pytest AI/tests/ -q
+
+  container:
+    name: Container build + import sweep
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # GATE 0(b). The declared dependency set must be sufficient to import
+      # every module. sentence-transformers and reportlab were imported at
+      # runtime while being declared nowhere, so the container built fine and
+      # died on first use of the semantic engine or a PDF report.
+      - name: docker compose build
+        run: docker compose build --no-cache
+
+      - name: Import every module
+        env:
+          SECRET_KEY: ci-test-secret-key
+          DATABASE_URL: sqlite:///./ci_test.db
+          ENVIRONMENT: ci
         run: |
-          python -m pytest AI/tests/ -q
+          docker compose run --rm backend python -c "\
+          import importlib, pkgutil; \
+          [importlib.import_module(m.name) for m in pkgutil.walk_packages(['AI','app'], '')]; \
+          print('ALL IMPORTS OK')"
+
+      # GATE 0(c). The embedding service must raise on an unloadable model
+      # rather than substituting a different one, which would silently change
+      # every similarity score. See AI/evaluation/embeddings.py.
+      - name: Embedding fallback is gone
+        env:
+          SECRET_KEY: ci-test-secret-key
+          DATABASE_URL: sqlite:///./ci_test.db
+        run: |
+          if docker compose run --rm -e EMBEDDING_MODEL=definitely/not-a-real-model backend \
+              python -c "from AI.evaluation.embeddings import EmbeddingService; EmbeddingService()._get_model()"; then
+            echo "FAIL: embedding service did not raise on an unloadable model"
+            exit 1
+          fi
+          echo "OK: embedding service raised"

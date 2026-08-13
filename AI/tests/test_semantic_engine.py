@@ -137,9 +137,9 @@ class TestSemanticEngineIntegration:
     
     @classmethod
     def setup_class(cls):
+        # No fallback model: EmbeddingService raises rather than substituting.
         cls.embedding_service = EmbeddingService(
             model_name="sentence-transformers/all-MiniLM-L6-v2",
-            fallback_model_name="sentence-transformers/all-MiniLM-L6-v2"
         )
         cls.similarity_engine = SimilarityEngine()
         cls.engine = SemanticEvaluationEngine(
