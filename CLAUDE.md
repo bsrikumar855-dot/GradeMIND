@@ -52,6 +52,26 @@ to appeal. Behave accordingly.
    as repository history when it was actually local `refs/codex/turn-diffs/checkpoints/*` tree-refs
    holding untracked files. Rule 9's first clause alone would not have caught it.*
 
+   **The second incident is the one that matters more.** D3 entered this engagement as "99 real
+   student answer-sheet PDFs committed, present in git history." It was wrong twice over: the 99
+   paths resolve to **1** blob, and that blob is a **76-byte stub** with no page tree, no `/Image`
+   and no `/Font`. It survived four rounds of planning — audit, defect table, remediation plan,
+   and a scheduled history rewrite with a coordination checklist for five named collaborators.
+
+   **No check failed. Every check passed and agreed.** Path count, blob count, audit table, defect
+   table, and remediation plan were internally consistent at every layer — because all of them
+   inherited one claim nobody had tested against the artifact. Consistency is what let it survive:
+   four agreeing layers *feel* like corroboration when they are one measurement repeated.
+
+   This is why "state which question your command answers" is load-bearing rather than
+   stylistic. It forces each layer to declare its own scope instead of inheriting the scope of the
+   layer above, which is the only thing that breaks an inheritance chain from the inside. The cost
+   of not doing it here would have been a coordinated force-push across six people, rewriting every
+   commit SHA and PR ref, to delete stub files and records containing zero marks.
+
+   Corollary: **when a claim is about the contents of an artifact, open the artifact.** A count of
+   paths is not a statement about what is in them.
+
 ### Verification tiers — always both, never blurred
 
 | Tier | Meaning |
