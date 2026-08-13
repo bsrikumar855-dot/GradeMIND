@@ -107,6 +107,7 @@ Read these before starting anything:
 | D3 student data in history | **NOT A DEFECT — data is synthetic.** The 99 PDF paths resolve to 1 blob, and that blob is a **76-byte stub**. All 100 report records have `obtained_marks: 0.0` and test-fixture names. See `PHASE_0_REPORT.md` §11. **A4 is not required** — see below. |
 | D4 requirements | FIXED — `requirements/{base,ai,htr,dev}.txt`, exact pins |
 | D5 name-based authz | **PRESENT — 3 sites.** `student_service.py:66` (unescaped `ilike`), `:96` (returns `student_id = student_name`), `:124` (name equality). Phase 1.1. |
+| D13 tokens in query strings | **PRESENT — 3 sites.** `results/page.tsx:201`, `reports/page.tsx:82`, `feedback/page.tsx:149` all build `${API_URL}/submissions/${id}/pdf?token=${token}`. Bearer tokens land in access logs, proxy logs, browser history, and `Referer` headers on any outbound link. **Phase 1, not Phase 5** — the fix is a short-lived signed download URL or POST-and-stream, which is a backend contract change; leaving it to the frontend rewrite means the rewrite inherits it. Log-side mitigated (see `log_redaction.py`), but redaction is a backstop, not the fix. |
 | D6 no CI | FIXED, hardened in Phase 0 |
 | D7 verification thresholds | **PRESENT.** Absolute marks, unreachable `conf_diff` branch. Phase 4.3. |
 | D8/D9 heuristics | **PRESENT.** In the scoring path. Phase 2.5 / Track C5. |
