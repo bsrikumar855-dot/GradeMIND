@@ -2,8 +2,13 @@
 
 **Branch:** `prod/phase-0-containment`
 **Base:** `2e12467` (tip of `origin/post-round2-dev`)
-**Commits:** `5aafa6e` (audit) · `8773feb` (audit correction) · `da1b32c` (Phase 0)
-**Status:** items 1.1–1.8 complete. Item 1.9 (history rewrite) documented, **not executed**, awaiting approval.
+**Commits:** `5aafa6e` (audit) · `8773feb` (audit correction) · `da1b32c` (Phase 0) ·
+`d429465` (report) · `e147c18` (CLAUDE.md) · **A1** (this update)
+**Status:** items 1.1–1.8 complete, **A1 complete**. Item 1.9 (history rewrite) documented,
+**not executed**, gated on a per-session approval line.
+
+> **Sequencing changed:** A1 → A2 → **A4** → A3. A4 rewrites every commit hash, so it runs while
+> exactly one branch exists rather than after Track B and Track C spawn five more. See `CLAUDE.md`.
 
 ---
 
@@ -37,16 +42,18 @@ done.
 | Gate | Tier | Result |
 |---|---|---|
 | 0(a) no shell-exec surface in `frontend/src/**` | LOCALLY-VERIFIED | PASS |
-| 0(b) container builds + imports every module | CI-VERIFIED | pending run |
-| 0(c) embedding service raises on unloadable model | CI-VERIFIED | pending run |
+| 0(b) container builds + imports every module | CI-VERIFIED | **pending run — no URL yet** |
+| 0(c) embedding service raises on unloadable model | CI-VERIFIED | **pending run — no URL yet** |
 | 0(d) pre-commit hook blocks | LOCALLY-VERIFIED | PASS (5 rules) |
-| 0(e) upload cap without buffering | **PARTIAL** — unit-level LOCALLY-VERIFIED; RSS/disk probe CI-VERIFIED | see §3 |
-| 0(f) CI green on clean clone | CI-VERIFIED | pending run |
+| 0(e) upload cap without buffering | **PARTIAL** — control unit-tested LOCALLY-VERIFIED; probe written, NOT RUN | §3, §2 |
+| 0(f) CI green on clean clone | CI-VERIFIED | **pending run — no URL yet** |
+| `ENVIRONMENT` triple-gate (A1) | LOCALLY-VERIFIED | PASS — 27/27, exhaustive matrix |
 | ruff | LOCALLY-VERIFIED | PASS (scoped — §3) |
 | mypy | LOCALLY-VERIFIED | PASS (scoped — §3) |
 | compose duplicate-key lint | LOCALLY-VERIFIED | PASS |
 | self-skipping-test ratchet | LOCALLY-VERIFIED | PASS |
-| backend test suite | **NOT RE-RUN after final edits** | see §4 |
+| backend test suite | LOCALLY-VERIFIED | **164 passed, 0 failed** |
+| AI test suite | LOCALLY-VERIFIED | **167 passed, 6 skipped (baselined)** |
 
 ---
 
@@ -132,6 +139,56 @@ $ pytest backend/tests/test_log_redaction.py -q
 10 passed in 0.10s
 ```
 
+### A1 item 1 — `ENVIRONMENT` triple-gate
+
+```
+$ pytest backend/tests/test_environment_gate.py -q
+...........................                                              [100%]
+27 passed in 0.11s
+```
+
+Exhaustive: all 16 combinations of `AUTH_ENABLED` × `DEBUG` × `ENVIRONMENT`,
+plus a test that *counts* the accepted bypass combinations and asserts there is
+exactly one — so loosening `and` to `or` fails even if someone updates the
+expectation helper to match.
+
+The gate fires at `Settings` construction, i.e. import time. Verified
+incidentally and forcefully: this machine's `backend/.env` carries
+`AUTH_ENABLED=false` with `DEBUG=True` and no `ENVIRONMENT`, and the backend
+now **refuses to start**:
+
+```
+app.core.config.AuthBypassNotPermitted: AUTH_ENABLED=False is only permitted for
+local development, and requires DEBUG=True and ENVIRONMENT=local at the same time.
+Unmet: ENVIRONMENT="local". (ENVIRONMENT=production, DEBUG=True).
+```
+
+That is the gate working as designed, and it is an action item — see §9.
+
+`MVP_ANONYMOUS_USER_ID` is removed. Its replacement, `get_local_dev_user()`,
+generates a per-process UUID rather than a fixed sentinel, so audit rows from
+different local runs are distinguishable.
+
+### A1 item 2 — Gate 0(e) probe
+
+`scripts/probe_upload_limit.py` written. **Not yet run** — it needs a live
+server, so it is CI-VERIFIED work pending A2.
+
+It asserts **peak temp-disk footprint as well as peak RSS**, on an interval
+sampler, because an RSS-only assertion certifies the wrong thing: Starlette's
+`max_part_size` check sits under `if self._current_part.file is None:` and so
+does not bound *file* parts, which spill to an uncapped `SpooledTemporaryFile`.
+An implementation that streams 2 GB to disk keeps RSS flat and passes an
+RSS-only gate.
+
+Three cases: `honest` Content-Length, `understated` Content-Length (header
+check passes, counter must catch it), and `chunked` with no Content-Length at
+all (header check never fires).
+
+It also warns if the temp filesystem has less free space than the probe size —
+otherwise a buffering implementation could hit `ENOSPC` before the assertion
+fires, which would read as a pass.
+
 ### De-skipped OR test
 
 ```
@@ -201,27 +258,43 @@ Linux/3.12 container. It must be generated in CI or on a Linux host —
 
 ---
 
-## 4. Test suite — stated precisely
+## 4. Test suite — current
 
-The last **full** backend run was before the final edits:
-
-```
-1 failed, 120 passed, 4 warnings in 174.98s
-FAILED tests/test_submissions.py::TestFileValidation::test_reject_oversized_file
-  assert 413 == 400
-```
-
-That failure *was* the D12 fix working — the cap now returns 413, which is the
-correct status. The assertion was updated, and the affected file re-run:
+**LOCALLY-VERIFIED.** Full backend suite, re-run after all Phase 0 and A1 edits:
 
 ```
-$ pytest backend/tests/test_submissions.py -q     # after the 413 fix
-19 passed
+$ PYTHONPATH=. DATABASE_URL="sqlite:///./ci_test.db" SECRET_KEY="ci-test-secret-key" \
+  AUTH_ENABLED="True" ENVIRONMENT="ci" pytest backend/tests/ -q
+........................................................................ [ 43%]
+........................................................................ [ 87%]
+........................                                                 [100%]
+164 passed, 4 warnings in 164.03s (0:02:44)
 ```
 
-**The full suite has not been re-run since the log-redaction and body-limit
-work landed.** Targeted files pass (§2). CI job `test` settles it. Do not read
-"120 passed" as a current number.
+AI suite:
+
+```
+$ PYTHONPATH=. pytest AI/tests/ -q
+167 passed, 6 skipped, 4 warnings in 62.70s (0:01:02)
+```
+
+**331 passed, 0 failed, 6 skipped.** The 6 skips are the baselined optional-engine
+guards (`scripts/self_skipping_tests_baseline.txt`), not new.
+
+The previously reported "120 passed / 1 failed" is superseded and must not be
+carried forward. That single failure was the D12 fix working — the cap returns
+413 where the old test expected 400 — and the assertion was corrected.
+
+### Known warning, not fixed
+
+```
+AI/evaluation/embeddings.py:199: FutureWarning: The `get_sentence_embedding_dimension`
+method has been renamed to `get_embedding_dimension`.
+```
+
+Deliberately left. `sentence-transformers` is pinned at `3.3.1` where the old
+name still works; changing it now would silently break anyone on an older pin.
+Fold into the Phase 2 work that touches this module.
 
 ---
 
@@ -261,7 +334,7 @@ were removed from the index without being committed.
 | Gate 0(e) probe | §3 — must assert peak disk as well as peak RSS. |
 | `mypy --strict` on all of `AI/` | Ratcheting from one module. |
 | Upstream body cap | Not in this repo; needs an owner. |
-| `ENVIRONMENT` triple-gate | Audit item 0.6 — `AUTH_ENABLED` defaults `True`, but the `AUTH_ENABLED=False` + `DEBUG=True` + `ENVIRONMENT=local` requirement is **not built**; no `ENVIRONMENT` setting exists. **Outstanding.** |
+| ~~`ENVIRONMENT` triple-gate~~ | **DONE in A1.** 27 tests, exhaustive matrix. |
 
 ---
 
@@ -286,3 +359,28 @@ the reflog, and restored with `git reset --soft 8773feb`; the remote had never
 lost it. No content lost. Recorded because a cleanup step that assumes its
 preceding command succeeded is the same class of defect as the duplicate-key
 merge this phase added a hook for.
+
+---
+
+## 9. Action item for the repository owner
+
+**Your `backend/.env` will no longer start the backend.** It carries
+`AUTH_ENABLED=false` and `DEBUG=True` with no `ENVIRONMENT`, which now defaults
+to `production` — so the triple gate refuses to construct `Settings`.
+
+This is the gate doing exactly what it was asked to do, and it is worth pausing
+on: that file has been running with **authorization disabled and no
+environment marker**, which means every request was served as an anonymous
+ADMIN with nothing in the configuration recording that this was meant to be a
+local-only state.
+
+One line fixes it:
+
+```
+ENVIRONMENT=local
+```
+
+`backend/.env` is untracked and holds secrets, so it has not been edited here.
+
+The same variable was added to `backend/.env.example`, `.env.example`, and
+`docker-compose.yml` (defaulting to `production` in both non-local places).

@@ -10,3 +10,7 @@ pytest-cov==6.0.0
 ruff==0.8.4
 mypy==1.14.0
 types-PyYAML==6.0.12.20241230
+
+# scripts/probe_upload_limit.py — samples the server's RSS and the temp-dir
+# footprint during an oversized upload (Gate 0(e)).
+psutil==7.2.2
