@@ -8,6 +8,7 @@ filenames as interpolated args.
 """
 
 import logging
+import secrets
 
 import pytest
 
@@ -109,6 +110,115 @@ def test_jwt_is_redacted_wherever_it_appears(captured, label, message):
 
     assert JWT not in records[0], f"{label}: {records[0]}"
     assert "abc123signature" not in records[0], f"{label}: signature leaked"
+
+
+def test_opaque_refresh_token_is_redacted(captured):
+    """Format-independence: a non-JWT token must still be redacted.
+
+    `create_refresh_token` issues a JWT today, so the `eyJ` anchor catches it.
+    But `RefreshToken` stores a `token_hash`, so nothing structurally prevents
+    a switch to opaque random tokens — and on that day an `eyJ`-anchored rule
+    would silently stop matching and the filter would fail open.
+
+    This test is the guard against that change landing unnoticed. It does not
+    reference JWT structure at all.
+    """
+    logger, records = captured
+    opaque = secrets.token_urlsafe(48)
+
+    logger.info("POST /auth/refresh?refresh_token=%s", opaque)
+
+    assert opaque not in records[0], records[0]
+
+
+@pytest.mark.parametrize(
+    "template",
+    [
+        "POST /auth/refresh?refresh_token={t}",
+        "GET /download/{t}/file.pdf",
+        "GET /x?parameter_nobody_anticipated={t}",
+    ],
+)
+def test_opaque_secret_redacted_in_every_position(captured, template):
+    logger, records = captured
+    opaque = secrets.token_urlsafe(48)
+
+    logger.info("%s", template.format(t=opaque))
+
+    assert opaque not in records[0], records[0]
+
+
+def test_bare_opaque_token_in_free_text_is_a_known_limitation(captured):
+    """Documents a deliberate gap, so it is a decision rather than an oversight.
+
+    The secret heuristic is scoped to query-parameter values and path segments.
+    Extending it to bare whitespace-delimited text was tried and rejected: it
+    redacts `sentence-transformers/all-MiniLM-L6-v2` (38 chars, mixed case,
+    digits), which is the embedding model name Phase 2.6 requires on every
+    evaluation record for reproducibility. Losing provenance to protect
+    against a token that should not be logged bare in the first place is the
+    wrong trade.
+
+    A bare JWT is still caught by the structural rule. A bare *opaque* token
+    is not. The defence there is not logging it — redaction is a backstop.
+    """
+    logger, records = captured
+    opaque = secrets.token_urlsafe(48)
+
+    logger.info("issuing %s to caller", opaque)
+
+    assert opaque in records[0], (
+        "Bare opaque tokens are now redacted — if that was intentional, "
+        "check that model names and provenance strings still survive "
+        "(test_provenance_strings_survive) and update this test."
+    )
+
+
+@pytest.mark.parametrize(
+    "provenance",
+    [
+        "sentence-transformers/all-MiniLM-L6-v2",
+        "BAAI/bge-large-en-v1.5",
+        "GradeMIND-Backend-v1.0.0-rc2-build20260813",
+    ],
+)
+def test_provenance_strings_survive(captured, provenance):
+    """Model names and versions are required on every evaluation record.
+
+    Phase 2.6 makes a stored result reproducible from its recorded versions.
+    A redaction rule that eats the model name breaks that, silently.
+    """
+    logger, records = captured
+    logger.info("evaluation model=%s", provenance)
+
+    assert provenance in records[0], f"provenance redacted: {records[0]}"
+
+
+def test_uuids_are_preserved(captured):
+    """Deliberate non-redaction — this is a calibration decision, not a gap.
+
+    Submission and exam ids are UUIDs and appear in nearly every log line.
+    Redacting them would make logs useless for tracing a request, which is
+    the thing logs exist for. A UUID is lowercase hex plus dashes; the
+    secret heuristic requires mixed case and a digit, which separates the
+    two without a tunable entropy threshold.
+    """
+    logger, records = captured
+    submission_id = "3c1e31a4-1c73-48e0-9212-3028c5a3829b"
+
+    logger.info("GET /submissions/%s/pdf 200", submission_id)
+
+    assert submission_id in records[0], "traceability lost: UUID was redacted"
+
+
+def test_hex_digest_is_preserved(captured):
+    """Same reasoning: a sha is not a credential and is useful in logs."""
+    logger, records = captured
+    digest = "a3f5c9e1b7d2486fa3f5c9e1b7d2486fa3f5c9e1"
+
+    logger.info("page_sha256=%s cached", digest)
+
+    assert digest in records[0]
 
 
 def test_non_credential_query_params_survive(captured):

@@ -71,10 +71,76 @@ _PATTERNS: List[Tuple[Pattern[str], str]] = [
 ]
 
 
+# ---------------------------------------------------------------------------
+# Format-independent secret detection
+# ---------------------------------------------------------------------------
+#
+# The JWT rule above is anchored on `eyJ`, which every JWT header produces.
+# That is still a rule tied to the current implementation rather than to the
+# property being defended — the same defect as matching parameter names.
+# `create_refresh_token` happens to issue a JWT today, but `RefreshToken`
+# stores a `token_hash`, so nothing structurally prevents a move to opaque
+# random refresh tokens. The day that happens, `eyJ`-anchoring silently stops
+# matching and the filter fails open.
+#
+# So: redact anything that *looks like a secret by construction* — long and
+# high-entropy — wherever it appears in a query-parameter value or a path
+# segment, regardless of format.
+#
+# Calibrated to exclude UUIDs deliberately. Submission and exam ids are UUIDs
+# and appear in nearly every log line; redacting them would make logs useless
+# for tracing a request. A UUID is lowercase hex plus dashes — 16 symbols, no
+# uppercase. A base64url token draws on 64 symbols and mixes case. Requiring
+# mixed case plus a digit separates them cleanly without needing a float
+# entropy threshold that would need its own calibration.
+
+# Scope: query-parameter values and path segments only, NOT bare text.
+#
+# Extending it to bare whitespace-delimited strings was tried and rejected.
+# `sentence-transformers/all-MiniLM-L6-v2` is 38 characters with mixed case and
+# digits, so it trips every secret test above — and it is the embedding model
+# name that Phase 2.6 requires on every evaluation record for reproducibility.
+# Redacting provenance to defend against a token that should not be logged bare
+# in the first place is the wrong trade.
+#
+# Consequence, recorded rather than hidden: a bare *opaque* token in a log
+# message is not redacted. A bare JWT still is, via the structural rule above.
+# `backend/tests/test_log_redaction.py` pins both behaviours so the limit is a
+# decision someone revisits, not a hole someone discovers.
+MIN_SECRET_LENGTH = 32
+
+
+def _looks_like_secret(value: str) -> bool:
+    if len(value) < MIN_SECRET_LENGTH:
+        return False
+    if not any(c.isupper() for c in value):
+        return False  # excludes lowercase-hex UUIDs and hex digests
+    if not any(c.islower() for c in value):
+        return False
+    if not any(c.isdigit() for c in value):
+        return False
+    # Reject prose: a secret has no spaces, and few non-token characters.
+    return all(c.isalnum() or c in "-_.=+/" for c in value)
+
+
+_QUERY_VALUE = re.compile(r"([?&][A-Za-z0-9_.\-]+=)([^&\s]+)")
+_PATH_SEGMENT = re.compile(r"(/)([^/\s?&#]+)")
+
+
+def _redact_if_secret(match: "re.Match[str]") -> str:
+    prefix, value = match.group(1), match.group(2)
+    return prefix + REDACTED if _looks_like_secret(value) else match.group(0)
+
+
 def redact(text: str) -> str:
     """Apply every redaction pattern to a string."""
     for pattern, replacement in _PATTERNS:
         text = pattern.sub(replacement, text)
+
+    # Format-independent pass, after the named rules so their more precise
+    # replacements win where both apply.
+    text = _QUERY_VALUE.sub(_redact_if_secret, text)
+    text = _PATH_SEGMENT.sub(_redact_if_secret, text)
     return text
 
 

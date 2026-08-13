@@ -95,6 +95,32 @@ are logged out. Schedule it accordingly, and tell people.
       verification), scope it to `actions: read` on this repository only, keep
       it in the environment, and never in the tree
 
+### Vercel deployment cleanup — tracked, not remembered
+
+The project has **205 deployments** (owner-observed in the Vercel dashboard).
+Vercel keeps every past deployment reachable at its own immutable
+`grade-mind-<hash>.vercel.app` URL indefinitely unless deleted. Any deployment
+built from a commit **before `1090c1f`** still contains
+`frontend/src/app/api/run-cmd/route.ts`.
+
+**Severity: hygiene, not emergency.** The route hardcodes
+`cwd: 'd:\GradeMIND\frontend'`, which does not exist on a Linux host, so
+`child_process.exec` raises ENOENT before running the command and the endpoint
+returns a 500 rather than executing. Verified by reproduction — see
+`docs/phases/PHASE_0_REPORT.md`. It is a working RCE only on a Windows host.
+
+Leaving an unknown number of public URLs each carrying a shell-exec route is
+still not a state to leave things in.
+
+- [ ] Identify which of the 205 deployments predate `1090c1f`
+- [ ] Delete those, keeping whatever is needed for the competition record
+- [ ] Enable auto-delete for preview deployments so this does not re-accumulate
+- [ ] Check function logs for requests to `/api/run-cmd`. A hit means someone
+      probed; given the ENOENT behaviour it does **not** mean they got
+      anything. Evidence of attempted access, not of exfiltration.
+- [ ] Confirm the project's production branch is `main` (it builds the default
+      branch unless configured otherwise)
+
 ### Developer machines
 
 - [ ] Every collaborator deletes stale `.env` files containing old secrets
