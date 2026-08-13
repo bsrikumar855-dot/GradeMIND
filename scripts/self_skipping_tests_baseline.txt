@@ -1,0 +1,29 @@
+# Known suppressed tests. This list may shrink, never grow —
+# a new entry fails CI. Remove a line by making the test assert,
+# fixing what it caught, or deleting it.
+#
+# Two kinds, counted separately because they mean different things:
+#
+#   skip:   does not run at all. Nothing is verified.
+#   xfail:  runs, is expected to fail, and with strict=True fails
+#           the build if it ever passes. A declared defect with a
+#           reason attached, not a hidden one.
+#
+# BOTH counts target zero by end of Track C. The xfails document
+# defects in a scoring path that Track C REPLACES — they are not
+# fixed, they are rewritten against value-point scoring. An xfail
+# that outlives the code it documents is a skip with better manners.
+#
+# Current: 6 skip, 6 xfail. Target: 0 / 0 by end of Track C.
+skip:AI/tests/test_ocr_benchmark.py::test_content_type_classifier_printed
+skip:AI/tests/test_ocr_benchmark.py::test_preprocessing_pipeline_runs
+skip:AI/tests/test_ocr_pipeline_cli.py::test_adaptive_threshold_produces_binary_output
+skip:AI/tests/test_ocr_pipeline_cli.py::test_full_pipeline_real_engine_returns_nonempty_text
+skip:AI/tests/test_ocr_pipeline_cli.py::test_preprocess_for_engine_binarize_flag_changes_output
+skip:AI/tests/test_ocr_pipeline_cli.py::test_preprocess_for_engine_unknown_falls_back_to_tesseract_profile
+xfail:AI/tests/test_semantic_engine.py::test_exact_match
+xfail:AI/tests/test_semantic_engine.py::test_long_answer
+xfail:AI/tests/test_semantic_engine.py::test_ocr_noisy_text
+xfail:AI/tests/test_semantic_engine.py::test_real_integration_run_if_installed
+xfail:AI/tests/test_semantic_engine.py::test_strong_paraphrase
+xfail:AI/tests/test_semantic_engine.py::test_unrelated_answer

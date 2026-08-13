@@ -91,6 +91,14 @@ async def upload_submission(
         student_roll_number,
         file.filename,
     )
+
+    # Reject on the declared body size before request.form() ingests it.
+    # This is the only point in the handler where the body has not already
+    # been consumed — by the time FastAPI has populated `file`, the multipart
+    # parser has read it. Content-Length is client-supplied and advisory; the
+    # authoritative limit is enforced per-chunk during streaming below.
+    _reject_oversized_body(request)
+
     form = await request.form()
     raw_uploads = {
         key: value
@@ -118,16 +126,9 @@ async def upload_submission(
         getattr(resolved_answer_key, "filename", None),
     )
 
-    # Read file content
-    file_content = await file.read()
-    logger.info(
-        "UPLOAD_STAGE file_read filename=%s bytes=%s",
-        file.filename,
-        len(file_content),
-    )
-
-    # Validate file
-    validation_error = storage_service.validate_file(file.filename, len(file_content))
+    # Extension check only. The size limit is enforced while streaming to
+    # disk, not by buffering the file and measuring it.
+    validation_error = storage_service.validate_filename(file.filename)
     if validation_error:
         logger.warning("UPLOAD_STAGE validation_failed filename=%s error=%s", file.filename, validation_error)
         raise HTTPException(
@@ -182,8 +183,14 @@ async def upload_submission(
             exam_id=exam_id,
             student_name=student_name,
             student_roll_number=student_roll_number,
-            file_content=file_content,
+            upload=file,
             original_filename=file.filename
+        )
+    except storage_service.UploadTooLarge as e:
+        logger.warning("UPLOAD_STAGE too_large filename=%s", file.filename)
+        raise HTTPException(
+            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+            detail=str(e)
         )
     except ValueError as e:
         logger.exception("UPLOAD_STAGE create_submission_failed exam_id=%s", exam_id)
@@ -228,6 +235,32 @@ def _find_named_upload(raw_uploads: dict, needles: tuple[str, ...]) -> Optional[
     return None
 
 
+def _reject_oversized_body(request: Request) -> None:
+    """Reject a request whose declared body size already exceeds the cap.
+
+    Advisory check against a client-supplied header, run before the multipart
+    parser touches the body. It cannot be trusted on its own — a client may
+    omit or understate Content-Length — which is why stream_upload_to_file()
+    counts bytes as it writes.
+    """
+    declared = request.headers.get("content-length")
+    if declared is None:
+        return
+    try:
+        declared_bytes = int(declared)
+    except ValueError:
+        return
+
+    if storage_service.declared_size_exceeds_limit(declared_bytes):
+        raise HTTPException(
+            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+            detail=(
+                "Request body exceeds the maximum allowed upload size of "
+                f"{storage_service.MAX_FILE_SIZE_BYTES // (1024 * 1024)} MB."
+            ),
+        )
+
+
 async def _persist_optional_exam_file(
     service: SubmissionService,
     exam_id: UUID,
@@ -238,9 +271,8 @@ async def _persist_optional_exam_file(
     if upload is None or not upload.filename:
         return
 
-    content = await upload.read()
     allowed_extensions = ANSWER_KEY_EXTENSIONS if path_attr == "answer_key_url" else QUESTION_PAPER_EXTENSIONS
-    validation_error = _validate_exam_source_upload(upload.filename, len(content), allowed_extensions)
+    validation_error = _validate_exam_source_upload(upload.filename, allowed_extensions)
     if validation_error:
         raise ValueError(validation_error)
 
@@ -250,7 +282,10 @@ async def _persist_optional_exam_file(
         identifier=category.rstrip("s"),
         original_filename=upload.filename,
     )
-    await storage_service.save_file(content, file_path)
+    try:
+        await storage_service.stream_upload_to_file(upload, file_path)
+    except storage_service.UploadTooLarge as exc:
+        raise ValueError(str(exc)) from exc
 
     exam = service.db.query(Exam).filter(Exam.id == exam_id).first()
     if not exam:
@@ -274,19 +309,15 @@ async def _persist_optional_exam_file(
 
 def _validate_exam_source_upload(
     filename: str,
-    file_size: int,
     allowed_extensions: set[str],
 ) -> Optional[str]:
+    """Extension check only — size is enforced during streaming (D12)."""
     if not filename:
         return "Filename is empty."
 
     ext = os.path.splitext(filename)[1].lower()
     if ext not in allowed_extensions:
         return f"File type '{ext}' is not allowed. Allowed types: {', '.join(sorted(allowed_extensions))}"
-
-    if file_size > storage_service.MAX_FILE_SIZE_BYTES:
-        size_mb = file_size / (1024 * 1024)
-        return f"File size ({size_mb:.1f} MB) exceeds the maximum allowed size of 20 MB."
 
     return None
 

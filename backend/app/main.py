@@ -4,8 +4,11 @@ import logging
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from app.core.body_limit import BodySizeLimitMiddleware
 from app.core.config import settings, get_cors_allowed_origins
+from app.core.log_redaction import install_pii_redaction
 from app.core.database import check_database_connection, init_db, is_sqlite_database
+from app.services import storage_service
 
 from app.api.health import router as health_router
 from app.api.auth import router as auth_router
@@ -21,6 +24,12 @@ from app.middleware.auth import JWTAuthMiddleware
 from app.middleware.exceptions import register_exception_handlers
 
 logger = logging.getLogger("GradeMIND.Startup")
+
+# Installed at import time, before any request is served, so no log line can be
+# emitted before the filter is attached. This is a backstop: the primary rule
+# is still not to pass student identity into a log call. See
+# app/core/log_redaction.py.
+install_pii_redaction()
 
 
 @asynccontextmanager
@@ -71,12 +80,20 @@ app = FastAPI(
 app.add_middleware(JWTAuthMiddleware)
 app.add_middleware(LoggingMiddleware)
 
+# Body cap, registered inside CORS so that a 413 still carries CORS headers and
+# a browser client can read the error instead of seeing an opaque failure.
+# This is the authoritative upload limit: Content-Length is advisory and
+# Starlette's max_part_size does not bound file parts. See core/body_limit.py.
+app.add_middleware(
+    BodySizeLimitMiddleware,
+    max_body_bytes=storage_service.MAX_FILE_SIZE_BYTES,
+)
+
 # CORS middleware — must be registered AFTER other middlewares so it executes FIRST
 # (Starlette processes middlewares in reverse registration order)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=get_cors_allowed_origins(),
-    allow_origin_regex=settings.CORS_ALLOWED_ORIGIN_REGEX,
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allow_headers=["Authorization", "Content-Type", "Accept", "Origin", "X-Requested-With"],

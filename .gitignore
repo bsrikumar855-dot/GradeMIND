@@ -9,6 +9,8 @@ node_modules/
 .next-prod/
 out/
 build/
+*.pack
+*.pack.old
 frontend/build-log.txt
 frontend_backup/
 
@@ -43,6 +45,17 @@ venv/
 
 # Database
 *.db
+
+# Root-anchored artefacts.
+#
+# The rules below are anchored to backend/, but tooling run from the repo root
+# writes to root-relative paths — backend/e2e_qa_test.py used
+# Path("storage/test_answer_sheet.png"), which lands at ./storage/ and matches
+# none of them. Both files reached the index that way.
+# See docs/audit/BASELINE_AUDIT.md N2.
+/storage/
+/e2e_results.json
+/tmp/
 
 # Storage (keep directory markers, ignore actual uploaded content)
 backend/storage/*

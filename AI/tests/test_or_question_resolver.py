@@ -308,17 +308,21 @@ class TestResolveOrQuestion:
         questions = parse_questions_with_or(qp_text, total_marks=5.0)
         student_ans = "Kolmogorov turbulence energy spectrum eddies cascade inertial subrange."
         entry = questions["question_1"]
-        # Even with inline OR, should still detect and split
-        if entry["or_group"] is not None:
-            resolved_text, chosen_label, _ = resolve_or_question(
-                q_id="question_1",
-                question_info=entry,
-                student_answer=student_ans,
-            )
-            assert "Kolmogorov" in resolved_text
-        else:
-            # Inline OR was normalised away — acceptable fallback
-            pytest.skip("Inline OR not detected in normalised text; acceptable for OCR noise case")
+
+        # Inline OR must be detected and split. This previously sat behind an
+        # `if entry["or_group"] is not None:` whose else-branch called
+        # pytest.skip("acceptable fallback") — so a failure to detect the OR
+        # group reported as a skip rather than a failure. The branch was also
+        # dead: this input does produce an or_group. Asserted directly now.
+        assert entry["or_group"] is not None, "inline OR was not detected"
+
+        resolved_text, chosen_label, _ = resolve_or_question(
+            q_id="question_1",
+            question_info=entry,
+            student_answer=student_ans,
+        )
+        assert "Kolmogorov" in resolved_text
+        assert chosen_label == "question_1_optB"
 
     def test_second_option_only_answered_not_penalized(self):
         """

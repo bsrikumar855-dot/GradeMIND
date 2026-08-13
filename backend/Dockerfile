@@ -18,9 +18,15 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # Set working directory
 WORKDIR /app
 
-# Copy requirements and install
-COPY backend/requirements.txt ./backend/
-RUN pip install --no-cache-dir -r backend/requirements.txt
+# Copy requirements and install.
+#
+# base + ai, not base alone: sentence-transformers and reportlab are imported
+# at runtime by the scoring and reporting paths. Installing only the core set
+# produced a container that built cleanly and failed on first evaluation.
+# requirements/htr.txt is excluded on purpose — it pulls PyTorch and is
+# installed only in the GPU worker image.
+COPY requirements/ ./requirements/
+RUN pip install --no-cache-dir -r requirements/base.txt -r requirements/ai.txt
 
 # Copy source code
 COPY backend/ ./backend/

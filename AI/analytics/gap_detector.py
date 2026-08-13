@@ -4,7 +4,7 @@ Analyzes missing concepts to isolate student learning gaps and severities.
 """
 
 import logging
-from typing import List, Dict, Set
+from typing import List, Dict, Set, Tuple
 from AI.schemas.evaluation_schema import QuestionEvaluation, KnowledgeGap
 
 logger = logging.getLogger("GradeMIND.GapDetector")

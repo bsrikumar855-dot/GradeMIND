@@ -1,0 +1,25 @@
+# GradeMIND — handwriting/OCR engine profile (optional, multi-gigabyte).
+#
+# Baseline printed-text OCR comes from pytesseract plus the system
+# tesseract-ocr binary (see requirements/base.txt notes and backend/README.md).
+# This profile adds the heavier engines used for handwritten answer sheets.
+#
+# Pulls PyTorch and downloads model weights on first use. Not installed in CI:
+# the modules that need these degrade to an explicit unavailable-engine error,
+# they do not silently score.
+#
+# Phase 3 (Spec Amendment A) replaces the engine selection here with a
+# config-driven HTRProvider interface and pins CUDA/driver/torch versions
+# explicitly, because a quantised model on a different CUDA pairing is a
+# different model for reproducibility purposes.
+#
+# Install:  pip install -r requirements/base.txt -r requirements/ai.txt -r requirements/htr.txt
+
+-r ai.txt
+
+pytesseract==0.3.13
+easyocr==1.7.2
+paddleocr==2.9.1
+paddlepaddle==2.6.2
+torch==2.5.1
+transformers==4.47.1

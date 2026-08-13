@@ -101,6 +101,103 @@ def generate_file_path(
     return os.path.join(exam_dir, filename)
 
 
+class UploadTooLarge(Exception):
+    """An upload exceeded MAX_FILE_SIZE_BYTES.
+
+    Carries the number of bytes actually observed. When the limit is hit
+    mid-stream this is the count at the point of abort, not the true size —
+    the whole point is that we stop reading rather than find out.
+    """
+
+    def __init__(self, observed_bytes: int, limit_bytes: int = MAX_FILE_SIZE_BYTES):
+        self.observed_bytes = observed_bytes
+        self.limit_bytes = limit_bytes
+        super().__init__(
+            f"Upload exceeds the maximum allowed size of "
+            f"{limit_bytes / (1024 * 1024):.0f} MB."
+        )
+
+
+def validate_filename(
+    filename: str, allowed_extensions: Optional[set] = None
+) -> Optional[str]:
+    """Extension/name check only — no size component.
+
+    Split out from validate_file() so it can run *before* any bytes are read.
+    """
+    allowed = allowed_extensions if allowed_extensions is not None else ALLOWED_EXTENSIONS
+
+    if not filename:
+        return "Filename is empty."
+
+    ext = os.path.splitext(filename)[1].lower()
+    if ext not in allowed:
+        return f"File type '{ext}' is not allowed. Allowed types: {', '.join(sorted(allowed))}"
+
+    return None
+
+
+def declared_size_exceeds_limit(content_length: Optional[int]) -> bool:
+    """Check a client-declared Content-Length against the cap.
+
+    Advisory only: Content-Length is client-supplied and may be absent, wrong,
+    or a lie. It is a cheap way to reject an oversized upload before reading a
+    single byte; stream_upload_to_file() is what actually enforces the limit.
+    """
+    return content_length is not None and content_length > MAX_FILE_SIZE_BYTES
+
+
+async def stream_upload_to_file(
+    upload,
+    destination_path: str,
+    max_bytes: int = MAX_FILE_SIZE_BYTES,
+    chunk_size: int = 1024 * 1024,
+) -> int:
+    """Stream an UploadFile to disk, aborting past the cap.
+
+    Peak memory is one chunk, not one file. Previously every upload path did
+    ``content = await file.read()`` and *then* checked the length, so a client
+    could force the process to buffer an arbitrarily large body before it was
+    rejected (D12). A partial file is removed on abort.
+
+    Returns the number of bytes written. Raises UploadTooLarge if the stream
+    exceeds max_bytes.
+    """
+    os.makedirs(os.path.dirname(destination_path), exist_ok=True)
+
+    written = 0
+    try:
+        with open(destination_path, "wb") as out:
+            while True:
+                chunk = await upload.read(chunk_size)
+                if not chunk:
+                    break
+
+                written += len(chunk)
+                if written > max_bytes:
+                    raise UploadTooLarge(observed_bytes=written, limit_bytes=max_bytes)
+
+                out.write(chunk)
+    except BaseException:
+        # Includes UploadTooLarge and client disconnects. Never leave a partial
+        # file behind for a later stage to treat as a complete answer sheet.
+        _remove_partial(destination_path)
+        raise
+
+    logger.info("File streamed: %s (%d bytes)", destination_path, written)
+    return written
+
+
+def _remove_partial(path: str) -> None:
+    try:
+        if os.path.exists(path):
+            os.remove(path)
+    except OSError:
+        # Losing the cleanup must not mask the original failure, but a stray
+        # partial file is worth knowing about.
+        logger.exception("Failed to remove partial upload: %s", path)
+
+
 async def save_file(file_content: bytes, destination_path: str) -> str:
     """
     Write file content to the designated path on disk.
