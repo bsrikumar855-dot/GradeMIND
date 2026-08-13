@@ -5,11 +5,10 @@ Tracks the full lifecycle: upload → OCR → evaluation → report generation.
 """
 
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 from sqlalchemy import Column, String, Integer, Float, DateTime, ForeignKey, Text
-from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
-from app.core.database import Base
+from app.core.database import Base, GUID
 
 
 class SubmissionStatus:
@@ -29,11 +28,11 @@ class Submission(Base):
     """
     __tablename__ = "submissions"
 
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4, index=True)
 
     # Relationship to Exam
     exam_id = Column(
-        UUID(as_uuid=True),
+        GUID(),
         ForeignKey("exams.id", ondelete="CASCADE"),
         nullable=False,
         index=True
@@ -66,8 +65,13 @@ class Submission(Base):
     error_message = Column(Text, nullable=True)
 
     # Timestamps
-    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
+    updated_at = Column(
+        DateTime,
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+        nullable=False,
+    )
 
     # ORM Relationship
     exam = relationship("Exam", backref="submissions", lazy="joined")

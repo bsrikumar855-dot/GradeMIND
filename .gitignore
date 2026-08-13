@@ -6,8 +6,11 @@ node_modules/
 
 # Frontend build output
 .next/
+.next-prod/
 out/
 build/
+frontend/build-log.txt
+frontend_backup/
 
 # Python
 __pycache__/
@@ -38,8 +41,17 @@ venv/
 # Editors
 .vscode/
 
-# Storage
-backend/storage/
+# Database
+*.db
+
+# Storage (keep directory markers, ignore actual uploaded content)
+backend/storage/*
+!backend/storage/answer_keys/
+!backend/storage/answer_sheets/
+backend/storage/answer_keys/*
+backend/storage/answer_sheets/*
+!backend/storage/answer_keys/.gitkeep
+!backend/storage/answer_sheets/.gitkeep
 
 # Generated reports
 AI/tests/test_pipeline_output.json

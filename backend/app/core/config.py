@@ -17,7 +17,10 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60  # default to 60 minutes
     REFRESH_TOKEN_EXPIRE_DAYS: int = 7
     DEBUG: bool = False
-    AUTH_ENABLED: bool = False
+    # Secure by default. Demo/no-auth mode is an explicit opt-in: set
+    # AUTH_ENABLED=False only for local demos where every request should be
+    # treated as an anonymous admin (see auth_deps.get_mvp_anonymous_user).
+    AUTH_ENABLED: bool = True
     CORS_ALLOWED_ORIGINS: str = (
         "http://localhost:3000,"
         "http://127.0.0.1:3000,"
@@ -26,9 +29,10 @@ class Settings(BaseSettings):
     )
     CORS_ALLOWED_ORIGIN_REGEX: str = r"https://.*\.vercel\.app"
 
-    # Groq API Configuration
-    GROQ_API_KEY: Optional[str] = None
-    GROQ_MODEL: str = "llama3-70b-8192"
+    # Gemini API Configuration (optional secondary/cross-check evaluator;
+    # core grading works with zero LLM keys via the local autonomous evaluator)
+    GEMINI_API_KEY: Optional[str] = None
+    GEMINI_MODEL: str = "gemini-2.5-flash"
 
     @field_validator("DEBUG", mode="before")
     @classmethod

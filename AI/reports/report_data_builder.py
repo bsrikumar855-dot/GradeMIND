@@ -280,6 +280,7 @@ class ReportDataBuilder:
             self._analytics(meta),
             self._teacher_insights(evaluation, improvements),
             self._detailed_feedback(questions),
+            self._latex_learning_analytics(evaluation),
             self._final_summary(meta, strengths, weaknesses, study_topics),
             r"\end{document}",
         ])
@@ -532,13 +533,88 @@ Score {meta['percentage']}\%, AI Confidence {meta['confidence_pct']}\%, Concept 
     def _detailed_feedback(self, questions: List[Any]) -> str:
         cards = []
         for q in questions:
+            detail_lines = []
+            
+            # 1. Rubric/Curriculum Context
+            if getattr(q, "curriculum_context", None):
+                cc = q.curriculum_context
+                detail_lines.append(rf"\textbf{{Curriculum Context}}: Subject: {self._latex_escape(cc.subject or 'N/A')}, Chapter: {self._latex_escape(cc.chapter or 'N/A')}, Topic: {self._latex_escape(cc.topic or 'N/A')}")
+            
+            # 2. Semantic Evaluation
+            if getattr(q, "semantic_evaluation", None):
+                se = q.semantic_evaluation
+                detail_lines.append(rf"\textbf{{Semantic Similarity}}: {se.semantic_similarity * 100:.0f}\% match - {self._latex_escape(se.explanation)}")
+                
+            # 3. Confidence breakdown
+            if getattr(q, "confidence_breakdown", None):
+                cb = q.confidence_breakdown
+                detail_lines.append(rf"\textbf{{Confidence Breakdown}}: OCR: {cb.ocr_confidence*100:.0f}\%, Concept: {cb.concept_coverage_score*100:.0f}\%, Semantic: {cb.semantic_alignment_score*100:.0f}\%, Explainability: {cb.explainability_score*100:.0f}\%, Fairness: {cb.fairness_score*100:.0f}\%")
+                
+            # 4. Explainability evidence
+            if getattr(q, "explainability", None) and q.explainability.evidence:
+                evs = [f"{ev.concept} (Match: {ev.confidence*100:.0f}\\%): \"{ev.matched_text}\"" for ev in q.explainability.evidence]
+                detail_lines.append(rf"\textbf{{Explainability Proofs}}:\\" + r" \\ ".join(self._latex_escape(ev) for ev in evs[:3]))
+                
+            # 5. Gemini evaluation & verification
+            if getattr(q, "gemini_evaluation", None):
+                ge = q.gemini_evaluation
+                detail_lines.append(rf"\textbf{{Gemini Review}}: Score: {ge.score:g}, Confidence: {ge.confidence*100:.0f}\% - {self._latex_escape(ge.reasoning)}")
+                if getattr(q, "verification", None):
+                    ve = q.verification
+                    detail_lines.append(rf"\textbf{{Verification Status}}: {self._latex_escape(ve.status)} - {self._latex_escape(ve.reason)}")
+
+            detail_str = r" \\[2mm] " + r" \\[2mm] ".join(detail_lines) if detail_lines else ""
+
             cards.append(rf"""
 \begin{{gmcard}}{{gmblue}}
 \textbf{{Question {self._latex_escape(str(q.question_number))}}} \hfill {q.score_awarded:g}/{q.max_marks:g}\\
 {self._latex_escape(q.criteria_feedback or 'No detailed feedback available.')}
+{detail_str}
 \end{{gmcard}}
 """)
         return "\\section*{8. Detailed AI Feedback}\n" + ("\n".join(cards) or "No detailed feedback rows available.")
+
+    def _latex_learning_analytics(self, evaluation: SubmissionEvaluation) -> str:
+        analytics = getattr(evaluation, "learning_analytics", None)
+        if not analytics:
+            return ""
+        
+        mastered = analytics.mastered_topics or []
+        weak = analytics.weak_topics or []
+        gaps = analytics.knowledge_gaps or []
+        recs = analytics.recommendations or []
+        
+        mastered_items = self._latex_items(mastered[:8], check=True, empty="No mastered topics detected.")
+        weak_items = self._latex_items(weak[:8], check=False, empty="No critical weak topics detected.")
+        
+        gap_rows = []
+        for gap in gaps[:6]:
+            gap_rows.append(rf"\textbf{{{self._latex_escape(gap.topic)}}}: {self._latex_escape(', '.join(gap.missing_concepts))} ({gap.severity} severity)")
+        gap_items = "\n".join(rf"\item {r}" for r in gap_rows) or r"\item No conceptual gaps detected."
+        
+        rec_items = self._latex_items(recs[:8], bullet='--', empty="No learning recommendations generated.")
+        
+        return rf"""
+\section*{{9. Learning Analytics \& Mastery Gaps}}
+\begin{{multicols}}{{2}}
+\begin{{gmcard}}{{gmgreen}}
+\textbf{{Mastered Topics}}\\
+\begin{{itemize}}{mastered_items}\end{{itemize}}
+\end{{gmcard}}
+\begin{{gmcard}}{{gmred}}
+\textbf{{Topics Needing Practice}}\\
+\begin{{itemize}}{weak_items}\end{{itemize}}
+\end{{gmcard}}
+\end{{multicols}}
+\begin{{gmcard}}{{gmblue}}
+\textbf{{Identified Conceptual Gaps}}\\
+\begin{{itemize}}{gap_items}\end{{itemize}}
+\end{{gmcard}}
+\begin{{gmcard}}{{gmblue}}
+\textbf{{Actionable Study Plan \& Recommendations}}\\
+\begin{{itemize}}{rec_items}\end{{itemize}}
+\end{{gmcard}}
+"""
 
     def _final_summary(self, meta: Dict[str, Any], strengths: List[str], weaknesses: List[str], topics: List[str]) -> str:
         return rf"""

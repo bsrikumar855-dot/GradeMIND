@@ -1,8 +1,7 @@
 from sqlalchemy import Column, String, DateTime, Boolean, ForeignKey
-from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.sql import func
 import uuid
-from app.core.database import Base
+from app.core.database import Base, GUID
 
 
 class RefreshToken(Base):
@@ -11,8 +10,8 @@ class RefreshToken(Base):
     """
     __tablename__ = "refresh_tokens"
 
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
-    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4, index=True)
+    user_id = Column(GUID(), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
     token_hash = Column(String, unique=True, index=True, nullable=False)
     device_info = Column(String, nullable=True)
     ip_address = Column(String, nullable=True)

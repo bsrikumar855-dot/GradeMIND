@@ -35,5 +35,7 @@ RUN mkdir -p storage
 # Expose the port the app runs on
 EXPOSE 8000
 
-# Start the application
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+# Apply Alembic migrations (the schema source of truth for this — a
+# non-SQLite — database; see app/core/database.py and backend/README.md)
+# before starting the server.
+CMD ["sh", "-c", "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000"]

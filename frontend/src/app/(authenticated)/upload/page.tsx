@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
-import { Check, Info } from 'lucide-react';
+import { Check, Info, FileText as FileTextIcon } from 'lucide-react';
 import { ExamService } from '@/services/exam.service';
 import { SubmissionService } from '@/services/submission.service';
 
@@ -13,6 +13,50 @@ interface StudentSheetItem {
   file: File;
   studentName: string;
   studentRollNumber: string;
+}
+
+const isPreviewableImage = (file: File) => file.type.startsWith('image/');
+
+/**
+ * Object-URL preview for a single file. Images get a real thumbnail; PDFs
+ * (and anything else) get a document icon instead, since <embed> previews
+ * for PDFs are heavy and inconsistent across browsers in a small thumbnail.
+ * Revokes its object URL on unmount / file change to avoid leaking memory.
+ */
+function FilePreviewThumb({ file, size = 48 }: { file: File; size?: number }) {
+  const [url, setUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!isPreviewableImage(file)) {
+      setUrl(null);
+      return;
+    }
+    const objectUrl = URL.createObjectURL(file);
+    setUrl(objectUrl);
+    return () => URL.revokeObjectURL(objectUrl);
+  }, [file]);
+
+  if (url) {
+    return (
+      // eslint-disable-next-line @next/next/no-img-element
+      <img
+        src={url}
+        alt={`Preview of ${file.name}`}
+        style={{ width: size, height: size }}
+        className="rounded-lg object-cover border border-gray-200 shrink-0 bg-white"
+      />
+    );
+  }
+
+  return (
+    <div
+      style={{ width: size, height: size }}
+      className="rounded-lg border border-gray-200 bg-brand-background flex items-center justify-center shrink-0"
+      title={file.name}
+    >
+      <FileTextIcon className="w-5 h-5 text-brand-primary" aria-hidden="true" />
+    </div>
+  );
 }
 
 export default function UploadCenter() {
@@ -400,7 +444,10 @@ export default function UploadCenter() {
                         >
                           <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
                         </button>
-                        <div className="text-xs font-medium text-gray-400 truncate max-w-[90%]">File: {item.file.name}</div>
+                        <div className="flex items-center gap-3">
+                          <FilePreviewThumb file={item.file} size={40} />
+                          <div className="text-xs font-medium text-gray-400 truncate max-w-[75%]">File: {item.file.name}</div>
+                        </div>
                         <div className="grid grid-cols-2 gap-3">
                           <div>
                             <label className="text-[10px] font-semibold text-gray-500">Student Name</label>
@@ -429,12 +476,15 @@ export default function UploadCenter() {
 
               {/* Standard previews (Step 1 & 2) */}
               {currentStep < 3 && files[currentStepData.key].length > 0 && (
-                <div className="mt-6 p-4 bg-brand-background rounded-xl border border-gray-100 max-h-32 overflow-y-auto">
+                <div className="mt-6 p-4 bg-brand-background rounded-xl border border-gray-100 max-h-48 overflow-y-auto space-y-2">
                   <div className="text-xs font-bold text-brand-dark mb-2">Uploaded Document</div>
                   {files[currentStepData.key].map((file, idx) => (
-                    <div key={idx} className="flex items-center justify-between py-1 text-xs font-semibold text-brand-dark">
-                      <span className="truncate max-w-[80%]">{file.name}</span>
-                      <button onClick={() => removeFile(currentStepData.key, idx)} className="text-red-500 hover:text-red-700">Delete</button>
+                    <div key={idx} className="flex items-center justify-between gap-3 py-1 text-xs font-semibold text-brand-dark">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <FilePreviewThumb file={file} size={40} />
+                        <span className="truncate">{file.name}</span>
+                      </div>
+                      <button onClick={() => removeFile(currentStepData.key, idx)} className="text-red-500 hover:text-red-700 shrink-0">Delete</button>
                     </div>
                   ))}
                 </div>

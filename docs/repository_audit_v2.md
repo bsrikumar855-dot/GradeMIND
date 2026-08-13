@@ -30,7 +30,7 @@ Below is a complete inventory of all files under `backend/app`, `backend/tests`,
 | `backend/app/api/auth_deps.py` | Dependencies | `PRODUCTION_READY` | Provides current user context and reusable role checker guards. |
 | `backend/app/api/exams.py` | Controller / Router | `NEEDS_INTEGRATION` | API endpoints for Exam CRUD. Uses placeholder dependencies for auth. |
 | `backend/app/api/health.py` | Controller / Router | `PRODUCTION_READY` | Database and API health check endpoint. |
-| `backend/app/core/config.py` | Configuration | `PRODUCTION_READY` | Base settings using Pydantic Settings, including Groq & DB configs. |
+| `backend/app/core/config.py` | Configuration | `PRODUCTION_READY` | Base settings using Pydantic Settings, including Gemini & DB configs. |
 | `backend/app/core/database.py` | Core DB Utility | `PRODUCTION_READY` | Creates engine and session maker. Declares the declarative `Base`. |
 | `backend/app/core/security.py` | Crypto Utility | `PRODUCTION_READY` | Password hashing (bcrypt) and JWT encoding/decoding logic. |
 | `backend/app/db/session.py` | DB Session | `PRODUCTION_READY` | Dependency for injecting SQLAlchemy database sessions. |
@@ -72,10 +72,14 @@ Below is a complete inventory of all files under `backend/app`, `backend/tests`,
 | `AI/schemas/ocr_schema.py` | Validation Schema | `PRODUCTION_READY` | Pydantic schemas for text layout, lines, confidence, and boxes. |
 | `AI/schemas/evaluation_schema.py`| Validation Schema | `PRODUCTION_READY` | Pydantic schemas representing rubric grades, comments, scores. |
 | `AI/understanding/question_understanding.py` | Layout Parser | `PRODUCTION_READY` | Matches OCR coordinates and texts to rubric question entries. |
-| `AI/evaluation/rubric_engine.py` | Rubric Parser | `PRODUCTION_READY` | Resolves student answer alignments against grading rubrics. |
-| `AI/evaluation/scorer.py` | AI Evaluator | `PRODUCTION_READY` | Feeds answers and rubrics to Groq (Llama 70B) for score extraction. |
-| `AI/evaluation/feedback.py` | AI Evaluator | `PRODUCTION_READY` | Feeds context to Groq to generate formative, qualitative feedback. |
-| `AI/evaluation/fairness.py` | AI Evaluator | `PRODUCTION_READY` | Feeds evaluations to Groq to inspect grading for bias or edge-cases. |
+| `AI/evaluation/rubric_engine.py` | Rubric Parser | `PRODUCTION_READY` | Resolves student answer alignments against grading rubrics. Local, no LLM. |
+| `AI/evaluation/scorer.py` | Deterministic Evaluator | `PRODUCTION_READY` | Local score aggregation and confidence calculation. No LLM calls. |
+| `AI/evaluation/feedback.py` | Deterministic Evaluator | `PRODUCTION_READY` | Local, template-based formative feedback generation. No LLM calls. |
+| `AI/evaluation/fairness.py` | Deterministic Evaluator | `PRODUCTION_READY` | Local regex/statistics-based bias, anonymization, and consistency checks. No LLM calls. |
+| `AI/evaluation/gemini_evaluator.py` | Optional LLM Evaluator | `PRODUCTION_READY` | Calls Google Gemini for a secondary, informational score. Skips gracefully when `GEMINI_API_KEY` is unset. The only LLM integration in the codebase. |
+| `AI/evaluation/gemini_prompts.py` | Prompt Template | `PRODUCTION_READY` | Prompt template used by the Gemini evaluator. |
+| `AI/evaluation/gemini_parser.py` | Response Parser | `PRODUCTION_READY` | Robustly parses/validates Gemini's JSON response; never raises. |
+| `AI/evaluation/verification_engine.py` | Safety Layer | `PRODUCTION_READY` | Compares the primary (local) score against the Gemini score to flag disagreements. Never modifies awarded marks. |
 | `AI/reports/report_data_builder.py` | Data Transformer | `PRODUCTION_READY` | Compiles AI scores, OCR sheets, and feedback for report engines. |
 | `AI/tests/test_pipeline.py` | Pipeline Test | `PRODUCTION_READY` | End-to-end integration test validating OCR -> Scorer -> Feedback. |
 | `AI/tests/test_pipeline_output.json` | Mock Output | `PRODUCTION_READY` | Golden dataset for regression tests. |
@@ -116,7 +120,7 @@ As requested, we verified the direct existence and status of the following key f
 Based strictly on the verified files in the current repository state, here are the updated readiness scores:
 
 ### Database & Config: 85%
-*   **Strengths:** Config handles Groq/Postgres keys correctly. Core engine, sessions, and models are fully registered. 
+*   **Strengths:** Config handles Gemini/Postgres keys correctly. Core engine, sessions, and models are fully registered. 
 *   **Weaknesses:** Minor migration risk (duplicate schema creation) needs mitigation.
 
 ### Authentication & Authorization: 95%

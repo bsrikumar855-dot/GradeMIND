@@ -27,6 +27,13 @@ function EvaluationContent() {
   const [isComplete, setIsComplete] = useState(false);
   const [loadError, setLoadError] = useState('');
 
+  // Latest submissions, readable from the poller below without making
+  // `submissions` a dependency of that effect (see comment there).
+  const submissionsRef = React.useRef(submissions);
+  useEffect(() => {
+    submissionsRef.current = submissions;
+  }, [submissions]);
+
   // Parse submission IDs from query
   useEffect(() => {
     if (idsStr) {
@@ -42,13 +49,13 @@ function EvaluationContent() {
 
     const fetchStatuses = async () => {
       try {
-        const nextSubmissions: Record<string, any> = { ...submissions };
+        const nextSubmissions: Record<string, any> = { ...submissionsRef.current };
         let updatedAny = false;
 
         await Promise.all(
           submissionIds.map(async (id) => {
             // Only poll if not already finalized
-            const current = submissions[id];
+            const current = submissionsRef.current[id];
             if (current && (current.status === 'COMPLETED' || current.status === 'FAILED')) {
               return;
             }
@@ -169,7 +176,13 @@ function EvaluationContent() {
       active = false;
       clearInterval(interval);
     };
-  }, [submissionIds, submissions]);
+    // Deliberately NOT depending on `submissions`: this effect calls
+    // setSubmissions itself, so including it would tear down and recreate
+    // the poller (plus fire an immediate extra fetch) on every single poll
+    // response, turning a 2s interval into a request storm. Latest
+    // submissions state is read via submissionsRef instead.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [submissionIds]);
 
   const subList = Object.values(submissions);
 

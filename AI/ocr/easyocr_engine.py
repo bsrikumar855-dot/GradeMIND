@@ -34,6 +34,10 @@ class EasyOCREngine:
     def __init__(self):
         _init_easyocr()
 
+    def is_available(self) -> bool:
+        """Whether the easyocr package and model initialised successfully."""
+        return _ocr_model is not None
+
     def extract(self, image_path: str, submission_id: str) -> OCRDocument:
         """
         Run EasyOCR text recognition on an image.
