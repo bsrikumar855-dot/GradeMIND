@@ -8,31 +8,51 @@ differently on the day, §5 tells you what to say.
 
 ---
 
-## 0. Sixty-second setup
+## 0. Setup — thirty seconds, and no pip install
+
+**The CLI demo (§1) and the comparison (§2) need ZERO third-party packages.**
+Not "few" — zero. Verified by running them in a fresh venv containing nothing
+but pip. Clone, set one variable, go:
 
 ```bash
 git clone https://github.com/bsrikumar855-dot/GradeMIND.git
 cd GradeMIND
 git checkout demo/value-point-engine
 
-python -m venv .venv
-# Windows:        .venv\Scripts\activate
-# macOS / Linux:  source .venv/bin/activate
-
-pip install -r requirements/base.txt -r requirements/dev.txt
-```
-
-**The CLI demo needs nothing else** — no database, no server, no model
-download, no network. Only `--live` comparison and the API need more.
-
-Set `PYTHONPATH` to the repo root so `AI` and `app` import:
-
-```bash
 # Windows PowerShell
 $env:PYTHONPATH = "."
 # macOS / Linux
 export PYTHONPATH=.
 ```
+
+That is the whole setup for the demo. Any Python 3.11+.
+
+### If you also want the tests (§3)
+
+```bash
+python -m venv .venv
+# Windows:        .venv\Scripts\activate
+# macOS / Linux:  source .venv/bin/activate
+
+pip install pytest numpy        # deliberately unpinned, ~15s
+```
+
+### If you also want the API (§4)
+
+```bash
+pip install -r requirements/base.txt
+```
+
+> **This needs Python 3.11 or 3.12.** On 3.13+ it fails:
+> `psycopg2-binary==2.9.10` and `numpy==2.2.1` have no wheels for those
+> versions, so pip tries to build psycopg2 from source and stops on a missing
+> `pg_config`. CI and the container both run 3.12, which is why the pins are
+> what they are. **Found by rehearsing this runbook on a clean clone** — the
+> first attempt failed with a misleading `uvicorn==0.34.0 (from versions:
+> none)` error that had nothing to do with uvicorn.
+>
+> If you are on 3.13+ and want the API anyway, `python3.12 -m venv .venv`. If
+> you cannot, run §1 instead — it needs none of this.
 
 ---
 
@@ -94,6 +114,8 @@ where they were measured.
 ---
 
 ## 3. THE TESTS — run this if they ask "does it actually work?" (30 s)
+
+Needs `pip install pytest numpy` (see §0).
 
 ```bash
 python -m pytest AI/tests/test_score_computer.py AI/tests/test_value_point_matcher.py -q
@@ -159,6 +181,9 @@ Interactive docs at `http://127.0.0.1:8000/docs`.
 | `pydantic.ValidationError` on app start | `SECRET_KEY` / `DATABASE_URL` unset | They are required with no defaults, deliberately. Set them as in §4 |
 | `AuthBypassNotPermitted` on app start | `AUTH_ENABLED=False` without `DEBUG=True` **and** `ENVIRONMENT=local` | Set all three, or just `AUTH_ENABLED=True`. This gate is intentional |
 | Server won't start at all | Anything | **Fall back to §1.** The CLI needs no server and shows the same engine |
+| `Failed to build 'psycopg2-binary'` / `pg_config not found` | Python 3.13+ — no wheel for these pins | Use Python 3.12, **or skip it**: §1 and §2 need no packages at all |
+| `Could not find a version that satisfies uvicorn==0.34.0` | Same root cause as above; the message names the wrong package | Ignore the package it names. See the row above |
+| `ModuleNotFoundError: No module named 'numpy'` running tests | Only pytest installed | `pip install numpy`. Only one test (the SEMANTIC stub) needs it |
 | Someone asks for an accuracy number | — | See §7. There isn't one, and saying so is the stronger answer |
 
 **The fallback order is §4 → §1.** The CLI is the demo of last resort and it
@@ -170,6 +195,43 @@ has no moving parts.
 
 Run on the build machine, Windows, Python 3.14, at the commit this runbook
 ships with.
+
+### Rehearsal on a clean clone
+
+This runbook was rehearsed by cloning fresh into a new directory with a new
+venv and following it literally. Findings, all now fixed above:
+
+```
+$ pip install -r requirements/base.txt -r requirements/dev.txt
+ERROR: Could not find a version that satisfies the requirement uvicorn==0.34.0
+ERROR: Failed to build 'psycopg2-binary' when getting requirements to build wheel
+       ...pg_config executable not found
+```
+
+Python 3.14 in the fresh venv; no wheels for `psycopg2-binary==2.9.10` or
+`numpy==2.2.1`. The first error names uvicorn, which is not the problem.
+
+Then, the finding that made the runbook better:
+
+```
+$ # brand new venv, nothing installed but pip
+$ PYTHONPATH=/path/to/clone /bare/venv/python -m scripts.demo_marking --compact
+  q1  fully correct                                   1 / 1
+  ...
+  q4  wrong but topical                               0 / 5
+```
+
+**The CLI demo runs on a bare Python with no packages at all.** §0 was telling
+people to run an install that was both unnecessary and broken on their likely
+Python version.
+
+Tests in the clean clone, after `pip install pytest numpy`:
+
+```
+$ PYTHONPATH=. pytest AI/tests/test_score_computer.py AI/tests/test_value_point_matcher.py -q
+............................................                             [100%]
+44 passed in 1.06s
+```
 
 ### Tests
 
