@@ -150,21 +150,30 @@ def match(
 
 
 def _candidates(value_point: ValuePoint) -> Sequence[str]:
-    """The value point's own text plus every accepted variant."""
-    return (value_point.text, *value_point.acceptable_variants)
+    """The value point's own text plus every accepted variant, ordered by length descending."""
+    all_cands = [value_point.text] + list(value_point.acceptable_variants)
+    seen = set()
+    ordered = []
+    for c in sorted(all_cands, key=len, reverse=True):
+        if c not in seen:
+            seen.add(c)
+            ordered.append(c)
+    return ordered
 
 
 def _match_exact(answer_text: str, value_point: ValuePoint, min_word_ratio: float = DEFAULT_MIN_WORD_RATIO) -> MatchResult:
     import math
-    vp_words = re.findall(r'\b\w+\b', value_point.text)
-    n_vp = len(vp_words)
-    m_required = max(1, math.ceil(n_vp * min_word_ratio)) if n_vp > 0 else 1
 
-    insufficient_reason = None
+    best_insufficient_reason = None
 
+    # Step 1: Check verbatim candidate matches (longest candidate phrase first)
     for candidate in _candidates(value_point):
         span = _find_span(answer_text, candidate)
         if span is not None:
+            c_words = [w for w in re.findall(r'\b\w+\b', candidate) if len(w) > 1]
+            n_c = len(c_words)
+            m_required = max(1, math.ceil(n_c * min_word_ratio)) if n_c > 0 else 1
+
             matched_text = answer_text[span[0]:span[1]]
             n_matched = len(re.findall(r'\b\w+\b', matched_text))
 
@@ -178,7 +187,45 @@ def _match_exact(answer_text: str, value_point: ValuePoint, min_word_ratio: floa
                     uncalibrated=False,
                 )
             else:
-                insufficient_reason = f"insufficient evidence: matched {n_matched} of {m_required} required content words"
+                best_insufficient_reason = (
+                    f"insufficient evidence: matched {n_matched} of {m_required} required content words "
+                    f"(N_vp={n_c}, M=ceil({n_c}*{min_word_ratio}))"
+                )
+
+    # Step 2: Content-word evidence span match fallback (only if no verbatim candidate matched)
+    for candidate in _candidates(value_point):
+        c_words = [w for w in re.findall(r'\b\w+\b', candidate) if len(w) > 1]
+        n_c = len(c_words)
+        m_required = max(1, math.ceil(n_c * min_word_ratio)) if n_c > 0 else 1
+
+        if n_c > 0:
+            found_spans = []
+            ans_lower = answer_text.lower()
+            for w in c_words:
+                for m in re.finditer(r'\b' + re.escape(w.lower()) + r'\b', ans_lower):
+                    found_spans.append((m.start(), m.end(), w.lower()))
+
+            if found_spans:
+                matched_words = {s[2] for s in found_spans}
+                n_matched = len(matched_words)
+
+                if n_matched >= m_required:
+                    min_start = min(s[0] for s in found_spans)
+                    max_end = max(s[1] for s in found_spans)
+                    return MatchResult(
+                        value_point_id=value_point.id,
+                        matched=True,
+                        evidence_span=(min_start, max_end),
+                        method="EXACT",
+                        score=1.0,
+                        uncalibrated=False,
+                    )
+                else:
+                    if not best_insufficient_reason:
+                        best_insufficient_reason = (
+                            f"insufficient evidence: matched {n_matched} of {m_required} required content words "
+                            f"(N_vp={n_c}, M=ceil({n_c}*{min_word_ratio}))"
+                        )
 
     return MatchResult(
         value_point_id=value_point.id,
@@ -187,7 +234,7 @@ def _match_exact(answer_text: str, value_point: ValuePoint, min_word_ratio: floa
         method="EXACT",
         score=0.0,
         uncalibrated=False,
-        reason=insufficient_reason if insufficient_reason else "no supporting evidence found in the answer",
+        reason=best_insufficient_reason if best_insufficient_reason else "no supporting evidence found in the answer",
     )
 
 

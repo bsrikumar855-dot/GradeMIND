@@ -11,21 +11,30 @@
           "text": "sparse autoencoders will be more suitable for high dimensional data",
           "marks": 1.0,
           "match_mode": "EXACT",
-          "acceptable_variants": ["sparse autoencoders", "sparse autoencoders will be more suitable"]
+          "acceptable_variants": [
+            "sparse autoencoders will be more suitable",
+            "sparse autoencoders"
+          ]
         },
         {
           "id": "13.2",
-          "text": "Standard autoencoders get input, encode and restructure data",
+          "text": "Standard autoencoders get input, encode and restructure the given data",
           "marks": 1.0,
           "match_mode": "EXACT",
-          "acceptable_variants": ["encode and restructure", "encode and restructure the given data"]
+          "acceptable_variants": [
+            "encode and restructure the given data",
+            "encode and restructure"
+          ]
         },
         {
           "id": "13.3",
-          "text": "In sparse autoencoders, details are more preserved",
+          "text": "In sparse autoencoders, the details are more preserved",
           "marks": 1.0,
           "match_mode": "EXACT",
-          "acceptable_variants": ["details are more preserved", "more preserved"]
+          "acceptable_variants": [
+            "details are more preserved",
+            "the details are more preserved"
+          ]
         }
       ]
     },
@@ -37,24 +46,34 @@
       "value_points": [
         {
           "id": "14.1",
-          "text": "GAN (Generative Adversarial Networks) suitable for image enhancement/generation",
+          "text": "GAN (Generative Adversarial Networks) suitable for image enhancement and generation",
           "marks": 1.0,
           "match_mode": "EXACT",
-          "acceptable_variants": ["Generative Adversarial Networks", "GAN"]
+          "acceptable_variants": [
+            "Generative Adversarial Networks",
+            "image enhancement and generation"
+          ]
         },
         {
           "id": "14.2",
-          "text": "GAN has two parts: Generator & Discriminator",
+          "text": "GAN has two parts, Generator & Discriminator",
           "marks": 1.0,
           "match_mode": "EXACT",
-          "acceptable_variants": ["Generator & Discriminator", "Generator", "Discriminator"]
+          "acceptable_variants": [
+            "Generator & Discriminator",
+            "Generator and Discriminator"
+          ]
         },
         {
           "id": "14.3",
-          "text": "Generator takes noise and generates fake data, Discriminator identifies real (1) or fake (0)",
+          "text": "Generator will take noise as input and generate fake data",
           "marks": 1.0,
           "match_mode": "EXACT",
-          "acceptable_variants": ["fake data", "real or (1) or fake (0)"]
+          "acceptable_variants": [
+            "take noise as input and generate fake data",
+            "generate fake data",
+            "fake data"
+          ]
         }
       ]
     },
@@ -66,24 +85,35 @@
       "value_points": [
         {
           "id": "15.1",
-          "text": "LSTM (Long Short Term Memory) used for sequential data and captioning",
+          "text": "LSTM (Long Short Term Memory) used for improving performance of image captioning",
           "marks": 1.0,
           "match_mode": "EXACT",
-          "acceptable_variants": ["LSTM", "Long Short Term Memory"]
+          "acceptable_variants": [
+            "LSTM (Long Short Term Memory) in improving the performance of image captioning",
+            "storing past memory while generating captions",
+            "Long Short Term Memory"
+          ]
         },
         {
           "id": "15.2",
           "text": "CNN used for image based data and feature extraction",
           "marks": 1.0,
           "match_mode": "EXACT",
-          "acceptable_variants": ["CNN", "image based data"]
+          "acceptable_variants": [
+            "use CNN for image based data and to get the important features",
+            "CNN for image based data",
+            "image based data and to get the important features"
+          ]
         },
         {
           "id": "15.3",
-          "text": "Forget gate decides necessary content while storing past memory",
+          "text": "forget gate will decide what content is necessary and which isn't",
           "marks": 1.0,
           "match_mode": "EXACT",
-          "acceptable_variants": ["forget gate", "past memory"]
+          "acceptable_variants": [
+            "forget gate which will decide what content is necessary",
+            "forget gate"
+          ]
         }
       ]
     }
