@@ -160,6 +160,7 @@ def generate_annotated_pdf(
     # -------------------------------------------------------------------------
     margin_right_x = 510.0  # Right margin text zone (510pt - 585pt) outside handwriting
     max_highlight_x = 495.0  # Maximum right boundary for translucent highlight rects
+    drawn_rects_by_page: Dict[int, set] = {}
 
     for item in eval_summary:
         q_num = item["question_number"]
@@ -186,6 +187,10 @@ def generate_annotated_pdf(
             page = doc[pdf_page_idx]
             pw = page.rect.width
             ph = page.rect.height
+
+            if pdf_page_idx not in drawn_rects_by_page:
+                drawn_rects_by_page[pdf_page_idx] = set()
+            drawn_rects_this_page = drawn_rects_by_page[pdf_page_idx]
 
             # A. Draw Struck-Through Banner for Q10 directly beside Q10's line
             if not can_auto and "CONTAINS_STRUCK_OUT" in flags:
@@ -227,16 +232,32 @@ def generate_annotated_pdf(
 
                     if span:
                         span_start, span_end = span[0], span[1]
-                        matched_lines = [l for s, e, l in line_offsets if not (e <= span_start or s >= span_end)]
+                        matched_lines = [
+                            l for s, e, l in line_offsets
+                            if not (e <= span_start or s >= span_end)
+                            and getattr(l, "page_number", p_num) == p_num
+                        ]
 
-                        if not matched_lines and lines:
-                            matched_lines = [lines[0]]
+                        if not matched_lines:
+                            continue
 
-                        # Highlight every line overlapping evidence span
+                        # Highlight lines on this page overlapping evidence span
                         first_hl_rect = None
                         for m_line in matched_lines:
                             if getattr(m_line, "bbox", None):
                                 hl_rect = _to_pdf_rect(m_line.bbox, pw, ph, max_highlight_x)
+
+                                # Reject narrow highlights (<100pt) like margin marks ('1 1/2')
+                                if hl_rect.width < 100.0:
+                                    print(f"[REJECTED NARROW HIGHLIGHT] Page {pdf_page_idx} vp={vp_id} line={m_line.text!r} width={hl_rect.width:.1f}pt (<100pt)")
+                                    continue
+
+                                # Skip duplicate or overlapping line highlights on this page
+                                if any(abs(existing_y0 - hl_rect.y0) < 5.0 for existing_y0 in drawn_rects_this_page):
+                                    continue
+
+                                drawn_rects_this_page.add(round(hl_rect.y0, 1))
+
                                 if first_hl_rect is None:
                                     first_hl_rect = hl_rect
 
@@ -245,9 +266,10 @@ def generate_annotated_pdf(
                                 h_shape.finish(color=(0, 0.7, 0), fill=(1.0, 0.95, 0.4), fill_opacity=0.35, width=1.0)
                                 h_shape.commit()
 
-                        tick_y = first_hl_rect.y0 + 12 if first_hl_rect else margin_y
-                        page.insert_text((margin_right_x, tick_y), f"[+] {vp_id}", fontsize=9, color=(0, 0.6, 0))
-                        margin_y = max(margin_y + 14, tick_y + 14)
+                        if first_hl_rect:
+                            tick_y = first_hl_rect.y0 + 12
+                            page.insert_text((margin_right_x, tick_y), f"[+] {vp_id}", fontsize=9, color=(0, 0.6, 0))
+                            margin_y = max(margin_y + 14, tick_y + 14)
                     else:
                         page.insert_text((margin_right_x, margin_y), f"[+] {vp_id}", fontsize=9, color=(0, 0.6, 0))
                         margin_y += 14
