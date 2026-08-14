@@ -43,13 +43,13 @@ def main():
     cache = FilesystemExtractionCache("tmp/htr_cache")
     classifier = ContentClassifier(model_id="gemini-2.0-flash", cache=cache, offline=args.offline)
 
-    # Specific PDF path resolution (target real scan PDF explicitly)
-    pdf_path = Path("docs/samples/scan.pdf")
+    # Gitignored PDF path resolution
+    pdf_path = Path("tmp/download-test-531.pdf")
     if not pdf_path.exists():
         pdf_path = Path("tests/fixtures/sample_answer_sheet.pdf")
 
     if not pdf_path.exists():
-        print(f"FATAL: Expected scan PDF not found at docs/samples/scan.pdf or tests/fixtures/sample_answer_sheet.pdf")
+        print(f"FATAL: Target scan PDF not found at tmp/download-test-531.pdf")
         sys.exit(1)
 
     print(f"Target Scan PDF: {pdf_path}")
