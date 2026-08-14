@@ -265,8 +265,19 @@ q4  wrong but topical                             0 / 5
         WRONG but topical    0/1
 ```
 
-`--live` re-measured these as `0.650 / 0.638 / 0.6239 / 0.6782` — the same
-numbers, with a rounding difference in the third decimal on a re-encode.
+`--live` reproduces these exactly.
+
+**If asked whether the old metric is deterministic** — it is, and that was
+checked rather than assumed. `sim('ATP', <the sentence>)` returns
+`0.6505049467` byte-identically across 8 in-process runs and 3 separate
+processes. An earlier draft of the comparison script displayed `0.650` in live
+mode against `0.651` recorded; that was double-rounding **in the script**
+(`round(v, 4)` gives `0.6505`, which formats to `0.650` at 3dp), not a
+difference in the measurement. Fixed — the script now formats once.
+
+So: the old metric is deterministic. Its problem is not instability, it is
+that it ranks the wrong thing. That distinction is worth keeping straight if
+someone asks.
 
 ---
 
