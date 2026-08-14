@@ -107,6 +107,16 @@ def build_provider(
 
         return GeminiVisionHTRProvider(cache=cache, **kwargs)
 
+    if resolved == "trocr":
+        from AI.ocr.providers.trocr_htr import TrOCRHTRProvider
+
+        return TrOCRHTRProvider(cache=cache, **kwargs)
+
+    if resolved == "surya":
+        from AI.ocr.providers.surya_htr import SuryaHTRProvider
+
+        return SuryaHTRProvider(cache=cache, **kwargs)
+
     if resolved == "tesseract":
         raise HTRUnavailable(
             "HTR_PROVIDER=tesseract is not wired to the page-image interface "
@@ -117,20 +127,52 @@ def build_provider(
 
     raise HTRUnavailable(
         f"unknown HTR_PROVIDER {resolved!r}. Expected one of: "
-        "gemini_vision, tesseract, none"
+        "gemini_vision, trocr, surya, tesseract, none"
     )
+
+
+def build_fallback_chain(
+    chain_str: Optional[str] = None,
+    cache: Optional[ExtractionCache] = None,
+) -> List[HTRProvider]:
+    """Build list of providers from HTR_FALLBACK_CHAIN env var."""
+    raw = chain_str if chain_str is not None else os.environ.get("HTR_FALLBACK_CHAIN", "")
+    if not raw.strip():
+        primary = build_provider(cache=cache)
+        return [primary] if primary is not None else []
+
+    providers = []
+    for name in raw.split(","):
+        name = name.strip()
+        if not name or name == "none":
+            continue
+        try:
+            p = build_provider(name, cache=cache)
+            if p is not None:
+                providers.append(p)
+        except Exception as exc:
+            logger.warning("HTR_FALLBACK_CHAIN skipping unavailable provider %s: %s", name, exc)
+
+    return providers
 
 
 def extract_script(
     pdf_path: str,
-    provider: Optional[HTRProvider],
+    provider: Optional[HTRProvider] = None,
+    providers: Optional[List[HTRProvider]] = None,
     mask_region: Optional[MaskRegion] = None,
     dpi: int = 300,
     max_pages: Optional[int] = None,
     confidence_floor: float = DEFAULT_CONFIDENCE_FLOOR,
     require_mask: bool = True,
 ) -> ExtractedScript:
-    """Rasterize, mask, transcribe. Raises rather than returning empty text."""
+    """Rasterize, mask, transcribe. Supports provider fallback chain.
+
+    Fallback rules:
+      - Fallback fires ONLY on provider unavailability (import error, network, quota, HTRExtractionError).
+      - NEVER on low confidence: a low-confidence result routes to MANDATORY_HUMAN.
+      - Every page records its actual producing provider.
+    """
     classification = classify_pdf(pdf_path)
 
     if classification.kind is PDFKind.TEXT_LAYER:
@@ -139,11 +181,19 @@ def extract_script(
             "use the existing text extraction path rather than paying for HTR."
         )
 
-    if provider is None:
+    # Resolve provider chain
+    chain: List[HTRProvider] = []
+    if providers:
+        chain = list(providers)
+    elif provider:
+        chain = [provider]
+    else:
+        chain = build_fallback_chain()
+
+    if not chain:
         raise HTRUnavailable(
-            f"{pdf_path} is {classification.kind.value} and HTR_PROVIDER is "
-            "'none'. This deployment cannot read handwriting. Route to "
-            "MANDATORY_HUMAN; do not return an empty answer."
+            f"{pdf_path} is {classification.kind.value} and no valid HTR provider "
+            "is configured. Route to MANDATORY_HUMAN; do not return an empty answer."
         )
 
     page_images: List[PageImage] = rasterize_pdf(pdf_path, dpi=dpi, max_pages=max_pages)
@@ -152,11 +202,30 @@ def extract_script(
     warnings: List[str] = []
 
     for image in page_images:
-        # Masking happens BEFORE the bytes leave the process. Not after
-        # extraction, not "on the way back" -- the identity must be gone from
-        # what is transmitted.
         prepared = mask_identity_region(image, mask_region, require_region=require_mask)
-        page = provider.extract(prepared)
+        page: Optional[Page] = None
+        last_exc: Optional[Exception] = None
+
+        for p in chain:
+            try:
+                # Attempt extraction with provider p
+                page = p.extract(prepared)
+                # Successful extraction (even if low confidence) -> STOP chain
+                # Low confidence is a valid result that routes to MANDATORY_HUMAN, NOT a fallback trigger.
+                break
+            except (HTRExtractionError, HTRUnavailable, Exception) as exc:
+                last_exc = exc
+                logger.warning(
+                    "HTR_PIPELINE provider %s failed on page %d: %s. Trying fallback if available...",
+                    p.name, image.page_number, exc,
+                )
+
+        if page is None:
+            raise HTRExtractionError(
+                f"page {image.page_number}: all providers in chain failed: {last_exc}. "
+                "Route to MANDATORY_HUMAN."
+            ) from last_exc
+
         pages.append(page)
         warnings.extend(f"page {page.page_number}: {w}" for w in page.warnings)
 
@@ -164,7 +233,8 @@ def extract_script(
     lowest = min(confidences) if confidences else None
     below_floor = lowest is None or lowest < confidence_floor
 
-    described = provider.describe()
+    active_provider = chain[0]
+    described = active_provider.describe()
 
     logger.info(
         "HTR_PIPELINE completed path=%s pages=%d provider=%s lowest_conf=%s "
@@ -174,9 +244,9 @@ def extract_script(
 
     return ExtractedScript(
         pages=tuple(pages),
-        provider=described["provider"],
-        model_id=described["model_id"],
-        prompt_version=described["prompt_version"],
+        provider=described.get("provider", active_provider.name),
+        model_id=described.get("model_id", "unknown"),
+        prompt_version=described.get("prompt_version", "unknown"),
         rasterize_version=RASTERIZE_VERSION,
         pipeline_version=PIPELINE_VERSION,
         source_sha256=page_images[0].source_sha256,
