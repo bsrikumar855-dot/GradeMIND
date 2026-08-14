@@ -71,12 +71,17 @@ def _measure_live() -> Optional[Tuple[List, List]]:
                 es.generate_embedding(a), es.generate_embedding(b)
             )
 
+        # No intermediate rounding. Rounding to 4dp and then formatting to
+        # 3dp displayed 0.6505049467 as 0.650 while the recorded value showed
+        # 0.651 — a double-rounding artefact in this script, NOT a difference
+        # in the measurement. Verified: the old path returns 0.6505049467
+        # byte-identically across separate processes. Format once, at display.
         containment = [
-            (term, sentence, round(sim(term, sentence), 4))
+            (term, sentence, sim(term, sentence))
             for term, sentence, _ in MEASURED_CONTAINMENT
         ]
         ranking = [
-            (label, ref, ans, round(sim(ref, ans), 4))
+            (label, ref, ans, sim(ref, ans))
             for label, ref, ans, _ in MEASURED_RANKING
         ]
         return containment, ranking
