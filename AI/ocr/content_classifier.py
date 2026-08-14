@@ -18,7 +18,10 @@ import os
 from dataclasses import asdict, dataclass
 from typing import Any, Dict, List, Optional, Tuple
 
-import google.generativeai as genai
+import warnings
+with warnings.catch_warnings():
+    warnings.simplefilter("ignore", category=FutureWarning)
+    import google.generativeai as genai
 from PIL import Image
 
 from AI.ocr.providers.cache import ExtractionCache, cache_key, page_to_record, record_to_page

@@ -237,7 +237,10 @@ class GeminiVisionHTRProvider(HTRProvider):
                 "Refusing to proceed: there is no extraction to return."
             )
 
-        import google.generativeai as genai
+        import warnings
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", category=FutureWarning)
+            import google.generativeai as genai
 
         genai.configure(api_key=self.api_key)
         model = genai.GenerativeModel(self.model_id)

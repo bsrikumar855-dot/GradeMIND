@@ -1,0 +1,91 @@
+{
+  "questions": [
+    {
+      "id": "q13",
+      "question_number": "13",
+      "question_text": "Compare standard autoencoders and sparse autoencoders for high dimensional data.",
+      "max_marks": 3.0,
+      "value_points": [
+        {
+          "id": "13.1",
+          "text": "sparse autoencoders will be more suitable for high dimensional data",
+          "marks": 1.0,
+          "match_mode": "EXACT",
+          "acceptable_variants": ["sparse autoencoders", "sparse autoencoders will be more suitable"]
+        },
+        {
+          "id": "13.2",
+          "text": "Standard autoencoders get input, encode and restructure data",
+          "marks": 1.0,
+          "match_mode": "EXACT",
+          "acceptable_variants": ["encode and restructure", "encode and restructure the given data"]
+        },
+        {
+          "id": "13.3",
+          "text": "In sparse autoencoders, details are more preserved",
+          "marks": 1.0,
+          "match_mode": "EXACT",
+          "acceptable_variants": ["details are more preserved", "more preserved"]
+        }
+      ]
+    },
+    {
+      "id": "q14",
+      "question_number": "14",
+      "question_text": "Explain the working of Generative Adversarial Networks (GAN).",
+      "max_marks": 3.0,
+      "value_points": [
+        {
+          "id": "14.1",
+          "text": "GAN (Generative Adversarial Networks) suitable for image enhancement/generation",
+          "marks": 1.0,
+          "match_mode": "EXACT",
+          "acceptable_variants": ["Generative Adversarial Networks", "GAN"]
+        },
+        {
+          "id": "14.2",
+          "text": "GAN has two parts: Generator & Discriminator",
+          "marks": 1.0,
+          "match_mode": "EXACT",
+          "acceptable_variants": ["Generator & Discriminator", "Generator", "Discriminator"]
+        },
+        {
+          "id": "14.3",
+          "text": "Generator takes noise and generates fake data, Discriminator identifies real (1) or fake (0)",
+          "marks": 1.0,
+          "match_mode": "EXACT",
+          "acceptable_variants": ["fake data", "real or (1) or fake (0)"]
+        }
+      ]
+    },
+    {
+      "id": "q15",
+      "question_number": "15",
+      "question_text": "Explain the role of LSTM and CNN in image captioning models.",
+      "max_marks": 3.0,
+      "value_points": [
+        {
+          "id": "15.1",
+          "text": "LSTM (Long Short Term Memory) used for sequential data and captioning",
+          "marks": 1.0,
+          "match_mode": "EXACT",
+          "acceptable_variants": ["LSTM", "Long Short Term Memory"]
+        },
+        {
+          "id": "15.2",
+          "text": "CNN used for image based data and feature extraction",
+          "marks": 1.0,
+          "match_mode": "EXACT",
+          "acceptable_variants": ["CNN", "image based data"]
+        },
+        {
+          "id": "15.3",
+          "text": "Forget gate decides necessary content while storing past memory",
+          "marks": 1.0,
+          "match_mode": "EXACT",
+          "acceptable_variants": ["forget gate", "past memory"]
+        }
+      ]
+    }
+  ]
+}
