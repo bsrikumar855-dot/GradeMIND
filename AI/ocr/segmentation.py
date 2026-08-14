@@ -27,9 +27,10 @@ SEGMENTATION_VERSION = "segmentation/1.0.0"
 
 class SegmentationStatus(str, Enum):
     OK = "OK"
+    SPANS_PAGES = "SPANS_PAGES"
+    AMBIGUOUS_CONTINUATION = "AMBIGUOUS_CONTINUATION"
     MISSING_QUESTION_NUMBER = "MISSING_QUESTION_NUMBER"
     AMBIGUOUS_MAPPING = "AMBIGUOUS_MAPPING"
-    SPANS_PAGES = "SPANS_PAGES"
     OUT_OF_ORDER = "OUT_OF_ORDER"
     UNMAPPED_REGION = "UNMAPPED_REGION"
 
@@ -46,8 +47,11 @@ class QuestionRegion:
     lines: Tuple[Line, ...] = ()
 
     def can_be_auto(self) -> bool:
-        """Only OK status can even be considered for AUTO downstream."""
-        return self.status is SegmentationStatus.OK
+        """OK and SPANS_PAGES (when cleanly stitched) allow AUTO consideration downstream.
+        AMBIGUOUS_CONTINUATION, MISSING_QUESTION_NUMBER, AMBIGUOUS_MAPPING,
+        OUT_OF_ORDER, and UNMAPPED_REGION route to MANDATORY_HUMAN.
+        """
+        return self.status in (SegmentationStatus.OK, SegmentationStatus.SPANS_PAGES)
 
 
 def is_section_header(text: str) -> bool:

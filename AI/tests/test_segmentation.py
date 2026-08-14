@@ -100,7 +100,8 @@ def test_q15_spans_pages_2_and_3_with_exact_lines():
     assert q15.question_number == "15"
     assert q15.page_numbers == (2, 3)
     assert q15.status is SegmentationStatus.SPANS_PAGES
-    assert q15.can_be_auto() is False
+    # Option A: Cleanly stitched SPANS_PAGES with confidence above floor allows AUTO consideration
+    assert q15.can_be_auto() is True
 
     # Check stitched & word-rejoined text
     assert "important features and LSTM has" in q15.text
@@ -145,6 +146,17 @@ def test_section_header_terminates_previous_question():
     assert q12.status is SegmentationStatus.OK
     assert q12.can_be_auto() is True
     assert "Part B" not in q12.text
+
+
+def test_ambiguous_continuation_routes_to_human():
+    region = QuestionRegion(
+        question_number="15",
+        page_numbers=(2, 3),
+        text="Ambiguous continuation text",
+        confidence=0.85,
+        status=SegmentationStatus.AMBIGUOUS_CONTINUATION,
+    )
+    assert region.can_be_auto() is False
 
 
 def test_statuses_routing_and_no_ok_on_non_ok():
