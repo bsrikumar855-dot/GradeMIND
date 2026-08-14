@@ -107,6 +107,46 @@ def test_q15_spans_pages_2_and_3_with_exact_lines():
     assert "import ant" not in q15.text
 
 
+def test_section_header_terminates_previous_question():
+    """Q12 is on page 1 ('12. memory and dependencies.').
+    Page 2 opens with 'Part B' (section header), then '13.'.
+    'Part B' must terminate Q12 on page 1 and NOT make Q12 span pages.
+    """
+    page1 = Page(
+        lines=(Line("12. memory and dependencies.", 0.9, (0.1, 0.1, 0.9, 0.2)),),
+        page_confidence=0.9,
+        provider="test",
+        model_id="m",
+        prompt_version="v1",
+        page_number=1,
+        page_sha256="p1",
+        extraction_sha256="e1",
+        rasterize_version="v1",
+    )
+
+    page2 = Page(
+        lines=(
+            Line("Part B", 1.0, (0.1, 0.05, 0.9, 0.1)),
+            Line("13. Standard autoencoders", 0.9, (0.1, 0.15, 0.9, 0.25)),
+        ),
+        page_confidence=0.9,
+        provider="test",
+        model_id="m",
+        prompt_version="v1",
+        page_number=2,
+        page_sha256="p2",
+        extraction_sha256="e2",
+        rasterize_version="v1",
+    )
+
+    regions = segment_script([page1, page2])
+    q12 = next(r for r in regions if r.question_number == "12")
+    assert q12.page_numbers == (1,)
+    assert q12.status is SegmentationStatus.OK
+    assert q12.can_be_auto() is True
+    assert "Part B" not in q12.text
+
+
 def test_statuses_routing_and_no_ok_on_non_ok():
     page_unmapped = Page(
         lines=(Line("Text without header", 0.9, (0.1, 0.1, 0.9, 0.2)),),

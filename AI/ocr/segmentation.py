@@ -50,6 +50,20 @@ class QuestionRegion:
         return self.status is SegmentationStatus.OK
 
 
+def is_section_header(text: str) -> bool:
+    """Detect section header boundaries like 'Part B', 'Section A', 'PART - B'.
+
+    A section header is a structural boundary that terminates the active question
+    from the previous page/section.
+    """
+    raw = text.strip()
+    if not raw:
+        return False
+
+    # Pure section header without question number (e.g. "Part B", "Section A", "PART - B")
+    return bool(re.match(r'^(?:Part|Section|Group|Block)\s*[-:\s]*[A-Z0-9]+\s*$', raw, re.IGNORECASE))
+
+
 def parse_question_header(text: str) -> Optional[str]:
     """Detect a question number header at the start of a line.
 
@@ -63,6 +77,10 @@ def parse_question_header(text: str) -> Optional[str]:
     if not raw:
         return None
 
+    # Section header check (handled separately)
+    if is_section_header(raw):
+        return None
+
     # Pattern 1: Bare question number on line (e.g., "13.", "14.", "15.", "13")
     m_bare = re.match(r'^(?:Part\s+[A-Z]\s*)?(?:Q\.?\s*)?(\d{1,3})\s*[\.\)]?\s*$', raw, re.IGNORECASE)
     if m_bare:
@@ -72,7 +90,6 @@ def parse_question_header(text: str) -> Optional[str]:
     m_start = re.match(r'^(?:Part\s+[A-Z]\s*)?(?:Q\.?\s*)?(\d{1,3})\s*[\.\)]\s*(.*)$', raw, re.IGNORECASE)
     if m_start:
         q_num = m_start.group(1)
-        # Avoid false positives on numbered list items within an answer if they don't look like main question headers
         return q_num
 
     return None
@@ -149,6 +166,13 @@ def segment_script(
 
     for page in pages:
         for line in page.lines:
+            # Check for section header boundary (e.g. "Part B", "Section A")
+            if is_section_header(line.text):
+                if current is not None:
+                    accumulated_q.append(current)
+                    current = None
+                continue
+
             header_q = parse_question_header(line.text)
 
             if header_q is not None:
