@@ -281,3 +281,15 @@ class ContentClassifier:
                 combined_flags["non_latin_script"] = True
 
         return ContentFlags(**combined_flags)
+
+    @staticmethod
+    def check_transcription_struck_out(page_transcription: Page) -> ContentFlags:
+        """Extract contains_struck_out flag directly from transcription Page without additional API calls.
+
+        Wires Gemini Vision transcription per-line struck_through status and line warnings
+        into ContentFlags(contains_struck_out=True).
+        """
+        has_struck = any(getattr(line, "struck_through", False) for line in page_transcription.lines) or any(
+            "struck through" in w.lower() for w in page_transcription.warnings
+        )
+        return ContentFlags(contains_struck_out=has_struck)

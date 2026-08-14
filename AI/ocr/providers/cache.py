@@ -132,6 +132,7 @@ def record_to_page(record: Dict[str, Any]) -> Page:
                 confidence=l.get("confidence"),
                 bbox=tuple(l["bbox"]) if l.get("bbox") else None,
                 script=l.get("script"),
+                struck_through=bool(l.get("struck_through", False)),
             )
             for l in p["lines"]
         ),

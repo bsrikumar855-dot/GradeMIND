@@ -53,6 +53,7 @@ class Line:
     confidence: Optional[float]
     bbox: Optional[Tuple[float, float, float, float]]  # x0, y0, x1, y1
     script: Optional[str] = None  # "Latin", "Devanagari", "mixed", ...
+    struck_through: bool = False
 
 
 @dataclass(frozen=True)

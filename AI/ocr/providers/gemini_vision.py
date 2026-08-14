@@ -319,10 +319,11 @@ class GeminiVisionHTRProvider(HTRProvider):
 
             bbox = _bbox(item.get("bbox"))
             if bbox is None and item.get("bbox") is not None:
-                warnings.append(f"line {index}: unusable bbox {item.get('bbox')!r}")
+                warnings.append(f"line {index + 1}: unusable bbox {item.get('bbox')!r}")
 
-            if item.get("struck_through"):
-                warnings.append(f"line {index}: marked struck through by the candidate")
+            is_struck = bool(item.get("struck_through", False))
+            if is_struck:
+                warnings.append(f"line {index + 1}: marked struck through by the candidate")
 
             lines.append(
                 Line(
@@ -330,6 +331,7 @@ class GeminiVisionHTRProvider(HTRProvider):
                     confidence=legibility,
                     bbox=bbox,
                     script=item.get("script"),
+                    struck_through=is_struck,
                 )
             )
 

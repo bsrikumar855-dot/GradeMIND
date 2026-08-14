@@ -11,6 +11,7 @@ from AI.ocr.content_classifier import (
     ContentClassifierError,
     ContentFlags,
 )
+from AI.ocr.providers.base import Line, Page
 from AI.ocr.providers.cache import ExtractionCache
 from AI.ocr.rasterize import PageImage, sha256_bytes
 from AI.ocr.segmentation import QuestionRegion, SegmentationStatus
@@ -139,3 +140,26 @@ def test_classifier_offline_cache_miss_raises():
 
     assert "Offline mode enabled" in str(exc_info.value)
     assert "cache miss" in str(exc_info.value)
+
+
+def test_check_transcription_struck_out():
+    """Verify that struck_through line status or warnings wire into ContentFlags(contains_struck_out=True)."""
+    line1 = Line(text="Normal line", confidence=0.9, bbox=None)
+    line2 = Line(text="10. Video to text", confidence=0.9, bbox=None, struck_through=True)
+    page = Page(
+        lines=(line1, line2),
+        page_confidence=0.9,
+        provider="gemini_vision",
+        model_id="gemini-2.5-flash",
+        prompt_version="transcribe/1.0.0",
+        page_number=1,
+        page_sha256="test_sha",
+        extraction_sha256="ext_sha",
+        rasterize_version="rasterize/1.0.0",
+        warnings=("line 10: marked struck through by the candidate",),
+    )
+
+    flags = ContentClassifier.check_transcription_struck_out(page)
+    assert flags.contains_struck_out is True
+    assert flags.has_flags is True
+    assert "CONTAINS_STRUCK_OUT" in flags.flagged_reasons()
