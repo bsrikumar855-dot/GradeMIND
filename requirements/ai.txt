@@ -24,3 +24,17 @@ opencv-python-headless==4.10.0.84
 # Secondary/cross-check evaluator. The deterministic scorer runs without it;
 # a missing key degrades the lane toward human review, never the mark.
 google-generativeai==0.8.3
+
+# PDF rasterisation for the HTR path (AI/ocr/rasterize.py).
+#
+# PyMuPDF, not pdf2image: pdf2image shells out to poppler, an external binary
+# that must be installed in the container and on every dev machine.
+#
+# Pin verified against the CONTAINER's Python (3.12), not the dev machine's
+# 3.14. There are no cp312 wheels; there IS
+# `pymupdf-1.26.7-cp310-abi3-manylinux_2_28_x86_64.whl`, a stable-ABI wheel
+# that installs on any CPython >= 3.10. Checked by reading wheel tags off
+# PyPI rather than by a local install succeeding -- that is the
+# psycopg2-binary==2.9.10 lesson, which resolved locally and failed on a
+# clean runner.
+pymupdf==1.26.7
