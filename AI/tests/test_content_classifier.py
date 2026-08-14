@@ -11,6 +11,7 @@ from AI.ocr.content_classifier import (
     ContentClassifierError,
     ContentFlags,
 )
+from AI.ocr.providers.cache import ExtractionCache
 from AI.ocr.rasterize import PageImage, sha256_bytes
 from AI.ocr.segmentation import QuestionRegion, SegmentationStatus
 from AI.evaluation.value_point import QuestionScore
@@ -120,3 +121,21 @@ def test_classifier_failure_raises_error():
     page = PageImage(1, b"corrupt", 100, 100, 300, "s", "p")
     with pytest.raises(ContentClassifierError):
         classifier.classify_page(page)
+
+
+def test_classifier_offline_cache_miss_raises():
+    """In offline mode, a cache miss MUST raise OfflineCacheMissError.
+
+    Must NEVER silently return default ContentFlags or CLEAN.
+    """
+    from AI.ocr.content_classifier import OfflineCacheMissError
+    from AI.ocr.providers.cache import FilesystemExtractionCache
+    cache = FilesystemExtractionCache("tmp/test_empty_cache_dir")
+    classifier = ContentClassifier(api_key=None, cache=cache, offline=True)
+    page = PageImage(1, b"uncached_image_bytes", 100, 100, 300, "s", "p_sha_12345")
+
+    with pytest.raises(OfflineCacheMissError) as exc_info:
+        classifier.classify_page(page)
+
+    assert "Offline mode enabled" in str(exc_info.value)
+    assert "cache miss" in str(exc_info.value)

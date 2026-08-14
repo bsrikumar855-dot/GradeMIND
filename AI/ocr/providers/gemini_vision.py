@@ -108,6 +108,7 @@ class GeminiVisionHTRProvider(HTRProvider):
         max_attempts: int = DEFAULT_MAX_ATTEMPTS,
         backoff: float = DEFAULT_BACKOFF_SECONDS,
         sleep: Callable[[float], None] = time.sleep,
+        offline: bool = False,
     ):
         """`transport` is injected so the failure paths are testable without a key.
 
@@ -122,7 +123,7 @@ class GeminiVisionHTRProvider(HTRProvider):
             )
 
         self.api_key = api_key or os.environ.get("GEMINI_API_KEY")
-        if not self.api_key:
+        if not self.api_key and not offline:
             from dotenv import load_dotenv
             from pathlib import Path
             env_path = Path(__file__).resolve().parent.parent.parent.parent / "backend" / ".env"
@@ -138,6 +139,7 @@ class GeminiVisionHTRProvider(HTRProvider):
         self.backoff = backoff
         self._sleep = sleep
         self._breaker = _Breaker()
+        self.offline = offline
 
     # ------------------------------------------------------------------
 
@@ -158,9 +160,15 @@ class GeminiVisionHTRProvider(HTRProvider):
             cached = self.cache.get(key)
             if cached is not None:
                 logger.info(
-                    "HTR_STAGE cache_hit page=%s key=%s", page.page_number, key[:24]
+                    "HTR_STAGE cache_hit page=%s key=%s model_id=%s", page.page_number, key[:24], self.model_id
                 )
                 return record_to_page(cached)
+
+        if self.offline:
+            logger.error("OFFLINE MODE: Cache miss for page=%s key=%s model_id=%s", page.page_number, key[:24], self.model_id)
+            raise HTRExtractionError(
+                f"Offline mode enabled: cache miss for page {page.page_number} with model {self.model_id}. Network calls forbidden."
+            )
 
         if self._breaker.open:
             raise CircuitOpen(

@@ -28,7 +28,7 @@ from AI.ocr.segmentation import QuestionRegion
 logger = logging.getLogger("GradeMIND.ContentClassifier")
 
 CLASSIFIER_PROMPT_VERSION = "content-classifier/1.0.0"
-DEFAULT_CLASSIFIER_MODEL = "gemini-2.5-flash"
+DEFAULT_CLASSIFIER_MODEL = "gemini-2.0-flash"
 
 
 class ContentClassifierError(RuntimeError):
@@ -36,6 +36,10 @@ class ContentClassifierError(RuntimeError):
 
     Raised rather than returning partial or unflagged content.
     """
+
+
+class OfflineCacheMissError(ContentClassifierError):
+    """Raised when offline mode is requested but a cache miss occurs."""
 
 
 @dataclass(frozen=True)
@@ -125,9 +129,10 @@ class ContentClassifier:
         model_id: str = DEFAULT_CLASSIFIER_MODEL,
         cache: Optional[ExtractionCache] = None,
         timeout: float = 120.0,
+        offline: bool = False,
     ):
         self.api_key = api_key or os.environ.get("GEMINI_API_KEY")
-        if not self.api_key:
+        if not self.api_key and not offline:
             from dotenv import load_dotenv
             from pathlib import Path
             env_path = Path(__file__).resolve().parent.parent.parent / "backend" / ".env"
@@ -138,6 +143,7 @@ class ContentClassifier:
         self.model_id = model_id
         self.cache = cache
         self.timeout = timeout
+        self.offline = offline
 
         if self.api_key:
             genai.configure(api_key=self.api_key)
@@ -147,20 +153,34 @@ class ContentClassifier:
             "classifier": "gemini_vision_classifier",
             "model_id": self.model_id,
             "prompt_version": CLASSIFIER_PROMPT_VERSION,
+            "offline": str(self.offline),
         }
 
     def classify_page(self, page: PageImage) -> ContentFlags:
-        """Classify a single PageImage for non-text content."""
+        """Classify a single PageImage for non-text content.
+
+        Enforces mandatory cache check. If offline=True and cache miss occurs,
+        raises OfflineCacheMissError.
+        """
         key = cache_key(page.page_sha256, f"classifier_{self.model_id}", CLASSIFIER_PROMPT_VERSION)
 
         if self.cache is not None:
             cached = self.cache.get(key)
             if cached is not None and "flags" in cached:
+                logger.info("CONTENT_CLASSIFIER cache_hit page=%d model_id=%s key=%s", page.page_number, self.model_id, key[:16])
                 f_dict = cached["flags"]
                 return ContentFlags(**f_dict)
 
+        if self.offline:
+            logger.error("OFFLINE MODE: Cache miss for page=%d model_id=%s key=%s", page.page_number, self.model_id, key[:16])
+            raise OfflineCacheMissError(
+                f"Offline mode enabled: cache miss for page {page.page_number} with model {self.model_id}. Network calls forbidden."
+            )
+
         if not self.api_key:
-            raise ContentClassifierError("GEMINI_API_KEY is not set for ContentClassifier.")
+            raise ContentClassifierError(
+                f"page {page.page_number}: GEMINI_API_KEY is not set for ContentClassifier model={self.model_id}."
+            )
 
         try:
             image = Image.open(io.BytesIO(page.image_bytes))
