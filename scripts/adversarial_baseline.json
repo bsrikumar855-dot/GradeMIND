@@ -1,0 +1,22 @@
+{
+  "_comment": [
+    "Adversarial probes that currently score when they should not.",
+    "This list may SHRINK, never grow. A new entry fails CI.",
+    "These are known defects with a recorded reason, not hidden ones.",
+    "See docs/DEMO_RUNBOOK.md section 6b and CLAUDE.md Track C."
+  ],
+  "known_failures": {
+    "q1::KEYWORD_SALAD": "scores 1/1, allowed 0 - scheme terms with no sentence structure; asserts nothing",
+    "q1::NEGATED": "scores 1/1, allowed 0 - every term present, every term denied",
+    "q1::QUESTION_COPIED": "scores 1/1, allowed 0 - the prompt echoed back; contains no student claim",
+    "q2::KEYWORD_SALAD": "scores 3/3, allowed 0 - scheme terms with no sentence structure; asserts nothing",
+    "q2::NEGATED": "scores 3/3, allowed 0 - every term present, every term denied",
+    "q2::QUESTION_COPIED": "scores 3/3, allowed 0 - the prompt echoed back; contains no student claim",
+    "q3::KEYWORD_SALAD": "scores 3/3, allowed 0 - scheme terms with no sentence structure; asserts nothing",
+    "q3::NEGATED": "scores 3/3, allowed 0 - every term present, every term denied",
+    "q3::QUESTION_COPIED": "scores 3/3, allowed 0 - the prompt echoed back; contains no student claim",
+    "q4::KEYWORD_SALAD": "scores 5/5, allowed 0 - scheme terms with no sentence structure; asserts nothing",
+    "q4::NEGATED": "scores 5/5, allowed 0 - every term present, every term denied",
+    "q4::QUESTION_COPIED": "scores 5/5, allowed 0 - the prompt echoed back; contains no student claim"
+  }
+}
