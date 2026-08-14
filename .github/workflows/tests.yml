@@ -48,6 +48,16 @@ jobs:
       - name: no self-skipping tests
         run: python scripts/check_no_self_skipping_tests.py
 
+      # Adversarial probes against the marking scheme. Ratchets like the
+      # self-skipping baseline: known failures are recorded with reasons in
+      # scripts/adversarial_baseline.json, a NEW one fails the build. Agreement
+      # statistics measure honest answers; this measures gameability, and they
+      # are different risks.
+      - name: adversarial probe suite
+        env:
+          PYTHONPATH: ${{ github.workspace }}
+        run: python -m scripts.eval_adversarial
+
   test:
     name: Backend + AI test suites
     runs-on: ubuntu-latest

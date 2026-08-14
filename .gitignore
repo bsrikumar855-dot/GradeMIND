@@ -92,3 +92,8 @@ yarn-error.log*
 # TypeScript
 *.tsbuildinfo
 next-env.d.ts
+
+# Evaluation data: real student work. Never enters this repo.
+# See docs/eval/ and the harness precondition in scripts/eval_metrics.py.
+/eval_data/
+/eval_results/

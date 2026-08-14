@@ -375,9 +375,32 @@ denied.
 a scheme, deterministically, and shows its working. That is the claim, and it
 survives this question.
 
-**Q4 is the exposed one** because its five value points are single keywords. Q2
-and Q3 are less gameable — Q3 requires the working, and Q2's ANY_N caps the
-damage. **If you are worried about time or hostile questions, demo Q2 and Q3.**
+**CORRECTION — all four questions are equally exposed.** An earlier version of
+this section said Q4 was "the exposed one" and recommended demoing Q2 and Q3 as
+safer. That was wrong, and it was wrong because it came from probing two
+questions by hand rather than all of them systematically.
+
+`scripts/eval_adversarial.py` runs every probe against every question. The
+result:
+
+```
+36 probes, 12 failing
+KEYWORD_SALAD, NEGATED, QUESTION_COPIED  ->  full marks on q1, q2, q3 AND q4
+```
+
+Q3 was the specific mistake. Its value points are equation fragments
+(`2x = 10`, `x = 10/2`, `x = 5`), so stringing them together as keyword salad
+contains all three literally and scores 3/3. "It requires the working" was an
+assumption, not a measurement.
+
+**What this means for the demo:** there is no safe question to retreat to.
+Demo whichever question tells the story best — Q3's step marking is still the
+clearest — and if the probe is tried, use the answer below. The honesty is the
+defence, not the question choice.
+
+What *does* still hold: the probes that pass are meaningful. Off-topic answers,
+blanks, and whitespace score zero on every question, and a correct answer put
+through OCR damage loses marks rather than gaining them.
 
 The fix, in order: wire `negative_indicators` into `ValuePoint`; require value
 points to match inside an asserting clause rather than anywhere in the text;
