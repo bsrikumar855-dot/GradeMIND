@@ -283,13 +283,11 @@ class ContentClassifier:
         return ContentFlags(**combined_flags)
 
     @staticmethod
-    def check_transcription_struck_out(page_transcription: Page) -> ContentFlags:
-        """Extract contains_struck_out flag directly from transcription Page without additional API calls.
+    def check_transcription_struck_out(region: QuestionRegion) -> ContentFlags:
+        """Extract contains_struck_out flag directly from a QuestionRegion's own lines.
 
-        Wires Gemini Vision transcription per-line struck_through status and line warnings
-        into ContentFlags(contains_struck_out=True).
+        Every content flag is strictly per-question derived from that question's own lines.
+        A flag on one line never propagates to sibling questions on the same page.
         """
-        has_struck = any(getattr(line, "struck_through", False) for line in page_transcription.lines) or any(
-            "struck through" in w.lower() for w in page_transcription.warnings
-        )
+        has_struck = any(getattr(line, "struck_through", False) for line in region.lines)
         return ContentFlags(contains_struck_out=has_struck)

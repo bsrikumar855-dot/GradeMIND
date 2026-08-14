@@ -142,24 +142,26 @@ def test_classifier_offline_cache_miss_raises():
     assert "cache miss" in str(exc_info.value)
 
 
-def test_check_transcription_struck_out():
-    """Verify that struck_through line status or warnings wire into ContentFlags(contains_struck_out=True)."""
-    line1 = Line(text="Normal line", confidence=0.9, bbox=None)
-    line2 = Line(text="10. Video to text", confidence=0.9, bbox=None, struck_through=True)
-    page = Page(
-        lines=(line1, line2),
-        page_confidence=0.9,
-        provider="gemini_vision",
-        model_id="gemini-2.5-flash",
-        prompt_version="transcribe/1.0.0",
-        page_number=1,
-        page_sha256="test_sha",
-        extraction_sha256="ext_sha",
-        rasterize_version="rasterize/1.0.0",
-        warnings=("line 10: marked struck through by the candidate",),
-    )
+def test_check_transcription_struck_out_strictly_per_region():
+    """Verify that check_transcription_struck_out operates strictly on QuestionRegion lines.
 
-    flags = ContentClassifier.check_transcription_struck_out(page)
-    assert flags.contains_struck_out is True
-    assert flags.has_flags is True
-    assert "CONTAINS_STRUCK_OUT" in flags.flagged_reasons()
+    Using REAL_SCRIPT_PAGES, exactly one region (Q10) is flagged with contains_struck_out=True.
+    No sibling question on Page 1 (Q1-Q9, Q11, Q12) inherits the flag.
+    """
+    from AI.fixtures.real_script_page_1_3 import REAL_SCRIPT_PAGES
+    from AI.ocr.segmentation import segment_script
+
+    regions = segment_script(list(REAL_SCRIPT_PAGES), expected_questions=[str(i) for i in range(1, 16)])
+    q_flags = {
+        r.question_number: ContentClassifier.check_transcription_struck_out(r)
+        for r in regions
+    }
+
+    # Exactly Q10 must be flagged
+    assert q_flags["10"].contains_struck_out is True
+    assert q_flags["10"].has_flags is True
+    assert "CONTAINS_STRUCK_OUT" in q_flags["10"].flagged_reasons()
+
+    # All other questions must be unflagged
+    for q_num in ["1", "2", "3", "4", "5", "6", "7", "8", "9", "11", "12", "13", "14", "15"]:
+        assert q_flags[q_num].contains_struck_out is False, f"Q{q_num} erroneously inherited struck_out flag"

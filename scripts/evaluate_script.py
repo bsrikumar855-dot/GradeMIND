@@ -62,11 +62,8 @@ def main():
     print("-" * 80)
 
     for r in regions:
-        # Check struck_out flags from transcription pages
-        transcription_flags = [classifier.check_transcription_struck_out(p) for p in pages if p.page_number in r.page_numbers]
-        has_struck = any(f.contains_struck_out for f in transcription_flags)
-
-        flags = ContentFlags(contains_struck_out=has_struck)
+        # Check struck_out flags strictly per QuestionRegion's own lines
+        flags = classifier.check_transcription_struck_out(r)
         scorable = r.can_be_auto() and not flags.has_flags
         reason = "MANDATORY_HUMAN" if not scorable else "AUTO_ROUTABLE"
 
