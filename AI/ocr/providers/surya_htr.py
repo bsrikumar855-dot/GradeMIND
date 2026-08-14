@@ -39,7 +39,7 @@ class SuryaHTRProvider(HTRProvider):
     def __init__(
         self,
         model_id: str = DEFAULT_SURYA_MODEL,
-        weights_sha256: str = "pinned_surya_ocr_v0221",
+        weights_sha256: str = "UNAVAILABLE",
         cache: Optional[ExtractionCache] = None,
         langs: Optional[List[str]] = None,
     ):

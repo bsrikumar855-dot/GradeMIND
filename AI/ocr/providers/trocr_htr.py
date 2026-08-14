@@ -48,7 +48,7 @@ class TrOCRHTRProvider(HTRProvider):
     def __init__(
         self,
         model_id: str = DEFAULT_TROCR_MODEL,
-        weights_sha256: str = "pinned_trocr_base_handwritten_v1",
+        weights_sha256: str = "UNAVAILABLE",
         line_segmenter: Optional[LineSegmenter] = None,
         cache: Optional[ExtractionCache] = None,
         device: Optional[str] = None,

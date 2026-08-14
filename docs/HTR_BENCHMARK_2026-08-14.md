@@ -1,15 +1,22 @@
 # HTR Provider Benchmark — 2026-08-14
 
 Comparative benchmark of HTR providers over identical scan pages.
+
 > **NO ACCURACY CLAIMS MADE.** Ground-truth transcriptions do not exist for these pages.
+
+---
 
 ## 1. Resource & Performance Summary
 
 | Provider | Model ID | Provenance Hash | Pages Tested | Total Sec | Avg Sec/Page | Status |
 |---|---|---|---|---|---|---|
-| `trocr` | `microsoft/trocr-base-handwritten` | `pinned_trocr_bas` | 3 | 0.0s | 0.0s | COMPLETED |
-| `surya` | `surya-ocr-v0.22.1` | `pinned_surya_ocr` | 3 | 0.0s | 0.0s | COMPLETED |
+| `trocr` | `microsoft/trocr-base-handwritten` | `UNAVAILABLE` | 3 | 0.06s* | 0.02s* | COMPLETED (Line segmenter failed) |
+| `surya` | `surya-ocr-v0.22.1` | `UNAVAILABLE` | 0 | — | — | **FAILED** (ImportError: `No module named 'surya'`) |
 | `gemini_vision` | `gemini-3.5-flash` | `transcribe/1.0.0` | 3 | 52.74s | 17.58s | COMPLETED |
+
+*\*Note on `trocr` timing:* The reported 0.02s/page is **not** a valid benchmark of a Vision Transformer forward pass. The heuristic `LineSegmenter` failed to segment full handwriting lines, detecting only ~1 tiny bounding box crop per page. TrOCR was **never meaningfully exercised** on real handwriting lines on CPU.
+
+---
 
 ## 2. Side-by-Side Transcribed Text
 
@@ -17,15 +24,15 @@ Comparative benchmark of HTR providers over identical scan pages.
 
 #### Provider: `trocr`
 - **Confidence (min line legibility):** `0.1918`
-- **Line count:** `1`
-- **Elapsed:** `0.0s`
+- **Line count:** `1` (Segmentation defect: line segmenter missed 12 lines)
+- **Elapsed:** `0.02s`
 
 ```text
 L 1: APPEET [conf=0.19]
 ```
 
 #### Provider: `surya`
-*FAILED OR SKIPPED*: `surya-ocr is not available or failed to load (No module named 'surya'). Ensure `surya-ocr` is installed and weights are present.`
+**FAILED**: `ModuleNotFoundError: No module named 'surya'`. Package not installed in the Windows Python 3.14 environment.
 
 #### Provider: `gemini_vision`
 - **Confidence (min line legibility):** `0.9`
@@ -48,12 +55,14 @@ L12: 11. True [conf=0.90]
 L13: 12. memory and dependencies. [conf=0.90]
 ```
 
+---
+
 ### Page 2
 
 #### Provider: `trocr`
 - **Confidence (min line legibility):** `0.1972`
-- **Line count:** `2`
-- **Elapsed:** `0.0s`
+- **Line count:** `2` (Segmentation defect: missed 23 lines)
+- **Elapsed:** `0.02s`
 
 ```text
 L 1: to the streets of the [conf=0.20]
@@ -61,7 +70,7 @@ L 2: 1. L [conf=0.54]
 ```
 
 #### Provider: `surya`
-*FAILED OR SKIPPED*: `surya-ocr is not available or failed to load (No module named 'surya'). Ensure `surya-ocr` is installed and weights are present.`
+**FAILED**: `ModuleNotFoundError: No module named 'surya'`.
 
 #### Provider: `gemini_vision`
 - **Confidence (min line legibility):** `0.9`
@@ -96,19 +105,21 @@ L24: for image based data and to get the import [conf=0.90]
 L25: ant [conf=0.90]
 ```
 
+---
+
 ### Page 3
 
 #### Provider: `trocr`
 - **Confidence (min line legibility):** `0.4342`
-- **Line count:** `1`
-- **Elapsed:** `0.0s`
+- **Line count:** `1` (Segmentation defect: missed 6 lines)
+- **Elapsed:** `0.02s`
 
 ```text
 L 1: a member of the Government of America [conf=0.43]
 ```
 
 #### Provider: `surya`
-*FAILED OR SKIPPED*: `surya-ocr is not available or failed to load (No module named 'surya'). Ensure `surya-ocr` is installed and weights are present.`
+**FAILED**: `ModuleNotFoundError: No module named 'surya'`.
 
 #### Provider: `gemini_vision`
 - **Confidence (min line legibility):** `0.8`
@@ -125,9 +136,23 @@ L 6: LSTM is used here when producing long sequential [conf=0.90]
 L 7: data. [conf=0.90]
 ```
 
+---
+
 ## 3. Structural Error & Geometry Observations
 
 - **Bounding Box Availability:**
-  - `trocr`: YES (usable as evidence spans)
-  - `gemini_vision`: YES (usable as evidence spans)
+  - `trocr`: Bounding boxes supplied by `LineSegmenter`, but line segmentation failed on unconstrained cursive handwriting.
+  - `gemini_vision`: YES (per-line bboxes `[x0, y0, x1, y1]` returned in JSON schema).
 - **Determinism:** Local models with pinned seeds produce byte-identical extractions. Hosted vision APIs vary across invocations and rely on disk caching (`ExtractionCache`) for audit reproducibility.
+
+---
+
+## 4. Verification Gate Status
+
+- **Gate (a):** Candidate survey written at `docs/HTR_CANDIDATE_SURVEY.md`.
+- **Gate (b):** `trocr` and `surya` implement `HTRProvider` ABC.
+- **Gate (c):** **NOT VERIFIED** (network isolation test not executed in environment).
+- **Gate (d):** **NOT VERIFIED** (determinism across multiple runs not executed).
+- **Gate (e):** Unit tested (`test_provider_failure_produces_no_page`).
+- **Gate (f):** Unit tested (`test_fallback_does_not_fire_on_low_confidence`).
+- **Gate (g):** Benchmark report written without accuracy figures (CER/WER).
