@@ -18,6 +18,19 @@ from AI.ocr.tesseract_engine import TesseractOCREngine
 logger = logging.getLogger("GradeMIND.OCRManager")
 
 
+class UnreadablePDFError(RuntimeError):
+    """A PDF yielded no usable text and must not be marked.
+
+    Raised instead of returning an empty OCRDocument. An empty document is
+    indistinguishable, downstream, from a genuinely blank answer -- and the
+    marking engine correctly scores a blank answer as zero. That is how a
+    ten-page script becomes a zero with nothing logged as an error.
+
+    Callers must route this to MANDATORY_HUMAN. They must not catch it and
+    substitute an empty answer, which would restore the defect.
+    """
+
+
 class OCRManager:
     """
     Manager that runs and votes on outputs from multiple local OCR engines.
@@ -116,17 +129,27 @@ class OCRManager:
         # ── PDF: try embedded text first ─────────────────────────────────
         if image_path.lower().endswith(".pdf"):
             logger.info("PDF_TEXT_STAGE start submission_id=%s path=%s", submission_id, image_path)
-            pdf_doc = self.extract_pdf_text(image_path, submission_id)
-            if pdf_doc.lines:
+            try:
+                pdf_doc = self.extract_pdf_text(image_path, submission_id)
+            except UnreadablePDFError as exc:
+                # Fall through to the engines, exactly as before. Note the
+                # fallback is currently illusory for a scanned PDF -- the
+                # engines take image paths and nothing in this package converts
+                # PDF pages to images -- so this path ends at "All OCR engines
+                # failed", which is a raise. That is the correct outcome; it is
+                # just a less clear message than the one being swallowed here.
+                # Rasterisation is Phase 3.
+                logger.warning(
+                    "PDF_TEXT_STAGE no_embedded_text submission_id=%s (%s); "
+                    "falling_back_to_ocr",
+                    submission_id, exc,
+                )
+            else:
                 logger.info(
                     "PDF_TEXT_STAGE completed submission_id=%s lines=%s",
                     submission_id, len(pdf_doc.lines),
                 )
                 return pdf_doc
-            logger.warning(
-                "PDF_TEXT_STAGE no_embedded_text submission_id=%s; falling_back_to_ocr",
-                submission_id,
-            )
 
         # ── Primary: content-aware OCR Router ────────────────────────────
         try:
@@ -181,19 +204,66 @@ class OCRManager:
 
     def extract_pdf_text(self, pdf_path: str, submission_id: str) -> OCRDocument:
         """
-        Extract embedded text from text-based PDFs without adding a new runtime dependency.
-        Scanned PDFs still fall back to image OCR engines.
+        Extract embedded text from a text-based PDF, using only the standard library.
+
+        WORKS ONLY ON PDFs THAT ALREADY CONTAIN A TEXT LAYER. There is no
+        rasterisation stage anywhere in this package, so a scanned, image-only
+        PDF has no page images for the OCR engines to read and cannot be
+        processed by any path here. Raises `UnreadablePDFError` for that case;
+        adding rasterisation is Phase 3 work.
+
+        (An earlier version of this docstring said "scanned PDFs still fall
+        back to image OCR engines". No code produced images for them to fall
+        back to, and the function returned an empty document instead.)
+
+        Raises:
+            UnreadablePDFError: the file cannot be read, or contains no
+                extractable text layer.
         """
         try:
             with open(pdf_path, "rb") as f:
                 raw = f.read()
         except OSError as exc:
-            logger.exception("PDF_TEXT_STAGE read_failed submission_id=%s path=%s error=%s", submission_id, pdf_path, exc)
-            return OCRDocument(submission_id=submission_id, confidence=0.0, lines=[], regions=[])
+            logger.exception(
+                "PDF_TEXT_STAGE read_failed submission_id=%s path=%s error=%s",
+                submission_id, pdf_path, exc,
+            )
+            raise UnreadablePDFError(
+                f"submission {submission_id}: cannot read {pdf_path}: {exc}"
+            ) from exc
 
         text = self._extract_pdf_literal_text(raw)
         if not text:
-            return OCRDocument(submission_id=submission_id, confidence=0.0, lines=[], regions=[])
+            # THE ZERO-MARK PATH. Returning an empty OCRDocument here meant a
+            # caller that did not check len(lines) received an empty answer,
+            # marked it against the scheme, and produced a legitimate-looking
+            # zero for a script full of writing -- with nothing raised and
+            # nothing logged as an error.
+            #
+            # Amendment A: BLANK_PAGE / ILLEGIBLE and the rest may never
+            # silently produce a zero; every one routes to MANDATORY_HUMAN. The
+            # confidence=0.0 this used to return carried exactly the signal
+            # needed to catch it, and nothing consumed it.
+            #
+            # So it raises, matching extract_text() which already raises when
+            # every engine fails. The two paths now behave the same way.
+            has_images = b"/Image" in raw
+            logger.error(
+                "PDF_TEXT_STAGE no_text_layer submission_id=%s path=%s "
+                "bytes=%d has_image_xobjects=%s",
+                submission_id, pdf_path, len(raw), has_images,
+            )
+            raise UnreadablePDFError(
+                f"submission {submission_id}: {pdf_path} contains no extractable "
+                f"text layer"
+                + (
+                    " and appears to be a scanned/image-only PDF. There is no "
+                    "rasterisation stage in this package, so it cannot be OCR'd "
+                    "here. Route to MANDATORY_HUMAN."
+                    if has_images
+                    else ". Route to MANDATORY_HUMAN."
+                )
+            )
 
         lines = [
             OCRLine(
