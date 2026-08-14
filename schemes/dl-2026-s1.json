@@ -8,32 +8,35 @@
       "value_points": [
         {
           "id": "13.1",
-          "text": "sparse autoencoders will be more suitable for high dimensional data",
+          "text": "Sparse autoencoders are preferred for high dimensional data",
           "marks": 1.0,
           "match_mode": "EXACT",
           "acceptable_variants": [
-            "sparse autoencoders will be more suitable",
-            "sparse autoencoders"
+            "sparse autoencoders are more suitable",
+            "sparse autoencoder handles high dimensional data",
+            "sparse autoencoders reduce dimensionality efficiently"
           ]
         },
         {
           "id": "13.2",
-          "text": "Standard autoencoders get input, encode and restructure the given data",
+          "text": "Standard autoencoders reconstruct input using dense hidden layers",
           "marks": 1.0,
           "match_mode": "EXACT",
           "acceptable_variants": [
             "encode and restructure the given data",
-            "encode and restructure"
+            "standard autoencoders replicate input data",
+            "encode and decode the input"
           ]
         },
         {
           "id": "13.3",
-          "text": "In sparse autoencoders, the details are more preserved",
+          "text": "Sparse autoencoders preserve salient features by enforcing sparsity constraint",
           "marks": 1.0,
           "match_mode": "EXACT",
           "acceptable_variants": [
             "details are more preserved",
-            "the details are more preserved"
+            "sparsity constraint preserves key features",
+            "sparse representation retains important details"
           ]
         }
       ]
@@ -46,33 +49,35 @@
       "value_points": [
         {
           "id": "14.1",
-          "text": "GAN (Generative Adversarial Networks) suitable for image enhancement and generation",
+          "text": "GANs generate new synthetic data like images from learned distributions",
           "marks": 1.0,
           "match_mode": "EXACT",
           "acceptable_variants": [
-            "Generative Adversarial Networks",
+            "Generative Adversarial Networks for image generation",
+            "generates synthetic data from features",
             "image enhancement and generation"
           ]
         },
         {
           "id": "14.2",
-          "text": "GAN has two parts, Generator & Discriminator",
+          "text": "GAN architecture consists of two neural networks: Generator and Discriminator",
           "marks": 1.0,
           "match_mode": "EXACT",
           "acceptable_variants": [
             "Generator & Discriminator",
-            "Generator and Discriminator"
+            "Generator and Discriminator networks",
+            "composed of Generator and Discriminator"
           ]
         },
         {
           "id": "14.3",
-          "text": "Generator will take noise as input and generate fake data",
+          "text": "Generator produces synthetic data from random noise",
           "marks": 1.0,
           "match_mode": "EXACT",
           "acceptable_variants": [
-            "take noise as input and generate fake data",
-            "generate fake data",
-            "fake data"
+            "Generator takes noise input to produce fake samples",
+            "Generator creates fake data from noise",
+            "takes noise as input and generate fake data"
           ]
         }
       ]
@@ -85,34 +90,35 @@
       "value_points": [
         {
           "id": "15.1",
-          "text": "LSTM (Long Short Term Memory) used for improving performance of image captioning",
+          "text": "LSTM handles sequential language generation for producing captions",
           "marks": 1.0,
           "match_mode": "EXACT",
           "acceptable_variants": [
-            "LSTM (Long Short Term Memory) in improving the performance of image captioning",
-            "storing past memory while generating captions",
-            "Long Short Term Memory"
+            "LSTM generates caption sequence word by word",
+            "recurrent network stores temporal sequence memory",
+            "LSTM produces sequential caption output"
           ]
         },
         {
           "id": "15.2",
-          "text": "CNN used for image based data and feature extraction",
+          "text": "CNN extracts visual feature representations from input images",
           "marks": 1.0,
           "match_mode": "EXACT",
           "acceptable_variants": [
-            "use CNN for image based data and to get the important features",
-            "CNN for image based data",
-            "image based data and to get the important features"
+            "CNN extracts image features",
+            "convolutional network processes visual image data",
+            "CNN for image feature extraction"
           ]
         },
         {
           "id": "15.3",
-          "text": "forget gate will decide what content is necessary and which isn't",
+          "text": "Forget gate regulates memory retention across sequence steps",
           "marks": 1.0,
           "match_mode": "EXACT",
           "acceptable_variants": [
-            "forget gate which will decide what content is necessary",
-            "forget gate"
+            "forget gate controls information retention",
+            "forget gate filters relevant memory",
+            "forget gate decides information flow"
           ]
         }
       ]

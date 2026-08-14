@@ -36,6 +36,7 @@ def main():
     parser.add_argument("--from-fixture", action="store_true", default=True, help="Load pages from authentic P0 fixture (zero API calls)")
     parser.add_argument("--scheme", type=str, default=None, help="Path to marking scheme JSON file")
     parser.add_argument("--offline", action="store_true", default=True, help="Enforce offline cache-only execution")
+    parser.add_argument("--annotate", type=str, default=None, help="Path to output annotated PDF")
     args = parser.parse_args()
 
     print("GradeMIND — P3 FULL PIPELINE EVALUATION CLI")
@@ -147,6 +148,7 @@ def main():
             "can_be_auto": True,
             "score": score.as_dict(),
             "flags": flags.flagged_reasons(),
+            "lines": r.lines,
         })
 
     # 5. Final Summary & Provenance Block
@@ -159,20 +161,40 @@ def main():
         for q_id, reas in routed_details:
             print(f"  - Q{q_id}: {reas}")
 
+    prov_dict = {
+        "scheme_version": scheme_version,
+        "matcher_version": MATCHER_VERSION,
+        "scorer_version": ENGINE_VERSION,
+        "model_id": model_id,
+        "prompt_version": prompt_version,
+    }
+
     print("\nPROVENANCE RECORD")
     print("-" * 80)
-    print(f"  scheme_version  : {scheme_version}")
-    print(f"  matcher_version : {MATCHER_VERSION}")
-    print(f"  scorer_version  : {ENGINE_VERSION}")
-    print(f"  model_id        : {model_id}")
-    print(f"  prompt_version  : {prompt_version}")
+    for k, v in prov_dict.items():
+        print(f"  {k:<16} : {v}")
     print("=" * 80)
 
     # Save summary report artifact
     report_path = Path("tmp/p3_evaluation_report.json")
     report_path.parent.mkdir(parents=True, exist_ok=True)
-    report_path.write_text(json.dumps(results, indent=2), encoding="utf-8")
+
+    # Clean results for JSON serialization (remove Line objects)
+    json_results = []
+    for item in results:
+        clean_item = {k: v for k, v in item.items() if k != "lines"}
+        json_results.append(clean_item)
+    report_path.write_text(json.dumps(json_results, indent=2), encoding="utf-8")
     print(f"\nSaved evaluation report artifact to {report_path}")
+
+    # Generate Annotated PDF if --annotate is passed
+    if args.annotate:
+        from AI.reports.annotate_pdf import generate_annotated_pdf
+
+        scan_pdf = Path("backend/storage/answer_sheets/a73e49ab-c18b-499d-85cd-6cc82a186ee8/S_ebaff77e80f0eb33.pdf")
+        annotated_path = generate_annotated_pdf(scan_pdf, args.annotate, results, prov_dict)
+        print(f"Saved annotated PDF report to {annotated_path}")
+
     print("P3 Pipeline Execution Completed Successfully with ZERO API Calls.")
 
 
