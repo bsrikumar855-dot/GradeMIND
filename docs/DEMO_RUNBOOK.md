@@ -1,6 +1,6 @@
 # Demo Runbook — Value-Point Marking Engine
 
-**Branch:** `demo/value-point-engine`
+**Branch:** `feat/gemini-vision-htr` (or `main`)
 **Assumes:** a machine that is not the one this was built on, and not much time.
 
 Every command below was run and its output pasted in §6. If something behaves
@@ -17,7 +17,7 @@ but pip. Clone, set one variable, go:
 ```bash
 git clone https://github.com/bsrikumar855-dot/GradeMIND.git
 cd GradeMIND
-git checkout demo/value-point-engine
+git checkout feat/gemini-vision-htr
 
 # Windows PowerShell
 $env:PYTHONPATH = "."
@@ -25,7 +25,10 @@ $env:PYTHONPATH = "."
 export PYTHONPATH=.
 ```
 
-That is the whole setup for the demo. Any Python 3.11+.
+That is the whole setup for the baseline demo. Any Python 3.11+.
+
+> **Note for PDF Annotations (§1b):** To generate the annotated PDF artifact
+> (`tmp/annotated_script.pdf`), PyMuPDF is required: `pip install pymupdf`.
 
 ### If you also want the tests (§3)
 
@@ -58,6 +61,8 @@ pip install -r requirements/base.txt
 
 ## 1. THE DEMO — run this one (2 min)
 
+### 1a. Synthetic Fixtures Demo (Zero Packages)
+
 ```bash
 python -m scripts.demo_marking
 ```
@@ -66,18 +71,24 @@ Twelve answers across four questions, each with the full derivation: which
 value point was awarded, the character span in the answer that earned it, the
 arithmetic, and the total.
 
-**Show Q2 if you only have time for one.** It shows "any two of three" — the
-student gives three correct functions and the engine credits exactly two,
-because that is what the scheme allocates:
+### 1b. P3 Full Pipeline Evaluation & PDF Annotation (Zero API Calls)
+
+To run the full end-to-end P3 pipeline offline using authentic P0 transcriptions,
+an independent marking scheme, and PyMuPDF annotation generation:
+
+```bash
+python -m scripts.evaluate_script --from-fixture --scheme schemes/dl-2026-s1.json --annotate tmp/annotated_script.pdf
+```
+
+**Flags explained:**
+- `--from-fixture`: Loads 3 authentic transcribed pages from `AI.fixtures.real_script_page_1_3` with **zero API calls**.
+- `--scheme schemes/dl-2026-s1.json`: Evaluates candidate regions against the independent hand-authored marking scheme.
+- `--annotate tmp/annotated_script.pdf`: Overlays right-margin scores, ticks/crosses, translucent evidence highlights, and the Q10 teacher banner onto the original scan PDF.
+
+Show Q2 if you only have time for synthetic demo:
 
 ```bash
 python -m scripts.demo_marking --question q2
-```
-
-Just the marks, no derivations:
-
-```bash
-python -m scripts.demo_marking --compact
 ```
 
 **What to point at:** the `evidence: chars 13-24 "produce ATP"` lines. That is
