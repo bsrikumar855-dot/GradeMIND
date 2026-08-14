@@ -113,11 +113,29 @@ def main():
             n_routed += 1
             reason_msg = f"CONTAINS_STRUCK_OUT (line flags: {flags.flagged_reasons()})" if flags.has_flags else f"Status: {r.status.name}"
             routed_details.append((q_num, reason_msg))
+            results.append({
+                "question_number": q_num,
+                "page_numbers": r.page_numbers,
+                "status": r.status.name,
+                "can_be_auto": False,
+                "score": None,
+                "flags": flags.flagged_reasons(),
+                "lines": r.lines,
+            })
             print(f"\nQ{q_num:<3} -> ROUTED TO MANDATORY_HUMAN ({reason_msg})")
             continue
 
         if sq is None:
             n_no_scheme += 1
+            results.append({
+                "question_number": q_num,
+                "page_numbers": r.page_numbers,
+                "status": r.status.name,
+                "can_be_auto": True,
+                "score": None,
+                "flags": flags.flagged_reasons(),
+                "lines": r.lines,
+            })
             print(f"\nQ{q_num:<3} -> NO SCHEME - not scored")
             continue
 
