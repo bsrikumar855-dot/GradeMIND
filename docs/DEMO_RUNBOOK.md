@@ -185,6 +185,7 @@ Interactive docs at `http://127.0.0.1:8000/docs`.
 | `Could not find a version that satisfies uvicorn==0.34.0` | Same root cause as above; the message names the wrong package | Ignore the package it names. See the row above |
 | `ModuleNotFoundError: No module named 'numpy'` running tests | Only pytest installed | `pip install numpy`. Only one test (the SEMANTIC stub) needs it |
 | Someone asks for an accuracy number | — | See §7. There isn't one, and saying so is the stronger answer |
+| A judge pastes keywords with no sentence, or a negated sentence, and gets full marks on Q4 | Containment matching sees presence, not assertion | **Expected. See §6b for the answer.** Do not improvise this one |
 
 **The fallback order is §4 → §1.** The CLI is the demo of last resort and it
 has no moving parts.
@@ -340,6 +341,47 @@ difference in the measurement. Fixed — the script now formats once.
 So: the old metric is deterministic. Its problem is not instability, it is
 that it ranks the wrong thing. That distinction is worth keeping straight if
 someone asks.
+
+---
+
+## 6b. KNOWN GAP — read this before you present
+
+**A keyword-stuffed answer scores full marks on Q4.** Measured, not suspected:
+
+```
+5/5   "chlorophyll sunlight carbon dioxide water glucose"          (keyword salad)
+5/5   "Photosynthesis does not use chlorophyll, sunlight,
+       carbon dioxide, water or glucose."                          (NEGATED, wrong)
+5/5   "Describe the process of photosynthesis using chlorophyll,
+       sunlight, carbon dioxide, water and glucose."               (question copied back)
+```
+
+**Why:** EXACT containment detects that a term is *present*. It does not detect
+whether the student *asserted* it, negated it, or copied it from the prompt.
+That is the mirror image of the defect this engine replaced — the old metric
+could not see a term that was there; this one cannot see that a term is being
+denied.
+
+**If a judge tries this, do not be surprised by it. Say:**
+
+> Good — that's the failure mode of containment matching, and it's the next
+> thing on the list. The marking scheme format already has a
+> `negative_indicators` field for exactly this; we haven't wired it up yet.
+> What we've fixed is the opposite defect: the old engine couldn't see a term
+> the student had actually written. We swapped one known limitation for
+> another, and this one is bounded and detectable.
+
+**Do not** claim the engine understands the answer. It matches evidence against
+a scheme, deterministically, and shows its working. That is the claim, and it
+survives this question.
+
+**Q4 is the exposed one** because its five value points are single keywords. Q2
+and Q3 are less gameable — Q3 requires the working, and Q2's ANY_N caps the
+damage. **If you are worried about time or hostile questions, demo Q2 and Q3.**
+
+The fix, in order: wire `negative_indicators` into `ValuePoint`; require value
+points to match inside an asserting clause rather than anywhere in the text;
+score against a human-marked set to find out which of these actually matters.
 
 ---
 
