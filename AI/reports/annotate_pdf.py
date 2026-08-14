@@ -21,6 +21,34 @@ import fitz
 
 DISCLAIMER = "SUGGESTED MARKS - NOT VALIDATED AGAINST HUMAN EXAMINERS"
 
+# Raster image coordinate space constants (1000px width x 1200px height)
+RASTER_WIDTH = 1000.0
+RASTER_HEIGHT = 1200.0
+
+
+def _to_pdf_rect(bbox: Tuple[float, float, float, float], pw: float, ph: float, max_x_margin: float = 495.0) -> fitz.Rect:
+    """Converts Line bbox (whether normalized fractions <= 1.0 or 1000x1200 pixels) to PyMuPDF A4 points (595x842)."""
+    rx0, ry0, rx1, ry1 = bbox
+
+    # Check if bbox is normalized fractions (<= 1.0) or raster pixels (> 1.0)
+    if rx1 <= 1.0 and ry1 <= 1.0:
+        nx0, ny0, nx1, ny1 = rx0, ry0, rx1, ry1
+    else:
+        nx0 = rx0 / RASTER_WIDTH
+        ny0 = ry0 / RASTER_HEIGHT
+        nx1 = rx1 / RASTER_WIDTH
+        ny1 = ry1 / RASTER_HEIGHT
+
+    px0 = nx0 * pw
+    py0 = ny0 * ph
+    px1 = min(nx1 * pw, max_x_margin)
+    py1 = ny1 * ph
+
+    if py1 - py0 < 18.0:
+        py1 = py0 + 18.0
+
+    return fitz.Rect(px0, py0, px1, py1)
+
 
 def generate_annotated_pdf(
     input_pdf_path: str | Path,
@@ -108,7 +136,7 @@ def generate_annotated_pdf(
         cover.insert_text((margin_x, curr_y), row_txt, fontsize=8.5, color=(0, 0, 0))
         curr_y += 13
 
-        if curr_y > 700:  # Safety margin for cover page
+        if curr_y > 700:
             break
 
     curr_y += 15
@@ -130,16 +158,28 @@ def generate_annotated_pdf(
     # -------------------------------------------------------------------------
     # 2. Annotate Original Pages (Indices 1..N)
     # -------------------------------------------------------------------------
+    margin_right_x = 510.0  # Right margin text zone (510pt - 585pt) outside handwriting
+    max_highlight_x = 495.0  # Maximum right boundary for translucent highlight rects
+
     for item in eval_summary:
         q_num = item["question_number"]
         page_nums = item["page_numbers"]
         score_info = item.get("score")
         can_auto = item.get("can_be_auto")
         flags = item.get("flags", ())
+        lines = item.get("lines", ())
+
+        # Compute character offsets for lines in question region
+        line_offsets = []
+        offset = 0
+        for l in lines:
+            start_char = offset
+            end_char = offset + len(l.text)
+            line_offsets.append((start_char, end_char, l))
+            offset = end_char + 1  # space joined
 
         for p_num in page_nums:
-            # Map original 1-based page number to PDF page index (shifted +1 by cover)
-            pdf_page_idx = p_num  # page_num 1 maps to index 1
+            pdf_page_idx = p_num  # page_num 1 maps to index 1 (shifted +1 by cover)
             if pdf_page_idx >= len(doc):
                 continue
 
@@ -147,64 +187,76 @@ def generate_annotated_pdf(
             pw = page.rect.width
             ph = page.rect.height
 
-            # Right margin mark position
-            margin_right_x = pw - 75
-
-            # A. Draw Struck-Through Banner for Q10
+            # A. Draw Struck-Through Banner for Q10 directly beside Q10's line
             if not can_auto and "CONTAINS_STRUCK_OUT" in flags:
-                b_rect = fitz.Rect(30, 30, pw - 30, 55)
-                b_shape = page.new_shape()
-                b_shape.draw_rect(b_rect)
-                b_shape.finish(color=(0.8, 0, 0), fill=(1.0, 0.9, 0.9), fill_opacity=0.85, width=1.2)
-                b_shape.commit()
-                page.insert_text((45, 48), "SENT TO TEACHER — answer struck through", fontsize=11, color=(0.8, 0, 0))
+                q10_line = None
+                for l in lines:
+                    if getattr(l, "struck_through", False) or "10." in l.text:
+                        q10_line = l
+                        break
+
+                if q10_line and getattr(q10_line, "bbox", None):
+                    q10_rect = _to_pdf_rect(q10_line.bbox, pw, ph, max_highlight_x)
+                    b_rect = fitz.Rect(140, q10_rect.y0 - 2, 500, q10_rect.y1 + 2)
+                    b_shape = page.new_shape()
+                    b_shape.draw_rect(b_rect)
+                    b_shape.finish(color=(0.8, 0, 0), fill=(1.0, 0.9, 0.9), fill_opacity=0.9, width=1.2)
+                    b_shape.commit()
+                    page.insert_text((150, q10_rect.y0 + 13), "SENT TO TEACHER — answer struck through", fontsize=10, color=(0.8, 0, 0))
 
             # B. Draw Scored Question Marks & Evidence Spans
             if score_info:
-                # Right Margin Question Score
-                q_top_y = 120 + (int(q_num) - 13) * 180 if q_num.isdigit() and int(q_num) >= 13 else 100
-                q_top_y = min(q_top_y, ph - 100)
+                # Find top Y of question region for question score display
+                first_line = lines[0] if lines else None
+                q_top_y = (_to_pdf_rect(first_line.bbox, pw, ph, max_highlight_x).y0) if (first_line and getattr(first_line, "bbox", None)) else 100.0
 
-                page.insert_text((margin_right_x, q_top_y), f"Q{q_num}: {score_info['total']:g}/{score_info['max_marks']:g}", fontsize=11, color=(0.8, 0, 0))
+                # Question Total Score in Right Margin
+                page.insert_text((margin_right_x, q_top_y + 12), f"Q{q_num}: {score_info['total']:g}/{score_info['max_marks']:g}", fontsize=11, color=(0.8, 0, 0))
 
                 # Value Points Ticks/Crosses & Evidence Span Highlights
                 awarded_lines = score_info.get("awarded", [])
                 not_awarded_lines = score_info.get("not_awarded", [])
 
+                # Track vertical offset in margin for ticks/crosses so they never collide
+                margin_y = q_top_y + 26
+
                 # Process awarded lines (translucent highlight + green tick)
-                for line in awarded_lines:
-                    vp_id = line["value_point_id"]
-                    span = line.get("evidence_span")
+                for award in awarded_lines:
+                    vp_id = award["value_point_id"]
+                    span = award.get("evidence_span")
 
-                    if span and item.get("lines"):
-                        # Find corresponding Line bbox in region
-                        for reg_line in item["lines"]:
-                            if getattr(reg_line, "bbox", None):
-                                bx0, by0, bx1, by1 = reg_line.bbox
-                                # Scale scan image coordinates (1000x1200 max) to PDF page (595x842)
-                                scale_x = pw / 1000.0 if bx1 > pw else 1.0
-                                scale_y = ph / 1200.0 if by1 > ph else 1.0
+                    if span:
+                        span_start, span_end = span[0], span[1]
+                        matched_lines = [l for s, e, l in line_offsets if not (e <= span_start or s >= span_end)]
 
-                                # Clip highlight to avoid overlapping right margin mark area
-                                max_h_x = min(bx1 * scale_x, pw - 85)
-                                highlight_rect = fitz.Rect(bx0 * scale_x, by0 * scale_y, max_h_x, by1 * scale_y)
+                        if not matched_lines and lines:
+                            matched_lines = [lines[0]]
 
-                                # Draw translucent yellow highlight
+                        # Highlight every line overlapping evidence span
+                        first_hl_rect = None
+                        for m_line in matched_lines:
+                            if getattr(m_line, "bbox", None):
+                                hl_rect = _to_pdf_rect(m_line.bbox, pw, ph, max_highlight_x)
+                                if first_hl_rect is None:
+                                    first_hl_rect = hl_rect
+
                                 h_shape = page.new_shape()
-                                h_shape.draw_rect(highlight_rect)
+                                h_shape.draw_rect(hl_rect)
                                 h_shape.finish(color=(0, 0.7, 0), fill=(1.0, 0.95, 0.4), fill_opacity=0.35, width=1.0)
                                 h_shape.commit()
 
-                                # Draw green tick [+] in margin
-                                page.insert_text((margin_right_x, highlight_rect.y0 + 12), f"[+] {vp_id}", fontsize=9, color=(0, 0.6, 0))
-                                break
+                        tick_y = first_hl_rect.y0 + 12 if first_hl_rect else margin_y
+                        page.insert_text((margin_right_x, tick_y), f"[+] {vp_id}", fontsize=9, color=(0, 0.6, 0))
+                        margin_y = max(margin_y + 14, tick_y + 14)
                     else:
-                        page.insert_text((margin_right_x, q_top_y + 16), f"[+] {vp_id}", fontsize=9, color=(0, 0.6, 0))
+                        page.insert_text((margin_right_x, margin_y), f"[+] {vp_id}", fontsize=9, color=(0, 0.6, 0))
+                        margin_y += 14
 
-                # Process not awarded lines (red cross)
-                for line in not_awarded_lines:
-                    vp_id = line["value_point_id"]
-                    page.insert_text((margin_right_x, q_top_y + 32), f"[X] {vp_id}", fontsize=9, color=(0.8, 0, 0))
+                # Process not awarded lines (red cross in margin)
+                for award in not_awarded_lines:
+                    vp_id = award["value_point_id"]
+                    page.insert_text((margin_right_x, margin_y), f"[X] {vp_id}", fontsize=9, color=(0.8, 0, 0))
+                    margin_y += 14
 
     # Save output PDF
     doc.save(out_path)
