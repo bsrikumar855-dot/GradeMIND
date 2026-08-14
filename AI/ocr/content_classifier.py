@@ -127,6 +127,14 @@ class ContentClassifier:
         timeout: float = 120.0,
     ):
         self.api_key = api_key or os.environ.get("GEMINI_API_KEY")
+        if not self.api_key:
+            from dotenv import load_dotenv
+            from pathlib import Path
+            env_path = Path(__file__).resolve().parent.parent.parent / "backend" / ".env"
+            if env_path.exists():
+                load_dotenv(dotenv_path=env_path)
+            self.api_key = os.environ.get("GEMINI_API_KEY")
+
         self.model_id = model_id
         self.cache = cache
         self.timeout = timeout
@@ -169,7 +177,7 @@ class ContentClassifier:
         )
 
         attempts = 0
-        max_attempts = 5
+        max_attempts = 2
         raw_text = None
 
         while attempts < max_attempts:
