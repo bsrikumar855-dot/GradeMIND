@@ -174,20 +174,32 @@ class GeminiVisionHTRProvider(HTRProvider):
     def _call_with_retries(self, page: PageImage) -> Any:
         last: Optional[Exception] = None
 
-        for attempt in range(1, self.max_attempts + 1):
+        attempt = 1
+        while attempt <= self.max_attempts:
             try:
                 raw = self._invoke(page.image_bytes)
                 self._breaker.record_success()
                 return raw
             except Exception as exc:
                 last = exc
-                self._breaker.record_failure()
-                logger.warning(
-                    "HTR_STAGE attempt_failed page=%s attempt=%d/%d error=%s",
-                    page.page_number, attempt, self.max_attempts, exc,
-                )
-                if attempt < self.max_attempts:
-                    self._sleep(self.backoff * (2 ** (attempt - 1)))
+                err_str = str(exc)
+                if "429" in err_str or "Quota" in err_str or "ResourceExhausted" in err_str:
+                    logger.warning(
+                        "HTR_STAGE rate_limit_quota_hit page=%s error=%s. Sleeping 30s before retry...",
+                        page.page_number, exc,
+                    )
+                    self._sleep(30.0)
+                    # Quota wait doesn't count against max_attempts
+                    continue
+                else:
+                    self._breaker.record_failure()
+                    logger.warning(
+                        "HTR_STAGE attempt_failed page=%s attempt=%d/%d error=%s",
+                        page.page_number, attempt, self.max_attempts, exc,
+                    )
+                    if attempt < self.max_attempts:
+                        self._sleep(self.backoff * (2 ** (attempt - 1)))
+                    attempt += 1
 
         # Exhausted. RAISE. Returning an empty Page here would be the
         # silent-zero defect re-entering through a new provider: downstream,

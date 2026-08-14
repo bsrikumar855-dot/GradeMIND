@@ -75,8 +75,6 @@ TRANSCRIPTION_SCHEMA = {
                     "bbox": {
                         "type": "array",
                         "items": {"type": "number"},
-                        "minItems": 4,
-                        "maxItems": 4,
                     },
                     "script": {"type": "string"},
                     "struck_through": {"type": "boolean"},
