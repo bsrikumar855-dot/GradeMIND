@@ -181,7 +181,13 @@ def generate_annotated_pdf(
                         for reg_line in item["lines"]:
                             if getattr(reg_line, "bbox", None):
                                 bx0, by0, bx1, by1 = reg_line.bbox
-                                highlight_rect = fitz.Rect(bx0 * pw, by0 * ph, bx1 * pw, by1 * ph)
+                                # Scale scan image coordinates (1000x1200 max) to PDF page (595x842)
+                                scale_x = pw / 1000.0 if bx1 > pw else 1.0
+                                scale_y = ph / 1200.0 if by1 > ph else 1.0
+
+                                # Clip highlight to avoid overlapping right margin mark area
+                                max_h_x = min(bx1 * scale_x, pw - 85)
+                                highlight_rect = fitz.Rect(bx0 * scale_x, by0 * scale_y, max_h_x, by1 * scale_y)
 
                                 # Draw translucent yellow highlight
                                 h_shape = page.new_shape()

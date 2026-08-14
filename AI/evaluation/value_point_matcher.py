@@ -173,11 +173,13 @@ def _match_exact(answer_text: str, value_point: ValuePoint, min_word_ratio: floa
             c_words = [w for w in re.findall(r'\b\w+\b', candidate) if len(w) > 1]
             n_c = len(c_words)
             m_required = max(1, math.ceil(n_c * min_word_ratio)) if n_c > 0 else 1
+            max_span_len = max(3 * len(candidate), 150)
+            span_len = span[1] - span[0]
 
             matched_text = answer_text[span[0]:span[1]]
             n_matched = len(re.findall(r'\b\w+\b', matched_text))
 
-            if n_matched >= m_required:
+            if n_matched >= m_required and span_len <= max_span_len:
                 return MatchResult(
                     value_point_id=value_point.id,
                     matched=True,
@@ -186,44 +188,63 @@ def _match_exact(answer_text: str, value_point: ValuePoint, min_word_ratio: floa
                     score=1.0,
                     uncalibrated=False,
                 )
+            elif span_len > max_span_len:
+                best_insufficient_reason = "evidence scattered - no single supporting passage"
             else:
                 best_insufficient_reason = (
                     f"insufficient evidence: matched {n_matched} of {m_required} required content words "
                     f"(N_vp={n_c}, M=ceil({n_c}*{min_word_ratio}))"
                 )
 
-    # Step 2: Content-word evidence span match fallback (only if no verbatim candidate matched)
+    # Step 2: Content-word evidence span match fallback with bounded sliding window
     for candidate in _candidates(value_point):
         c_words = [w for w in re.findall(r'\b\w+\b', candidate) if len(w) > 1]
         n_c = len(c_words)
         m_required = max(1, math.ceil(n_c * min_word_ratio)) if n_c > 0 else 1
+        max_span_len = max(3 * len(candidate), 150)
 
         if n_c > 0:
-            found_spans = []
+            found_tokens = []
             ans_lower = answer_text.lower()
             for w in c_words:
                 for m in re.finditer(r'\b' + re.escape(w.lower()) + r'\b', ans_lower):
-                    found_spans.append((m.start(), m.end(), w.lower()))
+                    found_tokens.append((m.start(), m.end(), w.lower()))
 
-            if found_spans:
-                matched_words = {s[2] for s in found_spans}
-                n_matched = len(matched_words)
+            if found_tokens:
+                found_tokens.sort(key=lambda x: x[0])
+                n_tokens = len(found_tokens)
 
-                if n_matched >= m_required:
-                    min_start = min(s[0] for s in found_spans)
-                    max_end = max(s[1] for s in found_spans)
+                best_bounded_span = None
+                best_word_count = 0
+
+                for i in range(n_tokens):
+                    for j in range(i, n_tokens):
+                        win_start = found_tokens[i][0]
+                        win_end = found_tokens[j][1]
+                        win_len = win_end - win_start
+
+                        if win_len <= max_span_len:
+                            win_words = {t[2] for t in found_tokens[i:j+1]}
+                            if len(win_words) > best_word_count:
+                                best_word_count = len(win_words)
+                                best_bounded_span = (win_start, win_end)
+
+                if best_bounded_span and best_word_count >= m_required:
                     return MatchResult(
                         value_point_id=value_point.id,
                         matched=True,
-                        evidence_span=(min_start, max_end),
+                        evidence_span=best_bounded_span,
                         method="EXACT",
                         score=1.0,
                         uncalibrated=False,
                     )
                 else:
-                    if not best_insufficient_reason:
+                    all_distinct = {t[2] for t in found_tokens}
+                    if len(all_distinct) >= m_required:
+                        best_insufficient_reason = "evidence scattered - no single supporting passage"
+                    elif not best_insufficient_reason:
                         best_insufficient_reason = (
-                            f"insufficient evidence: matched {n_matched} of {m_required} required content words "
+                            f"insufficient evidence: matched {best_word_count} of {m_required} required content words "
                             f"(N_vp={n_c}, M=ceil({n_c}*{min_word_ratio}))"
                         )
 
