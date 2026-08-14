@@ -8,9 +8,9 @@ differently on the day, §5 tells you what to say.
 
 ---
 
-## 0. Setup — thirty seconds, and no pip install
+## 0. Setup — thirty seconds, and no pip install for §1a
 
-**The CLI demo (§1) and the comparison (§2) need ZERO third-party packages.**
+**The CLI synthetic demo (§1a) and the comparison (§2) need ZERO third-party packages.**
 Not "few" — zero. Verified by running them in a fresh venv containing nothing
 but pip. Clone, set one variable, go:
 
@@ -25,10 +25,14 @@ $env:PYTHONPATH = "."
 export PYTHONPATH=.
 ```
 
-That is the whole setup for the baseline demo. Any Python 3.11+.
+That is the whole setup for the synthetic demo. Any Python 3.11+.
 
-> **Note for PDF Annotations (§1b):** To generate the annotated PDF artifact
-> (`tmp/annotated_script.pdf`), PyMuPDF is required: `pip install pymupdf`.
+> **Note for P3 Full Pipeline Evaluation & PDF Annotations (§1b):** `scripts.evaluate_script`
+> imports OCR classifier modules (`google-generativeai`, `pydantic`) and PyMuPDF (`pymupdf`).
+> To run §1b, install base requirements:
+> ```bash
+> pip install -r requirements/base.txt pymupdf
+> ```
 
 ### If you also want the tests (§3)
 
@@ -61,7 +65,7 @@ pip install -r requirements/base.txt
 
 ## 1. THE DEMO — run this one (2 min)
 
-### 1a. Synthetic Fixtures Demo (Zero Packages)
+### 1a. Synthetic Fixtures Demo (ZERO Packages Needed)
 
 ```bash
 python -m scripts.demo_marking
@@ -73,15 +77,14 @@ arithmetic, and the total.
 
 ### 1b. P3 Full Pipeline Evaluation & PDF Annotation (Zero API Calls)
 
-To run the full end-to-end P3 pipeline offline using authentic P0 transcriptions,
-an independent marking scheme, and PyMuPDF annotation generation:
+Requires `pip install -r requirements/base.txt pymupdf`. Runs offline using authentic committed P0 Python fixtures (`AI.fixtures.real_script_page_1_3`), zero network calls:
 
 ```bash
 python -m scripts.evaluate_script --from-fixture --scheme schemes/dl-2026-s1.json --annotate tmp/annotated_script.pdf
 ```
 
 **Flags explained:**
-- `--from-fixture`: Loads 3 authentic transcribed pages from `AI.fixtures.real_script_page_1_3` with **zero API calls**.
+- `--from-fixture`: Loads 3 authentic transcribed pages from `AI.fixtures.real_script_page_1_3` (committed Python fixture; does NOT require `tmp/htr_cache`) with **zero API calls**.
 - `--scheme schemes/dl-2026-s1.json`: Evaluates candidate regions against the independent hand-authored marking scheme.
 - `--annotate tmp/annotated_script.pdf`: Overlays right-margin scores, ticks/crosses, translucent evidence highlights, and the Q10 teacher banner onto the original scan PDF.
 
