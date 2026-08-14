@@ -149,8 +149,9 @@ def rejoin_line_texts(lines_text: Sequence[str]) -> str:
         if m_prev_word and m_curr_word:
             prev_token = m_prev_word.group(1)
             curr_token = m_curr_word.group(1)
-            if prev_token.lower() not in _COMMON_WORDS:
-                if len(curr_token) <= 3 or prev_token.lower() in ("import", "auto", "micro", "multi", "sub"):
+            # Acronyms (e.g. CNN, LSTM, GAN) or common words are complete tokens and never mid-word split
+            if not prev_token.isupper() and prev_token.lower() not in _COMMON_WORDS:
+                if len(curr_token) <= 3 or prev_token.lower() in ("import", "micro", "multi", "sub"):
                     prefix = prev[:-len(prev_token)]
                     joined_word = prev_token + curr_token
                     rest_curr = clean[len(curr_token):]
