@@ -38,6 +38,7 @@ from AI.evaluation.value_point import MatchMode, MatchResult, ValuePoint
 # hardcoded thresholds" violation the standing constraints forbid, so it is
 # named, defaulted in one place, and flagged wherever it is used.
 DEFAULT_SEMANTIC_THRESHOLD = 0.68
+DEFAULT_MIN_WORD_RATIO = 0.40
 
 _PUNCT = re.compile(r"[^\w\s]", re.UNICODE)
 _WS = re.compile(r"\s+")
@@ -129,16 +130,17 @@ def match(
     value_point: ValuePoint,
     embedding_service=None,
     semantic_threshold: float = DEFAULT_SEMANTIC_THRESHOLD,
+    min_word_ratio: float = DEFAULT_MIN_WORD_RATIO,
 ) -> MatchResult:
     """Look for evidence supporting `value_point` in `answer_text`."""
     mode = value_point.match_mode
 
     if mode is MatchMode.EXACT:
-        return _match_exact(answer_text, value_point)
+        return _match_exact(answer_text, value_point, min_word_ratio=min_word_ratio)
     if mode is MatchMode.NUMERIC:
         return _match_numeric(answer_text, value_point)
     if mode is MatchMode.STEP:
-        return _match_step(answer_text, value_point)
+        return _match_step(answer_text, value_point, min_word_ratio=min_word_ratio)
     if mode is MatchMode.SEMANTIC:
         return _match_semantic(
             answer_text, value_point, embedding_service, semantic_threshold
@@ -152,30 +154,51 @@ def _candidates(value_point: ValuePoint) -> Sequence[str]:
     return (value_point.text, *value_point.acceptable_variants)
 
 
-def _match_exact(answer_text: str, value_point: ValuePoint) -> MatchResult:
+def _match_exact(answer_text: str, value_point: ValuePoint, min_word_ratio: float = DEFAULT_MIN_WORD_RATIO) -> MatchResult:
+    import math
+    vp_words = re.findall(r'\b\w+\b', value_point.text)
+    n_vp = len(vp_words)
+    m_required = max(1, math.ceil(n_vp * min_word_ratio)) if n_vp > 0 else 1
+
+    insufficient_reason = None
+
     for candidate in _candidates(value_point):
         span = _find_span(answer_text, candidate)
         if span is not None:
-            return MatchResult(
-                value_point_id=value_point.id,
-                matched=True,
-                evidence_span=span,
-                method="EXACT",
-                score=1.0,
-                uncalibrated=False,
-            )
+            matched_text = answer_text[span[0]:span[1]]
+            n_matched = len(re.findall(r'\b\w+\b', matched_text))
 
-    return MatchResult(value_point.id, False, None, "EXACT", 0.0, False)
+            if n_matched >= m_required:
+                return MatchResult(
+                    value_point_id=value_point.id,
+                    matched=True,
+                    evidence_span=span,
+                    method="EXACT",
+                    score=1.0,
+                    uncalibrated=False,
+                )
+            else:
+                insufficient_reason = f"insufficient evidence: matched {n_matched} of {m_required} required content words"
+
+    return MatchResult(
+        value_point_id=value_point.id,
+        matched=False,
+        evidence_span=None,
+        method="EXACT",
+        score=0.0,
+        uncalibrated=False,
+        reason=insufficient_reason if insufficient_reason else "no supporting evidence found in the answer",
+    )
 
 
-def _match_step(answer_text: str, value_point: ValuePoint) -> MatchResult:
+def _match_step(answer_text: str, value_point: ValuePoint, min_word_ratio: float = DEFAULT_MIN_WORD_RATIO) -> MatchResult:
     """Method marks: credit the working, not only the final answer.
 
     Same containment test as EXACT; kept as a distinct mode so a scheme can say
     "this is a method step" and so the derivation reads correctly for a
     numerical question.
     """
-    result = _match_exact(answer_text, value_point)
+    result = _match_exact(answer_text, value_point, min_word_ratio=min_word_ratio)
     return MatchResult(
         result.value_point_id,
         result.matched,
@@ -183,6 +206,7 @@ def _match_step(answer_text: str, value_point: ValuePoint) -> MatchResult:
         "STEP",
         result.score,
         False,
+        reason=result.reason,
     )
 
 

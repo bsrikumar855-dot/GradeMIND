@@ -135,7 +135,8 @@ def main():
                 matched_text = r.text[award.evidence_span[0]:award.evidence_span[1]]
                 print(f"  {sym} {award.value_point_id:<5} {award.text[:42]:<42} {aw_str:>4}   evidence: {span_str}  \"{matched_text}\"")
             else:
-                print(f"  {sym} {award.value_point_id:<5} {award.text[:42]:<42} {aw_str:>4}   no supporting evidence found in the answer")
+                reason_msg = award.reason if award.reason else "no supporting evidence found in the answer"
+                print(f"  {sym} {award.value_point_id:<5} {award.text[:42]:<42} {aw_str:>4}   {reason_msg}")
 
         print(f"  TOTAL: {score.total:g} / {score.max_marks:g}")
 

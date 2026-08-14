@@ -129,22 +129,33 @@ def rejoin_line_texts(lines_text: Sequence[str]) -> str:
             continue
 
         # Case 2: Mid-word split across lines without hyphen ("import" + "ant" -> "important")
-        # Trigger: prev ends with lower/upper letter, clean starts with lowercase letters, and clean word is a fragment
+        # Trigger: prev ends with letter, clean starts with lowercase letters, and prev_token is an unclosed fragment (not a complete common word)
+        _COMMON_WORDS = {
+            "a", "about", "after", "all", "also", "an", "and", "any", "are", "as", "at", "be",
+            "been", "but", "by", "can", "come", "could", "day", "do", "even", "first", "for",
+            "from", "get", "give", "go", "good", "had", "has", "have", "he", "her", "him", "his",
+            "how", "i", "if", "in", "into", "is", "it", "its", "just", "know", "like", "look",
+            "make", "many", "me", "more", "most", "my", "no", "not", "now", "of", "on", "one",
+            "only", "or", "other", "our", "out", "over", "people", "said", "say", "see", "she",
+            "so", "some", "take", "than", "that", "the", "their", "them", "then", "there", "these",
+            "they", "think", "this", "time", "to", "two", "up", "us", "use", "want", "was",
+            "way", "we", "well", "were", "what", "when", "which", "who", "will", "with", "would",
+            "year", "you", "your",
+        }
+
         m_prev_word = re.search(r'([A-Za-z]+)$', prev)
         m_curr_word = re.match(r'^([a-z]+)\b', clean)
 
         if m_prev_word and m_curr_word:
             prev_token = m_prev_word.group(1)
             curr_token = m_curr_word.group(1)
-            # Fragment heuristic: curr_token is short/lowercase continuation span (e.g. "ant", "ing", "ed", "tion")
-            # or prev_token is an unclosed word fragment
-            if len(curr_token) <= 4 or prev_token.lower() in ("import", "auto", "micro", "multi", "sub"):
-                # Join word boundary directly
-                prefix = prev[:-len(prev_token)]
-                joined_word = prev_token + curr_token
-                rest_curr = clean[len(curr_token):]
-                result[-1] = prefix + joined_word + rest_curr
-                continue
+            if prev_token.lower() not in _COMMON_WORDS:
+                if len(curr_token) <= 3 or prev_token.lower() in ("import", "auto", "micro", "multi", "sub"):
+                    prefix = prev[:-len(prev_token)]
+                    joined_word = prev_token + curr_token
+                    rest_curr = clean[len(curr_token):]
+                    result[-1] = prefix + joined_word + rest_curr
+                    continue
 
         # Default: Join with space
         result.append(clean)

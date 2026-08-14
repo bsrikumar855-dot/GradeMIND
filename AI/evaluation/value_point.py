@@ -117,6 +117,7 @@ class MatchResult:
     method: str
     score: float
     uncalibrated: bool = False
+    reason: Optional[str] = None
 
     def __post_init__(self) -> None:
         if self.matched and self.evidence_span is None:

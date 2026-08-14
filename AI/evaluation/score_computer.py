@@ -208,6 +208,7 @@ def _evaluate_single(
         )
 
     if not match.matched:
+        reason_text = match.reason if getattr(match, "reason", None) else "no supporting evidence found in the answer"
         return (
             AwardLine(
                 value_point_id=vp.id,
@@ -217,7 +218,7 @@ def _evaluate_single(
                 matched=False,
                 evidence_span=match.evidence_span,
                 method=match.method,
-                reason="no supporting evidence found in the answer",
+                reason=reason_text,
                 uncalibrated=match.uncalibrated,
             ),
             0.0,
