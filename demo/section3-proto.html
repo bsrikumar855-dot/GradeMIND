@@ -1,0 +1,261 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Signature element prototype</title>
+<style>
+  /* Prototype of the evidence link only. Built standalone and first, because
+     it is the hardest thing on the page and the whole bet. If the connector
+     is fragile, better to know now. */
+
+  :root {
+    --paper:    #F1F2F0;
+    --ink:      #191B1D;
+    --graphite: #5C6469;
+    --rule:     #CBD5D3;
+    --mark:     #C8322B;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: "Geist", ui-sans-serif, system-ui, sans-serif;
+    font-size: 17px;
+    line-height: 1.6;
+    padding: 48px 24px;
+  }
+
+  .wrap { max-width: 1100px; margin: 0 auto; }
+
+  h2 {
+    font-size: 28px; font-weight: 600; letter-spacing: -0.01em;
+    margin: 0 0 4px; text-wrap: balance;
+  }
+  .qmeta {
+    font-family: "Geist Mono", ui-monospace, monospace;
+    font-size: 14px; font-variant-numeric: tabular-nums;
+    color: var(--graphite); margin: 0 0 32px;
+  }
+
+  /* The evidence link. Transcript left, criteria right, joined by hairlines.
+     Positioning is driven by measuring the rendered span, not by hardcoded
+     offsets, so it survives reflow and font fallback. */
+  .evidence {
+    display: grid;
+    grid-template-columns: 1fr 380px;
+    gap: 0;
+    position: relative;
+    border-top: 1px solid var(--rule);
+    padding-top: 28px;
+  }
+
+  .transcript {
+    font-family: "EB Garamond", Georgia, serif;
+    font-size: 18px;
+    /* Explicit px, not a ratio: the ruled rhythm has to match the baseline
+       exactly, and 18 * 1.75 rounding drifts a rule out of line every few
+       rows. */
+    line-height: 31.5px;
+    padding-right: 56px;
+    /* Do not stretch to the criteria column's height. Grid default is
+       `stretch`, which drew 231px of EMPTY ruled paper below the last line
+       and read as a rendering bug. Rules organise real content or they do
+       not appear. */
+    align-self: start;
+  }
+  .transcript p {
+    margin: 0;
+    /* Ruling lives on the text block itself, so it ends where the text ends. */
+    background-image: repeating-linear-gradient(
+      to bottom, transparent 0, transparent 30.5px, var(--rule) 30.5px, var(--rule) 31.5px);
+    background-position: 0 0;
+  }
+  .transcript .lead {
+    font-family: "Geist Mono", ui-monospace, monospace;
+    font-size: 14px; color: var(--graphite);
+  }
+
+  /* A credited span. Quiet until its criterion is active. */
+  .span {
+    border-bottom: 1.5px solid transparent;
+    transition: background-color 140ms cubic-bezier(0.16,1,0.3,1),
+                border-color 140ms cubic-bezier(0.16,1,0.3,1);
+  }
+  .span.on {
+    background: rgba(200, 50, 43, 0.10);
+    border-bottom-color: var(--mark);
+  }
+
+  .criteria { display: flex; flex-direction: column; gap: 0; }
+
+  .vp {
+    position: relative;
+    border: 0; border-top: 1px solid var(--rule);
+    background: none; text-align: left; width: 100%;
+    padding: 12px 0 12px 16px;
+    font: inherit; color: inherit; cursor: pointer;
+    display: grid; grid-template-columns: 46px 1fr auto; gap: 10px; align-items: baseline;
+  }
+  .vp:first-child { border-top: 0; }
+  .vp:focus-visible { outline: 2px solid var(--mark); outline-offset: 2px; }
+
+  .vp .id {
+    font-family: "Geist Mono", ui-monospace, monospace;
+    font-size: 13px; font-variant-numeric: tabular-nums; color: var(--graphite);
+  }
+  .vp .crit { font-size: 15px; line-height: 1.45; }
+  .vp .awarded {
+    font-family: "Geist Mono", ui-monospace, monospace;
+    font-size: 13px; font-variant-numeric: tabular-nums; white-space: nowrap;
+  }
+  /* Status is carried by the tick glyph and the text, never by colour alone. */
+  .vp .tick { color: var(--mark); font-weight: 600; }
+
+  .vp.on { background: rgba(200, 50, 43, 0.05); }
+  .vp.on .crit { font-weight: 500; }
+
+  .vp .chars {
+    grid-column: 2 / -1;
+    font-family: "Geist Mono", ui-monospace, monospace;
+    font-size: 12px; color: var(--graphite); font-variant-numeric: tabular-nums;
+  }
+
+  /* The connector. One SVG overlay, lines drawn from measured geometry. */
+  #links { position: absolute; inset: 0; pointer-events: none; overflow: visible; }
+  #links path { stroke: var(--mark); stroke-width: 1; fill: none; opacity: 0; transition: opacity 140ms; }
+  #links path.on { opacity: 1; }
+
+  .total {
+    border-top: 1px solid var(--rule); margin-top: 24px; padding-top: 14px;
+    font-family: "Geist Mono", ui-monospace, monospace;
+    font-size: 15px; font-variant-numeric: tabular-nums;
+  }
+  .note { color: var(--graphite); font-size: 13px; margin-top: 8px; }
+
+  @media (max-width: 767px) {
+    .evidence { grid-template-columns: 1fr; }
+    .transcript { padding-right: 0; margin-bottom: 24px; }
+    /* Connectors cannot span a stacked layout. The highlight alone carries
+       the claim, which is the documented degradation. */
+    #links { display: none; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .span, .vp, #links path { transition: none; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h2>Question 13</h2>
+  <p class="qmeta">Compare standard autoencoders and sparse autoencoders for high dimensional data. 3 marks.</p>
+
+  <div class="evidence" id="evidence">
+    <svg id="links" aria-hidden="true"></svg>
+
+    <div class="transcript">
+      <p><span class="lead">13.</span>
+        <span class="span" data-span="13-101" id="s1">Standard autoencoders are less efficient when dealing with high dimensional idata, whereas sparse</span> autoencoders will be more suitable. Standard autoencoders get input, <span class="span" data-span="171-208" id="s2">encode and restructure the given data</span> to replicate an output. In sparse autoencoders, the <span class="span" data-span="261-287" id="s3">details are more preserved</span>.
+      </p>
+    </div>
+
+    <div class="criteria" role="list">
+      <button class="vp" role="listitem" data-target="s1" aria-describedby="s1">
+        <span class="id">13.1</span>
+        <span class="crit">Sparse autoencoders are preferred for high dimensional data</span>
+        <span class="awarded"><span class="tick">&#10003;</span> 1/1</span>
+        <span class="chars">chars 13-101</span>
+      </button>
+      <button class="vp" role="listitem" data-target="s2" aria-describedby="s2">
+        <span class="id">13.2</span>
+        <span class="crit">Standard autoencoders reconstruct input using dense hidden layers</span>
+        <span class="awarded"><span class="tick">&#10003;</span> 1/1</span>
+        <span class="chars">chars 171-208</span>
+      </button>
+      <button class="vp" role="listitem" data-target="s3" aria-describedby="s3">
+        <span class="id">13.3</span>
+        <span class="crit">Sparse autoencoders preserve salient features by enforcing sparsity constraint</span>
+        <span class="awarded"><span class="tick">&#10003;</span> 1/1</span>
+        <span class="chars">chars 261-287</span>
+      </button>
+    </div>
+  </div>
+
+  <p class="total">3 / 3 marks &nbsp; value-point-engine/0.1.0-demo</p>
+  <p class="note">Suggested marks. Not validated against human examiners.</p>
+</div>
+
+<script>
+(function () {
+  var wrap  = document.getElementById('evidence');
+  var svg   = document.getElementById('links');
+  var vps   = Array.prototype.slice.call(document.querySelectorAll('.vp'));
+
+  function draw() {
+    svg.innerHTML = '';
+    var base = wrap.getBoundingClientRect();
+    svg.setAttribute('viewBox', '0 0 ' + base.width + ' ' + base.height);
+    svg.setAttribute('width', base.width);
+    svg.setAttribute('height', base.height);
+
+    vps.forEach(function (vp) {
+      var span = document.getElementById(vp.dataset.target);
+      if (!span) return;
+      // Measure the LAST client rect: a span wrapping several lines should
+      // connect from where it ends, nearest the criteria column.
+      var rects = span.getClientRects();
+      if (!rects.length) return;
+      var r = rects[rects.length - 1];
+      var v = vp.getBoundingClientRect();
+
+      var x1 = r.right - base.left, y1 = r.bottom - base.top - 2;
+      var x2 = v.left  - base.left, y2 = v.top   - base.top + 22;
+      var mid = x1 + (x2 - x1) * 0.55;
+
+      var p = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+      p.setAttribute('d', 'M' + x1 + ' ' + y1 + ' H' + mid + ' V' + y2 + ' H' + x2);
+      p.dataset.for = vp.dataset.target;
+      svg.appendChild(p);
+    });
+  }
+
+  function set(target, on) {
+    // Exclusive. One criterion is highlighted at a time, and clearing
+    // everything first means a missed mouseleave cannot strand a second
+    // span in the lit state.
+    document.querySelectorAll('.span.on, .vp.on, #links path.on')
+      .forEach(function (el) { el.classList.remove('on'); });
+    if (!on) return;
+
+    var span = document.getElementById(target);
+    var vp   = document.querySelector('.vp[data-target="' + target + '"]');
+    var path = svg.querySelector('path[data-for="' + target + '"]');
+    if (span) span.classList.add('on');
+    if (vp)   vp.classList.add('on');
+    if (path) path.classList.add('on');
+  }
+
+  vps.forEach(function (vp) {
+    var t = vp.dataset.target;
+    ['mouseenter', 'focus'].forEach(function (e) {
+      vp.addEventListener(e, function () { set(t, true); });
+    });
+    ['mouseleave', 'blur'].forEach(function (e) {
+      vp.addEventListener(e, function () { set(t, false); });
+    });
+    vp.addEventListener('click', function () {
+      var span = document.getElementById(t);
+      if (span) span.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    });
+  });
+
+  draw();
+  window.addEventListener('resize', draw);
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(draw);
+})();
+</script>
+</body>
+</html>
