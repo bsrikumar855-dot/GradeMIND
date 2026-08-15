@@ -165,8 +165,17 @@ def _gemini_vision_ocr(image_path: str, submission_id: str) -> Optional[OCRDocum
         import google.generativeai as genai
         from PIL import Image as PILImage
 
+        # Imported, never re-typed. This site previously hardcoded its own
+        # model string, so a pin change in the provider left this path calling
+        # a different model -- two models in one pipeline, with only one of
+        # them recorded on the result. That is the same defect class as the
+        # silent embedding fallback removed in Phase 0 item 1.2: a second code
+        # path quietly deciding something the provenance record claims is
+        # fixed.
+        from AI.ocr.providers.gemini_vision import DEFAULT_MODEL_ID
+
         genai.configure(api_key=api_key)
-        model = genai.GenerativeModel("gemini-2.5-flash")
+        model = genai.GenerativeModel(DEFAULT_MODEL_ID)
 
         pil_image = PILImage.open(image_path).convert("RGB")
 

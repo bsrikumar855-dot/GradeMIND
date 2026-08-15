@@ -143,10 +143,21 @@ def test_classifier_offline_cache_miss_raises():
 
 
 def test_check_transcription_struck_out_strictly_per_region():
-    """Verify that check_transcription_struck_out operates strictly on QuestionRegion lines.
+    """check_transcription_struck_out operates strictly on a region's own lines.
 
-    Using REAL_SCRIPT_PAGES, exactly one region (Q10) is flagged with contains_struck_out=True.
-    No sibling question on Page 1 (Q1-Q9, Q11, Q12) inherits the flag.
+    The property under test is NON-INHERITANCE: a struck-out line in one
+    question must not flag its neighbours.
+
+    The expected SET changed on 2026-08-15 from {Q10} to {Q6, Q10}. That is not
+    a code change -- it is transcription non-determinism. Re-running the same
+    page bytes through the same pinned model (gemini-3.5-flash,
+    transcribe/1.0.0) a day apart flagged `6. cell` as struck through where the
+    earlier run had not. The fixture was NOT edited to restore the old
+    expectation; the fixture is the evidence and the test follows it.
+
+    If this test fails again with a different set, check the fixture's
+    provenance header before changing anything: the transcription may simply
+    have moved again.
     """
     from AI.fixtures.real_script_page_1_3 import REAL_SCRIPT_PAGES
     from AI.ocr.segmentation import segment_script
@@ -157,11 +168,28 @@ def test_check_transcription_struck_out_strictly_per_region():
         for r in regions
     }
 
-    # Exactly Q10 must be flagged
-    assert q_flags["10"].contains_struck_out is True
-    assert q_flags["10"].has_flags is True
-    assert "CONTAINS_STRUCK_OUT" in q_flags["10"].flagged_reasons()
+    # Derived from the fixture rather than hardcoded, so the test states the
+    # property and not a snapshot of one transcription run.
+    expected_flagged = {
+        r.question_number
+        for r in regions
+        if any(line.struck_through for line in r.lines)
+    }
+    assert expected_flagged, "fixture has no struck-through lines; test is vacuous"
 
-    # All other questions must be unflagged
-    for q_num in ["1", "2", "3", "4", "5", "6", "7", "8", "9", "11", "12", "13", "14", "15"]:
-        assert q_flags[q_num].contains_struck_out is False, f"Q{q_num} erroneously inherited struck_out flag"
+    for q_num, flags in q_flags.items():
+        should_be_flagged = q_num in expected_flagged
+        assert flags.contains_struck_out is should_be_flagged, (
+            f"Q{q_num}: contains_struck_out={flags.contains_struck_out} but the "
+            f"region {'does' if should_be_flagged else 'does not'} contain a "
+            "struck-through line -- the flag is leaking across regions"
+        )
+        if should_be_flagged:
+            assert "CONTAINS_STRUCK_OUT" in flags.flagged_reasons()
+
+    # And the current fixture specifically: two questions, not one, and no
+    # sibling on page 1 inherits either.
+    assert expected_flagged == {"6", "10"}, (
+        f"fixture struck-through set is {sorted(expected_flagged)}; if the "
+        "transcription moved again, update this after checking provenance"
+    )

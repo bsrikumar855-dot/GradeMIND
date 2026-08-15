@@ -30,7 +30,7 @@ services:
       # Optional: enables the Gemini secondary cross-check evaluator. Core
       # grading works with zero API keys via the local autonomous evaluator.
       GEMINI_API_KEY: "${GEMINI_API_KEY}"
-      GEMINI_MODEL: "${GEMINI_MODEL:-gemini-2.5-flash}"
+      GEMINI_MODEL: "${GEMINI_MODEL:-gemini-3.5-flash}"
       # local | ci | staging | production. Defaults to production, so a missing
       # value is never the one that permits the auth bypass.
       ENVIRONMENT: "${ENVIRONMENT:-production}"

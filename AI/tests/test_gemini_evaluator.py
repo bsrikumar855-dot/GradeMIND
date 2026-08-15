@@ -77,7 +77,7 @@ def test_successful_evaluation(evaluator, mock_genai):
     assert isinstance(result, GeminiEvaluation)
     assert result.score == 4.5
     assert result.confidence == 0.9
-    assert result.model == "gemini-2.5-flash"
+    assert result.model == "gemini-3.5-flash"
     mock_genai.generate_content.assert_called_once()
 
 # 2. Malformed JSON response

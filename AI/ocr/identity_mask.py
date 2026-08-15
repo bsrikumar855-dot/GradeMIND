@@ -139,4 +139,5 @@ def mask_identity_region(
         # artefact and must not collide with the unmasked one in the cache.
         page_sha256=sha256_bytes(masked_bytes),
         rasterize_version=page.rasterize_version,
+        identity_masked=True,
     )

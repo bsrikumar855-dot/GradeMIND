@@ -19,7 +19,8 @@ that must not be made by an engineer or by an agent.**
 | Exam/scheme metadata | No | Not included in the request |
 
 **Recipient:** Google, via the Gemini API (`google.generativeai`).
-**Model:** `gemini-2.5-flash`, pinned exactly.
+**Model:** `gemini-3.5-flash`, pinned exactly. (Changed from `gemini-2.5-flash` on
+2026-08-15; see AI/ocr/providers/gemini_vision.py for the reasoning.)
 **Request contents:** one PNG page image plus a fixed transcription prompt.
 
 **The provider is never asked to mark anything.** The prompt asks only for

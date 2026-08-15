@@ -60,7 +60,21 @@ logger = logging.getLogger("GradeMIND.GeminiVisionHTR")
 # EXACT. Never an alias like "gemini-flash-latest": a hosted model that changes
 # under a stable name breaks replay silently, and the stored extraction would
 # no longer correspond to anything reproducible.
-DEFAULT_MODEL_ID = "gemini-2.5-flash"
+#
+# 2026-08-15: changed from gemini-2.5-flash to gemini-3.5-flash.
+#
+# Justified by EVIDENCE THAT IT WORKED ON THIS EXACT PAYLOAD, not by being
+# newer. The two reproducible cache entries (masked top-15%, 150 dpi, pages 1
+# and 2 of DL S1.1) were produced by gemini-3.5-flash under this prompt
+# version and re-derive from the source PDF. gemini-2.5-flash is still listed
+# as available to this key and still supports generateContent -- it is not
+# retired -- but it returned `504 The request timed out` twice on the first
+# call with no further detail.
+#
+# This is NOT a diagnosis of the 504. If 3.5-flash also fails, the cause lies
+# elsewhere: most likely the end-of-life `google-generativeai` client, or the
+# response_schema + vision combination.
+DEFAULT_MODEL_ID = "gemini-3.5-flash"
 
 DEFAULT_TIMEOUT_SECONDS = 60.0
 DEFAULT_MAX_ATTEMPTS = 3
@@ -109,6 +123,7 @@ class GeminiVisionHTRProvider(HTRProvider):
         backoff: float = DEFAULT_BACKOFF_SECONDS,
         sleep: Callable[[float], None] = time.sleep,
         offline: bool = False,
+        allow_unmasked: bool = False,
     ):
         """`transport` is injected so the failure paths are testable without a key.
 
@@ -140,6 +155,9 @@ class GeminiVisionHTRProvider(HTRProvider):
         self._sleep = sleep
         self._breaker = _Breaker()
         self.offline = offline
+        # Deliberately awkward to set. Sending an unmasked student page is a
+        # data-protection decision, not a convenience.
+        self.allow_unmasked = allow_unmasked
 
     # ------------------------------------------------------------------
 
@@ -176,6 +194,8 @@ class GeminiVisionHTRProvider(HTRProvider):
                 f"failures; refusing to call {self.model_id}. Route to "
                 "MANDATORY_HUMAN."
             )
+
+        self._assert_masked(page)
 
         raw = self._call_with_retries(page)
         parsed = self._parse(raw, page)
@@ -226,6 +246,25 @@ class GeminiVisionHTRProvider(HTRProvider):
             f"{self.max_attempts} attempts against {self.model_id}: {last}. "
             "Route to MANDATORY_HUMAN. No Page is produced."
         ) from last
+
+    def _assert_masked(self, page: PageImage) -> None:
+        """Refuse to transmit a page that has not been through the mask.
+
+        The section 2.5 boundary used to live only in htr_pipeline.extract_script,
+        so any caller reaching provider._invoke() directly bypassed it.
+        scripts/regenerate_cache.py did exactly that and sent a real student's
+        name and roll number to Google. A boundary that depends on every caller
+        remembering it is not a boundary.
+        """
+        if page.identity_masked or self.allow_unmasked:
+            return
+        raise HTRExtractionError(
+            f"page {page.page_number}: refusing to transmit an unmasked page. "
+            "PageImage.identity_masked is False, so AI/ocr/identity_mask."
+            "mask_identity_region has not been applied and the image may carry "
+            "the candidate's name and roll number. Mask it first, or pass "
+            "allow_unmasked=True and record why."
+        )
 
     def _invoke(self, image_bytes: bytes) -> Any:
         if self._transport is not None:

@@ -258,30 +258,74 @@ def segment_script(
             )
         )
 
-    # Check for OUT_OF_ORDER
-    numeric_qs = []
-    for r in regions:
-        if r.question_number.isdigit():
-            numeric_qs.append(int(r.question_number))
+    # ---- OUT_OF_ORDER, scoped to where the ambiguity actually is ----------
+    #
+    # The previous rule marked EVERY OK region OUT_OF_ORDER as soon as the
+    # question sequence was not monotonic. That is a blast-radius bug, not
+    # conservatism: a student whose Q7 is smudged had their Q13 sent to a
+    # human too.
+    #
+    # Measured: a single hallucinated line "3" at the foot of page 1 -- an
+    # artefact of transcription non-determinism, not anything on the paper --
+    # produced the sequence 1..12, 3, 13, 14, 15 and took the script from
+    # "Q13 scored with a derivation" to 0 scored / 16 routed.
+    #
+    # What is genuinely ambiguous when a number appears out of sequence is
+    # that region, and the boundary it shares with the regions either side of
+    # it -- because a misread number moves the boundary between them. Regions
+    # elsewhere on the script are untouched by it and stay scoreable.
+    descending_indices = []
+    highest_so_far = None
 
-    if numeric_qs and numeric_qs != sorted(numeric_qs):
-        # Mark all or affected regions as OUT_OF_ORDER
-        new_regions = []
-        for r in regions:
-            if r.status == SegmentationStatus.OK:
-                new_regions.append(
-                    QuestionRegion(
-                        question_number=r.question_number,
-                        page_numbers=r.page_numbers,
-                        text=r.text,
-                        confidence=r.confidence,
-                        status=SegmentationStatus.OUT_OF_ORDER,
-                        lines=r.lines,
-                    )
-                )
-            else:
-                new_regions.append(r)
-        regions = new_regions
+    for index, region in enumerate(regions):
+        if not region.question_number.isdigit():
+            continue
+        number = int(region.question_number)
+        if highest_so_far is not None and number < highest_so_far:
+            descending_indices.append(index)
+        else:
+            highest_so_far = number
+
+    if descending_indices:
+        affected = set()
+        for index in descending_indices:
+            # The out-of-sequence region, and the region BEFORE it. Not the
+            # one after.
+            #
+            # Reasoning from the failure mechanism rather than from symmetry:
+            # a spurious question number splits a region that should have been
+            # continuous, so text belonging to the PRECEDING question is now
+            # attributed to the spurious one. The preceding region is
+            # truncated and cannot be trusted.
+            #
+            # The FOLLOWING region begins at its own detected question marker
+            # and keeps all of its own text -- the spurious number took
+            # nothing from it. Marking it too would be symmetry for its own
+            # sake, and it is what kept Q13 routed here purely because a
+            # hallucinated "3" landed on the line above it.
+            affected.update({index - 1, index})
+        affected = {i for i in affected if 0 <= i < len(regions)}
+
+        logger.warning(
+            "SEGMENTATION_STAGE out_of_order regions=%s of %d "
+            "(question numbers: %s)",
+            sorted(affected), len(regions),
+            [regions[i].question_number for i in sorted(affected)],
+        )
+
+        regions = [
+            QuestionRegion(
+                question_number=r.question_number,
+                page_numbers=r.page_numbers,
+                text=r.text,
+                confidence=r.confidence,
+                status=SegmentationStatus.OUT_OF_ORDER,
+                lines=r.lines,
+            )
+            if index in affected and r.status == SegmentationStatus.OK
+            else r
+            for index, r in enumerate(regions)
+        ]
 
     # Check for MISSING_QUESTION_NUMBER if expected_questions supplied
     if expected_questions:

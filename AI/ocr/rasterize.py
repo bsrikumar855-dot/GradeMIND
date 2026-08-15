@@ -72,6 +72,15 @@ class PageImage:
     page_sha256: str          # of these image bytes; the cache key
     rasterize_version: str = RASTERIZE_VERSION
 
+    # Set only by AI/ocr/identity_mask.mask_identity_region. A provider refuses
+    # to transmit a page where this is False, which is what makes the section
+    # 2.5 boundary structural rather than a step a caller can forget.
+    #
+    # It fired: scripts/regenerate_cache.py called provider._invoke() on a raw
+    # rasterization and sent a real student's name and roll number to Google.
+    # A convention that lives only in the pipeline is not a boundary.
+    identity_masked: bool = False
+
 
 @dataclass(frozen=True)
 class PDFClassification:

@@ -22,7 +22,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from AI.ocr.rasterize import classify_pdf, rasterize_pdf, page_summary, DEFAULT_DPI
 from AI.ocr.identity_mask import MaskRegion, mask_identity_region
-from AI.ocr.providers.gemini_vision import GeminiVisionHTRProvider
+from AI.ocr.providers.gemini_vision import DEFAULT_MODEL_ID, GeminiVisionHTRProvider
 from AI.ocr.providers.base import Page
 
 SCAN_PATH = (
@@ -297,7 +297,7 @@ def main() -> None:
     cache = FilesystemExtractionCache("tmp/htr_cache")
     provider = GeminiVisionHTRProvider(
         api_key=api_key,
-        model_id="gemini-2.5-flash",
+        model_id=DEFAULT_MODEL_ID,
         cache=cache,
         timeout=180.0,
         backoff=5.0,

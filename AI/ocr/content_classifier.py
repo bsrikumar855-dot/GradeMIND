@@ -16,7 +16,7 @@ import json
 import logging
 import os
 from dataclasses import asdict, dataclass
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Sequence, Tuple
 
 import warnings
 with warnings.catch_warnings():

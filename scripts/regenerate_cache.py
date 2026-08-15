@@ -1,6 +1,6 @@
 """Regenerate HTR Cache for Pages 1-3 of the Real Exam Script.
 
-Executes exactly 3 API calls against pinned model gemini-2.5-flash.
+Executes exactly MAX_PAGES API calls against the pinned DEFAULT_MODEL_ID.
 Saves authentic cache records to tmp/htr_cache. Fails immediately on any API error.
 
 Usage:
@@ -15,8 +15,21 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from AI.ocr.providers.cache import FilesystemExtractionCache, page_to_record, cache_key
-from AI.ocr.providers.gemini_vision import GeminiVisionHTRProvider, TRANSCRIPTION_PROMPT_VERSION
+from AI.ocr.providers.gemini_vision import (
+    DEFAULT_MODEL_ID,
+    GeminiVisionHTRProvider,
+    TRANSCRIPTION_PROMPT_VERSION,
+)
+from AI.ocr.identity_mask import MaskRegion, mask_identity_region
 from AI.ocr.rasterize import rasterize_pdf
+
+
+MAX_PAGES = int(sys.argv[sys.argv.index('--max-pages') + 1]) if '--max-pages' in sys.argv else 3
+
+# Human-verified for THIS exam layout (top 15% carries name and roll number).
+# The provider now refuses any page where identity_masked is False, so this is
+# no longer something a caller can forget -- see PageImage.identity_masked.
+MASK_REGION = MaskRegion(0.0, 0.0, 1.0, 0.15, label="header")
 
 
 def main():
@@ -25,15 +38,15 @@ def main():
         print(f"FATAL: Target PDF not found: {pdf_path}")
         sys.exit(1)
 
-    print("REGENERATING HTR CACHE (EXACTLY 3 API CALLS)")
+    print(f"REGENERATING HTR CACHE (EXACTLY {MAX_PAGES} API CALL(S))")
     print("=" * 70)
     print(f"Target PDF: {pdf_path}")
-    print("Rasterizing at 150 DPI (Pages 1-3)...")
+    print(f"Rasterizing at 150 DPI (pages 1-{MAX_PAGES}), masking header before send...")
 
     # 1. Rasterize pages 1-3 at 150 DPI
-    pages = rasterize_pdf(pdf_path, dpi=150, max_pages=3)
-    if len(pages) < 3:
-        print(f"FATAL: Rasterized only {len(pages)} pages, expected 3.")
+    pages = rasterize_pdf(pdf_path, dpi=150, max_pages=MAX_PAGES)
+    if len(pages) < MAX_PAGES:
+        print(f"FATAL: Rasterized only {len(pages)} pages, expected {MAX_PAGES}.")
         sys.exit(1)
 
     # 2. Print real page_sha256 BEFORE extracting
@@ -43,20 +56,36 @@ def main():
 
     # Initialize provider & cache
     cache = FilesystemExtractionCache("tmp/htr_cache")
-    provider = GeminiVisionHTRProvider(model_id="gemini-2.5-flash", cache=cache, offline=False)
+    # The pinned constant, not a second copy of the string: a script that
+    # hardcodes its own model can drift from the provider silently.
+    provider = GeminiVisionHTRProvider(model_id=DEFAULT_MODEL_ID, cache=cache, offline=False)
 
     if not provider.api_key:
         print("FATAL: GEMINI_API_KEY could not be loaded from backend/.env")
         sys.exit(1)
 
     extractions = []
-    print("\n--- EXECUTING EXACTLY 3 LIVE API EXTRACTIONS ---")
+    print(f"\n--- EXECUTING {MAX_PAGES} LIVE API EXTRACTION(S) ---")
 
-    for p in pages:
+    for raw_page in pages:
+        # SECTION 2.5 BOUNDARY. Mask before anything is transmitted. The
+        # cache key is the MASKED hash, because the masked image is what was
+        # actually sent and is what a replay must reproduce.
+        p = mask_identity_region(raw_page, MASK_REGION)
+
         c_key = cache_key(p.page_sha256, provider.model_id, TRANSCRIPTION_PROMPT_VERSION)
-        print(f"Executing API call for Page {p.page_number} (key={c_key[:24]})...")
+
+        # Skip anything already stored. This script calls provider._invoke()
+        # directly and so bypasses the cache check inside extract(); without
+        # this it would re-spend quota on a page it already has.
+        if cache.get(c_key) is not None:
+            print(f"Page {p.page_number}: already cached (key={c_key[:24]}), no API call")
+            continue
+
+        print(f"Executing API call for Page {p.page_number} (masked, key={c_key[:24]})...")
 
         try:
+            provider._assert_masked(p)
             # Direct single call (no retry loop in script)
             raw_response = provider._invoke(p.image_bytes)
             page_extraction = provider._parse(raw_response, p)
@@ -85,7 +114,7 @@ def main():
             print(f"  L{idx:>2}: {line.text}{struck}")
 
     print("\n" + "=" * 70)
-    print("CACHE REGENERATION COMPLETE. 3 AUTHENTIC RECORDS WRITTEN TO tmp/htr_cache.")
+    print(f"CACHE REGENERATION COMPLETE. {len(extractions)} RECORD(S) WRITTEN TO tmp/htr_cache.")
     print("=" * 70)
 
 

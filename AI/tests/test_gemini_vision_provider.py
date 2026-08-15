@@ -28,7 +28,15 @@ from AI.ocr.providers.prompts import TRANSCRIPTION_PROMPT_VERSION
 from AI.ocr.rasterize import PageImage, sha256_bytes
 
 
-def make_page(data: bytes = b"fake-png-bytes", number: int = 1) -> PageImage:
+def make_page(
+    data: bytes = b"fake-png-bytes", number: int = 1, masked: bool = True
+) -> PageImage:
+    """Masked by default.
+
+    The provider refuses to transmit a page with identity_masked=False, so the
+    default here reflects the only state in which extraction is legitimate.
+    Pass masked=False to exercise the refusal.
+    """
     return PageImage(
         page_number=number,
         image_bytes=data,
@@ -37,6 +45,7 @@ def make_page(data: bytes = b"fake-png-bytes", number: int = 1) -> PageImage:
         dpi=150,
         source_sha256="source" + "0" * 58,
         page_sha256=sha256_bytes(data),
+        identity_masked=masked,
     )
 
 
@@ -77,10 +86,10 @@ def test_valid_response_produces_a_page_with_provenance():
 
     assert len(page.lines) == 2
     assert page.lines[0].text.startswith("Q1.")
-    assert page.model_id == "gemini-2.5-flash"
+    assert page.model_id == "gemini-3.5-flash"
     assert page.prompt_version == TRANSCRIPTION_PROMPT_VERSION
     assert page.extraction_sha256
-    assert page.provenance()["model_id"] == "gemini-2.5-flash"
+    assert page.provenance()["model_id"] == "gemini-3.5-flash"
 
 
 def test_page_confidence_is_the_minimum_not_the_mean():
@@ -285,10 +294,10 @@ def test_replay_with_network_denied_resolves_entirely_from_cache(tmp_path):
 
 def test_cache_key_changes_with_model_or_prompt_version():
     """A different model or prompt is a different extraction."""
-    base = cache_key("abc", "gemini-2.5-flash", "transcribe/1.0.0")
+    base = cache_key("abc", "gemini-3.5-flash", "transcribe/1.0.0")
     assert base != cache_key("abc", "gemini-2.5-pro", "transcribe/1.0.0")
-    assert base != cache_key("abc", "gemini-2.5-flash", "transcribe/1.1.0")
-    assert base != cache_key("def", "gemini-2.5-flash", "transcribe/1.0.0")
+    assert base != cache_key("abc", "gemini-3.5-flash", "transcribe/1.1.0")
+    assert base != cache_key("def", "gemini-3.5-flash", "transcribe/1.0.0")
 
 
 def test_cache_miss_raises_on_require_rather_than_returning_none(tmp_path):
@@ -305,12 +314,12 @@ def test_cache_stores_the_raw_response_as_the_audit_record(tmp_path):
     page_image = make_page()
     provider.extract(page_image)
 
-    key = cache_key(page_image.page_sha256, "gemini-2.5-flash", TRANSCRIPTION_PROMPT_VERSION)
+    key = cache_key(page_image.page_sha256, "gemini-3.5-flash", TRANSCRIPTION_PROMPT_VERSION)
     record = cache.require(key)
 
     assert record["raw_response"] == GOOD_RESPONSE
     assert record["stored_at"]
-    assert record["page"]["model_id"] == "gemini-2.5-flash"
+    assert record["page"]["model_id"] == "gemini-3.5-flash"
 
 
 # ---------------------------------------------------------------------------
@@ -435,3 +444,51 @@ def test_masking_leaves_the_answer_body_untouched():
 
     assert before > 0
     assert after == before, "masking altered the answer region"
+
+
+# ---------------------------------------------------------------------------
+# The section 2.5 boundary, enforced at the provider
+# ---------------------------------------------------------------------------
+
+
+def test_unmasked_page_is_refused_before_any_network_call():
+    """The defect this guard exists for.
+
+    scripts/regenerate_cache.py called provider._invoke() on a raw
+    rasterization and sent a real student's name and roll number to Google.
+    The boundary lived only in htr_pipeline.extract_script, so any caller
+    reaching the provider directly walked around it.
+    """
+    called = {"n": 0}
+
+    def counting(image_bytes, prompt):
+        called["n"] += 1
+        return GOOD_RESPONSE
+
+    provider = GeminiVisionHTRProvider(api_key="t", transport=counting)
+
+    with pytest.raises(HTRExtractionError, match="refusing to transmit an unmasked page"):
+        provider.extract(make_page(masked=False))
+
+    assert called["n"] == 0, "the image reached the transport despite being unmasked"
+
+
+def test_unmasked_send_requires_an_explicit_opt_in():
+    provider = GeminiVisionHTRProvider(
+        api_key="t", transport=transport_returning(GOOD_RESPONSE), allow_unmasked=True
+    )
+    page = provider.extract(make_page(masked=False))
+    assert len(page.lines) == 2
+
+
+def test_mask_identity_region_marks_the_page_as_masked():
+    pytest.importorskip("PIL")
+    from PIL import Image
+    import io
+
+    buf = io.BytesIO()
+    Image.new("RGB", (400, 200), "white").save(buf, format="PNG")
+    raw = make_page(buf.getvalue(), masked=False)
+
+    assert raw.identity_masked is False
+    assert mask_identity_region(raw, MaskRegion(0.0, 0.0, 1.0, 0.25)).identity_masked is True

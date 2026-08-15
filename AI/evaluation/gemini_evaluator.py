@@ -20,7 +20,7 @@ class GeminiEvaluator:
     """
     
     def __init__(self, model_name: Optional[str] = None, timeout: int = 15):
-        self.model_name = model_name or os.environ.get("GEMINI_MODEL", "gemini-2.5-flash")
+        self.model_name = model_name or os.environ.get("GEMINI_MODEL", "gemini-3.5-flash")
         self.timeout = timeout
         self.api_key = os.environ.get("GEMINI_API_KEY")
         self._client_configured = False

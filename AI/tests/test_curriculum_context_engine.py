@@ -106,7 +106,7 @@ def test_gemini_integration(mock_embedding_service):
     context = engine.build_context("What is photosynthesis?")
 
     # Instantiating GeminiEvaluator and mocking generative AI model calls
-    evaluator = GeminiEvaluator(model_name="gemini-2.5-flash")
+    evaluator = GeminiEvaluator(model_name="gemini-3.5-flash")
     evaluator._client_configured = True
     evaluator.model = MagicMock()
     
