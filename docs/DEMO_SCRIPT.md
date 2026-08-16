@@ -77,9 +77,47 @@ each mark, and the Q10 banner where the script was routed to a teacher.
 
 ---
 
-## ACT 2 — What happens when it goes wrong (3 minutes)
+## ACT 2 — What happens when it goes wrong (4 minutes)
 
-This is the part worth rehearsing.
+This is the part worth rehearsing. Two failures. **The second one is ours.**
+
+### 1. The one our own code caused
+
+Lead with this. It is stronger than the stray `3` because it is a defect in our
+code, found by our own harness, inside a run that otherwise looked perfect.
+
+> We ran a second paper this week. Different subject, five questions, and it
+> scored ten out of ten. Then we read the evidence text the marks point at.
+
+```
+Q4  "...a function calls itself to solvea smaller instance..."
+Q5  "...uses a hash functionto map keys to indices..."
+```
+
+> `solvea`. `functionto`. Neither of those is on the page. The student wrote
+> "to solve a smaller instance" and "a hash function to map keys."
+>
+> Our line-joining code guesses whether a line break is a word break. If the
+> next line starts with a short lowercase word, it joins with no space. It got
+> it wrong twice out of three times on this page.
+
+**Point at the third case.**
+
+> The one it got right, it got right by accident — "and has" survived only
+> because "and" happens to be in a hardcoded list of common words.
+
+> And here's the part that matters. The transcription error I'll show you next
+> was the model's, and it was random. **This one is ours, and it fires
+> identically every single time.** A model that occasionally invents a
+> character is a known risk you route around. Code that reliably corrupts the
+> evidence an examiner reads is a defect you ship.
+>
+> No mark changed on this run. That was luck — every affected criterion matched
+> somewhere else in the sentence. We have not fixed it yet, because we found it
+> during a measurement run and fixing it mid-run would have made the result
+> unreportable.
+
+### 2. The one the model caused
 
 > Yesterday this pipeline scored Q13. Today we re-ran the same page — same
 > image bytes, same pinned model, same prompt version, one day apart — and got
@@ -117,6 +155,40 @@ Q3   | AMBIGUOUS_MAPPING | NO (MANDATORY_HUMAN)
 > Now it scopes to the region that was actually split and the one before it.
 > The hallucinated "3" is still in our fixture. We kept it, because it's the
 > evidence.
+
+---
+
+## The second script, and why 10/10 is not a result
+
+**If you show the DSA paper, say this before you say the number.** In this
+order — the caveat first, then the score.
+
+> We ran a second paper: five short questions, a marking scheme written from
+> the question paper, and it scored ten out of ten.
+>
+> That number means almost nothing, and here is exactly why. Every answer on
+> that script is complete and correct. **An engine that awarded full marks to
+> everything would score identically.** There is no partial credit in it, no
+> wrong answer, no missing point, nothing to disagree about.
+>
+> What it does establish is narrower and real: the paper and the scheme agree,
+> five marks each came with a derivation, and none of them are void the way our
+> Q14 and Q15 are.
+
+**Say the input is synthetic before anyone asks.**
+
+> That answer sheet is a rendered image in a handwriting-style font. It is not
+> a scan and it is not anyone's handwriting. It tests the marking path. It
+> tells you nothing about reading handwriting, and we make no such claim from
+> it.
+
+**If asked "did you write the scheme blind?"** — the answer is no, and the
+honest version is short:
+
+> No. We intended to, and the instruction arrived in the same message as the
+> answer sheet, so the answer was already in front of the author. We committed
+> the scheme to git before transcribing anything, which proves the order of
+> events. It does not prove ignorance, and we are not claiming it does.
 
 ---
 
@@ -171,6 +243,31 @@ the presentation.
     section headers must account for the masked band.
 12. **The system is assist-only.** `AUTO` is disabled at config level. It
     suggests marks with derivations; a human awards them.
+13. **Our own line-joining code corrupts the evidence text.** It guesses
+    whether a line break is a word break, and on the DSA page it guessed wrong
+    twice out of three: `"to solve" + "a smaller"` became `solvea`, and
+    `"a hash function" + "to map"` became `functionto`. Words that are not on
+    the page, sitting in the text a mark points at. **Unlike the hallucinated
+    `3`, this is deterministic — it fires the same way every run.** No mark
+    changed, by luck. Not fixed.
+14. **The DSA scheme was not authored blind, and we do not claim it was.** The
+    question paper and the answer sheet arrived together, so the answer was in
+    front of the author. The scheme was committed to git before anything was
+    transcribed, which proves the *order* of events. Ordering is not ignorance.
+    **No marking scheme in this project has yet been written by anyone who had
+    not seen the script.**
+15. **Our contamination check fired on our own scheme, 8 times against 3, and
+    the count is backwards.** The scheme we know is contaminated scored 3; the
+    new one scored 8. The check cannot tell canonical phrasing from a lift —
+    `"push and pop"` is what every author writes, `"details are more
+    preserved"` is nobody's textbook. Section A is definitions, so it is almost
+    all canonical, which is where the check is weakest. **We are not treating
+    our own explanation as an acquittal**; it is the contaminated party arguing
+    its own case, and it is recorded rather than resolved.
+16. **`page_confidence` came back 1.0 on all 57 lines of the synthetic page.**
+    That is a model self-report on a rendered font, and it is exactly the
+    uncalibrated-confidence problem we flag everywhere else, showing up as a
+    saturated signal that distinguishes nothing.
 
 ---
 
@@ -212,7 +309,13 @@ the presentation.
 - "Validated", "CBSE-approved", "production-ready"
 - Any score for Q14 or Q15 as evidence the system works — see limitation 3
 - A completion percentage
-- That the generalisation test was run. **It was not.** One script only.
+- That the generalisation test was run. **It was not.** Two scripts, one of
+  them synthetic, neither with ground truth.
+- **"Ten out of ten" without the caveat attached to the same breath.** The
+  script has no wrong answers in it. Quoting the score alone turns a weak
+  result into an accuracy claim.
+- That the DSA scheme was authored blind. **It was not.**
+- Anything about handwriting based on the DSA sheet. It is a rendered font.
 
 ---
 
