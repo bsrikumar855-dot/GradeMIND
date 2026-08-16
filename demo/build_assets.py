@@ -34,6 +34,18 @@ SOURCES = {
     "annotated-page-3.png": ROOT / "tmp" / "verify_page3.png",
 }
 
+# A crop of question 13 only, for the section whose interactive element is
+# about question 13. The full page also carries the Q14 and Q15 annotations,
+# and those scores are VOID -- the scheme grades questions the paper does not
+# ask (see docs/DEMO_SCRIPT.md limitation 3). Putting them on screen next to a
+# claim about traceability invites a reader to trust a number we have
+# retracted.
+#
+# Fractions of the page, not pixels, so the crop survives a change of DPI.
+CROPS = {
+    "q13-highlights.png": ("annotated-page-3.png", (0.03, 0.15, 1.0, 0.45)),
+}
+
 
 def png_dimensions(data: bytes) -> tuple[int, int]:
     """Read width and height out of the IHDR chunk."""
@@ -93,6 +105,38 @@ def main(argv: list[str]) -> int:
                 dst_hash = hashlib.sha256(data).hexdigest()
                 if src_hash != dst_hash:
                     problems.append(f"{name}: copy does not match source")
+        else:
+            print(f"{name:<26} {'-':>10}  {'-':>11}  MISSING")
+
+    for name, (parent, box) in CROPS.items():
+        target = ASSETS / name
+        source = ASSETS / parent
+
+        if not check_only:
+            if not source.exists():
+                problems.append(f"{name}: parent {parent} missing, cannot crop")
+                continue
+            try:
+                from PIL import Image
+            except ImportError as exc:
+                problems.append(f"{name}: Pillow required to crop: {exc}")
+                continue
+            with Image.open(source) as im:
+                w, h = im.size
+                px = (int(box[0] * w), int(box[1] * h), int(box[2] * w), int(box[3] * h))
+                im.crop(px).save(target, format="PNG")
+
+        found = verify(target, name)
+        # A crop is a fragment of a page, so the page-shaped dimension check
+        # does not apply. Re-check only what still holds.
+        found = [f for f in found if "implausible dimensions" not in f]
+        problems.extend(found)
+
+        if target.exists():
+            data = target.read_bytes()
+            cw, ch = png_dimensions(data) if data.startswith(PNG_MAGIC) else (0, 0)
+            print(f"{name:<26} {len(data):>10,}  {f'{cw}x{ch}':>11}  "
+                  f"{'OK' if not found else 'FAIL'}")
         else:
             print(f"{name:<26} {'-':>10}  {'-':>11}  MISSING")
 

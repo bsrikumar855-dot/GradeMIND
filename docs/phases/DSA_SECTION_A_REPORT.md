@@ -222,12 +222,15 @@ rule is guessing, and on this page it guessed wrong twice out of three.
 spans elsewhere in the text. That is luck, not safety. A value point phrased
 "solve a smaller instance" would have failed against a correct answer.
 
-This is the same defect class as the hallucinated `3` in the DL script — text
-in the record that the candidate did not write — with one difference that makes
-it worse: **that one was the model's and non-deterministic; this one is ours and
-fires identically every time.** An examiner reading the Q5 derivation sees
-"hash functionto map keys to indices" and is looking at a word that does not
-exist on the page.
+This is the same defect class as the stray `3` in the DL script — text in the
+record that the candidate did not write — but the mechanism is different and
+worse. The `3` turned out to be **real ink on the page**, the examiner's own
+margin mark, faithfully transcribed and then misread by our segmenter as a
+question number (verified from its bbox, `x` 0.01 to 0.08, and from the scan;
+see `docs/DEMO_SCRIPT.md` Act 2). This one is not on the page at all. **It is
+ours, and it fires identically every time.** An examiner reading the Q5
+derivation sees "hash functionto map keys to indices" and is looking at a word
+that exists nowhere.
 
 **Not fixed here.** The instruction was to tune nothing and report what comes
 out. Fixing it mid-run would have made the result unreportable. It needs its own
@@ -311,7 +314,7 @@ enumeration inside an answer body; today it cannot.
 | Lift check | 3 lifts, idiosyncratic | 8 lifts, mostly canonical. See §5b. |
 | Scored | Q13, Q14, Q15 (two of them void) | Q1-Q5, none void |
 | Result | 3/3 on Q13; Q14/Q15 not usable | 10/10 |
-| Transcription artefact | `idata` — model invented a character | `solvea`, `functionto` — **we** invented characters |
+| Transcription artefact | `idata`, ambiguous on the scan; and a margin mark read as a question number | `solvea`, `functionto` — **we** invented these, deterministically |
 | Discriminating power | Low. One question, no ground truth. | **Lower.** No wrong answers anywhere in the input. |
 
 **What this run genuinely establishes:** when the paper and the scheme agree,

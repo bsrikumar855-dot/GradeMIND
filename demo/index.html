@@ -1,0 +1,691 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>GradeMIND</title>
+<style>
+  /* ------------------------------------------------------------------
+     Design system, locked. Trust-first / regulated / accessibility-
+     critical, so the dials sit low: VARIANCE 3, MOTION 2, DENSITY 5.
+     No scroll choreography. Hover and focus only. A page shown live in a
+     room should have nothing in it that can fail to fire.
+
+     One accent (--mark). One neutral temperature (cool grey). One corner
+     radius system: sharp, everywhere, no exceptions. Grouping is done
+     with hairlines and space, never with cards.
+     ------------------------------------------------------------------ */
+
+  :root {
+    --paper:    #F1F2F0;
+    --ink:      #191B1D;
+    --graphite: #5C6469;
+    --rule:     #CBD5D3;
+    --mark:     #C8322B;
+
+    --sans:  "Geist", ui-sans-serif, system-ui, -apple-system, sans-serif;
+    --mono:  "Geist Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+    /* Serif is used for exactly one thing: the student's answer, rendered
+       as the document it is. Not as a "premium" gesture. */
+    --serif: "EB Garamond", Georgia, serif;
+  }
+
+  * { box-sizing: border-box; }
+
+  html { -webkit-text-size-adjust: 100%; }
+
+  body {
+    margin: 0;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--sans);
+    font-size: 17px;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* padding-INLINE here and padding-BLOCK below, deliberately.
+     `class="wrap"` sits on the <section> elements themselves, so a `padding`
+     shorthand on .wrap (specificity 0,1,0) silently beat `padding: 72px 0` on
+     `section` (0,0,1) and every section rendered with ZERO vertical padding.
+     The page had no vertical rhythm at all and it took a screenshot to see it.
+     Separate longhands cannot collide. */
+  .wrap { max-width: 1100px; margin: 0 auto; padding-inline: 24px; }
+  .narrow { max-width: 720px; }
+
+  section { padding-block: 76px; border-top: 1px solid var(--rule); }
+  section:first-of-type { border-top: 0; }
+
+  h1, h2, h3 { text-wrap: balance; margin: 0; }
+  h1 {
+    font-size: clamp(30px, 5.2vw, 46px);
+    font-weight: 600; letter-spacing: -0.022em; line-height: 1.12;
+  }
+  h2 {
+    font-size: clamp(24px, 3.4vw, 31px);
+    font-weight: 600; letter-spacing: -0.015em; line-height: 1.2;
+    margin-bottom: 14px;
+  }
+  h3 {
+    font-size: 17px; font-weight: 600; letter-spacing: -0.005em;
+    margin-bottom: 8px;
+  }
+
+  p { margin: 0 0 16px; max-width: 68ch; }
+  p:last-child { margin-bottom: 0; }
+  .lede { font-size: 19px; color: var(--graphite); }
+  .quiet { color: var(--graphite); }
+  .small { font-size: 14px; }
+
+  strong { font-weight: 600; }
+
+  code, .mono {
+    font-family: var(--mono);
+    font-variant-numeric: tabular-nums;
+  }
+  code { font-size: 0.92em; }
+
+  /* Wide content scrolls inside its own box. The page body never scrolls
+     sideways. */
+  pre {
+    font-family: var(--mono); font-size: 13.5px; line-height: 1.65;
+    background: none; border-top: 1px solid var(--rule);
+    border-bottom: 1px solid var(--rule);
+    margin: 22px 0; padding: 18px 0;
+    overflow-x: auto; white-space: pre;
+  }
+  pre .hi { color: var(--mark); font-weight: 600; }
+  pre .dim { color: var(--graphite); }
+
+  /* ---- hero -------------------------------------------------------- */
+
+  .hero { padding-block: 100px 80px; }
+  .hero h1 { max-width: 19ch; }
+  .hero .lede { margin-top: 20px; max-width: 60ch; }
+
+  .status {
+    margin-top: 34px; padding-top: 18px;
+    border-top: 1px solid var(--rule);
+    display: flex; flex-wrap: wrap; gap: 10px 34px;
+    font-family: var(--mono); font-size: 13px;
+    font-variant-numeric: tabular-nums; color: var(--graphite);
+  }
+  .status b { color: var(--ink); font-weight: 500; }
+
+  /* ---- the two measurements --------------------------------------- */
+
+  /* Held to the prose column width. Spread across the full 1100px the two
+     numbers sat 370px apart and stopped reading as a comparison, which is
+     the only thing this section is for. */
+  .pair { display: grid; grid-template-columns: 1fr 1fr; gap: 0;
+          margin-top: 34px; max-width: 720px; }
+  .pair > div { border-top: 1px solid var(--rule); padding: 20px 28px 0 0; }
+  .figure {
+    font-family: var(--mono); font-variant-numeric: tabular-nums;
+    font-size: clamp(34px, 5vw, 46px); font-weight: 500;
+    letter-spacing: -0.02em; line-height: 1;
+  }
+  .figure.bad { color: var(--mark); }
+  .figure-label { margin-top: 12px; font-size: 15px; max-width: 30ch; }
+  .figure-note { margin-top: 6px; font-size: 13.5px; color: var(--graphite); max-width: 34ch; }
+
+  /* ---- evidence link, carried over from the verified prototype ----- */
+
+  .qhead { margin-bottom: 26px; }
+  .qhead h3 { margin-bottom: 2px; }
+  .qmeta {
+    font-family: var(--mono); font-size: 13.5px;
+    font-variant-numeric: tabular-nums; color: var(--graphite); margin: 0;
+  }
+
+  .evidence {
+    display: grid; grid-template-columns: 1fr 380px; gap: 0;
+    position: relative; border-top: 1px solid var(--rule); padding-top: 28px;
+  }
+
+  .transcript {
+    font-family: var(--serif); font-size: 18px;
+    /* Explicit px, not a ratio: 18 * 1.75 rounds a rule out of alignment
+       every few lines. */
+    line-height: 31.5px;
+    padding-right: 56px;
+    /* Grid's default `stretch` drew 231px of EMPTY ruled paper under the
+       last line and read as a rendering fault. Rules organise real
+       content or they do not appear. */
+    align-self: start;
+  }
+  .transcript p {
+    margin: 0; max-width: none;
+    background-image: repeating-linear-gradient(
+      to bottom, transparent 0, transparent 30.5px,
+      var(--rule) 30.5px, var(--rule) 31.5px);
+  }
+  .transcript .lead { font-family: var(--mono); font-size: 14px; color: var(--graphite); }
+
+  .span {
+    border-bottom: 1.5px solid transparent;
+    transition: background-color 140ms cubic-bezier(0.16,1,0.3,1),
+                border-color 140ms cubic-bezier(0.16,1,0.3,1);
+  }
+  .span.on { background: rgba(200, 50, 43, 0.10); border-bottom-color: var(--mark); }
+
+  .criteria { display: flex; flex-direction: column; }
+
+  .vp {
+    position: relative; border: 0; border-top: 1px solid var(--rule);
+    background: none; text-align: left; width: 100%;
+    padding: 12px 0 12px 16px; font: inherit; color: inherit; cursor: pointer;
+    display: grid; grid-template-columns: 46px 1fr auto; gap: 10px;
+    align-items: baseline;
+  }
+  .vp:first-child { border-top: 0; }
+  .vp:focus-visible { outline: 2px solid var(--mark); outline-offset: 2px; }
+  .vp .id { font-family: var(--mono); font-size: 13px; font-variant-numeric: tabular-nums; color: var(--graphite); }
+  .vp .crit { font-size: 15px; line-height: 1.45; }
+  .vp .awarded { font-family: var(--mono); font-size: 13px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  /* Status is carried by the tick glyph and the text, never colour alone. */
+  .vp .tick { color: var(--mark); font-weight: 600; }
+  .vp.on { background: rgba(200, 50, 43, 0.05); }
+  .vp.on .crit { font-weight: 500; }
+  .vp .chars { grid-column: 2 / -1; font-family: var(--mono); font-size: 12px; color: var(--graphite); font-variant-numeric: tabular-nums; }
+
+  #links { position: absolute; inset: 0; pointer-events: none; overflow: visible; }
+  #links path { stroke: var(--mark); stroke-width: 1; fill: none; opacity: 0; transition: opacity 140ms; }
+  #links path.on { opacity: 1; }
+
+  .total {
+    border-top: 1px solid var(--rule); margin-top: 24px; padding-top: 14px;
+    font-family: var(--mono); font-size: 15px; font-variant-numeric: tabular-nums;
+  }
+
+  figure { margin: 40px 0 0; }
+  figure img { display: block; width: 100%; height: auto; border: 1px solid var(--rule); }
+  figcaption { margin-top: 12px; font-size: 13.5px; color: var(--graphite); max-width: 68ch; }
+
+  /* ---- failures ---------------------------------------------------- */
+
+  .failure { margin-top: 44px; }
+  .failure:first-of-type { margin-top: 30px; }
+  .failure h3 .idx {
+    font-family: var(--mono); font-size: 13px; color: var(--graphite);
+    font-weight: 400; margin-right: 10px; font-variant-numeric: tabular-nums;
+  }
+
+  /* ---- limitations -------------------------------------------------- */
+
+  ol.limits { list-style: none; margin: 30px 0 0; padding: 0; counter-reset: lim; }
+  ol.limits li {
+    counter-increment: lim; border-top: 1px solid var(--rule);
+    padding: 14px 0 14px 46px; position: relative; max-width: 76ch;
+  }
+  ol.limits li::before {
+    content: counter(lim, decimal-leading-zero);
+    position: absolute; left: 0; top: 15px;
+    font-family: var(--mono); font-size: 13px; color: var(--graphite);
+    font-variant-numeric: tabular-nums;
+  }
+  ol.limits .claim { font-weight: 500; }
+  ol.limits .detail { color: var(--graphite); }
+
+  ol.next { margin: 26px 0 0; padding-left: 22px; max-width: 68ch; }
+  ol.next li { margin-bottom: 12px; padding-left: 6px; }
+
+  footer {
+    border-top: 1px solid var(--rule); padding-block: 36px 64px;
+    font-family: var(--mono); font-size: 13px; color: var(--graphite);
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* ---- responsive --------------------------------------------------- */
+
+  @media (max-width: 900px) {
+    .evidence { grid-template-columns: 1fr; }
+    .transcript { padding-right: 0; margin-bottom: 26px; }
+    /* A connector cannot span a stacked layout. The highlight alone
+       carries the claim. Documented degradation, not a fallback. */
+    #links { display: none; }
+  }
+  @media (max-width: 767px) {
+    body { font-size: 16px; }
+    section { padding-block: 56px; }
+    .hero { padding-block: 68px 54px; }
+    .pair { grid-template-columns: 1fr; }
+    .pair > div { padding-right: 0; }
+    ol.limits li { padding-left: 38px; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .span, .vp, #links path { transition: none; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ================= 1. HERO ================= -->
+<header class="hero wrap">
+  <h1>Every mark points at the words that earned it.</h1>
+  <p class="lede">
+    GradeMIND reads a handwritten answer script, then awards marks by
+    arithmetic over a marking scheme. The model finds evidence. It never
+    decides a number.
+  </p>
+  <div class="status">
+    <span><b>Assist-only.</b> A human awards every mark.</span>
+    <span><b>No accuracy claim.</b> No human-marked set exists yet.</span>
+    <span class="mono">value-point-engine/0.1.0-demo</span>
+  </div>
+</header>
+
+<!-- ================= 2. THE FINDING ================= -->
+<section class="wrap">
+  <div class="narrow">
+    <h2>We audited our own scoring engine and found it ranked a wrong answer above a correct one.</h2>
+    <p>
+      The original engine scored answers by sentence-embedding similarity. We
+      measured it against two answers to the same question, and it preferred
+      the wrong one.
+    </p>
+  </div>
+
+  <div class="pair">
+    <div>
+      <div class="figure bad">0.6782</div>
+      <div class="figure-label">Wrong answer, right topic.</div>
+      <div class="figure-note">Scored higher.</div>
+    </div>
+    <div>
+      <div class="figure">0.6239</div>
+      <div class="figure-label">Correct answer, paraphrased.</div>
+      <div class="figure-note">Scored lower.</div>
+    </div>
+  </div>
+
+  <div class="narrow" style="margin-top:38px">
+    <p>
+      A second case from the same audit: a student who wrote
+      <code>ATP</code> verbatim scored <code>0.651</code> against a
+      <code>0.68</code> threshold, and was marked as having missed it.
+    </p>
+    <p>
+      This is not a tuning problem. Embedding similarity measures whether two
+      pieces of text are about the same subject. It does not measure whether
+      the student is right, and no threshold makes it. Lowering the bar to
+      catch <code>0.651</code> would match nearly anything.
+    </p>
+    <p class="small quiet">
+      Both figures are measurements of the engine we replaced, not of the one
+      described below. They are the reason it was replaced.
+    </p>
+  </div>
+</section>
+
+<!-- ================= 3. THE EVIDENCE LINK ================= -->
+<section class="wrap">
+  <div class="narrow">
+    <h2>So marks come from arithmetic, and every one carries its evidence.</h2>
+    <p>
+      A marking scheme lists value points. The matcher finds which span of the
+      answer supports each one. A pure function turns those spans into a mark.
+      Hover a criterion to see the words it was awarded for.
+    </p>
+  </div>
+
+  <div class="qhead" style="margin-top:40px">
+    <h3>Question 13</h3>
+    <p class="qmeta">Compare standard autoencoders and sparse autoencoders for high dimensional data. 3 marks.</p>
+  </div>
+
+  <div class="evidence" id="evidence">
+    <svg id="links" aria-hidden="true"></svg>
+
+    <div class="transcript">
+      <p><span class="lead">13.</span>
+        <span class="span" data-span="13-101" id="s1">Standard autoencoders are less efficient when dealing with high dimensional idata, whereas sparse</span> autoencoders will be more suitable. Standard autoencoders get input, <span class="span" data-span="171-208" id="s2">encode and restructure the given data</span> to replicate an output. In sparse autoencoders, the <span class="span" data-span="261-287" id="s3">details are more preserved</span>.
+      </p>
+    </div>
+
+    <div class="criteria" role="list">
+      <button class="vp" role="listitem" data-target="s1" aria-describedby="s1">
+        <span class="id">13.1</span>
+        <span class="crit">Sparse autoencoders are preferred for high dimensional data</span>
+        <span class="awarded"><span class="tick">&#10003;</span> 1/1</span>
+        <span class="chars">chars 13-101</span>
+      </button>
+      <button class="vp" role="listitem" data-target="s2" aria-describedby="s2">
+        <span class="id">13.2</span>
+        <span class="crit">Standard autoencoders reconstruct input using dense hidden layers</span>
+        <span class="awarded"><span class="tick">&#10003;</span> 1/1</span>
+        <span class="chars">chars 171-208</span>
+      </button>
+      <button class="vp" role="listitem" data-target="s3" aria-describedby="s3">
+        <span class="id">13.3</span>
+        <span class="crit">Sparse autoencoders preserve salient features by enforcing sparsity constraint</span>
+        <span class="awarded"><span class="tick">&#10003;</span> 1/1</span>
+        <span class="chars">chars 261-287</span>
+      </button>
+    </div>
+  </div>
+
+  <p class="total">3 / 3 marks &nbsp; value-point-engine/0.1.0-demo</p>
+
+  <div class="narrow" style="margin-top:30px">
+    <p>
+      Note <code>idata</code> inside the first span, and look at it on the
+      script below. The page really does carry a stroke there that reads as an
+      <code>i</code>. We cannot tell you from the scan whether the student
+      wrote a stray mark or our model misread this writer&rsquo;s lead-in
+      flourish, and we are not going to guess.
+    </p>
+    <p>
+      What matters is that nothing corrected it. The evidence a teacher reads
+      is what we read, exactly, and they can judge it themselves. A pipeline
+      that had quietly normalised this to <code>data</code> would have looked
+      better and told them less.
+    </p>
+  </div>
+
+  <figure>
+    <img src="assets/q13-highlights.png"
+         alt="A crop of the handwritten answer to question 13. Three yellow highlight boxes sit over the phrases that earned each mark, labelled 13.1, 13.2 and 13.3, with Q13 3 of 3 in the margin. The word reading as idata is visible in the second highlighted line.">
+    <figcaption>
+      The same three marks drawn back onto the script. Each highlight is the
+      character span in the derivation above. <code>idata</code> is in the
+      second line, and the caret inserting <code>auto</code> above the first
+      line is the student&rsquo;s own correction.
+    </figcaption>
+  </figure>
+</section>
+
+<!-- ================= 4. WHEN IT GOES WRONG ================= -->
+<section class="wrap">
+  <div class="narrow">
+    <h2>Two failures, and the second one is ours.</h2>
+    <p>
+      Both are in the system as it stands. Neither is fixed, and neither
+      produced a confident wrong mark.
+    </p>
+  </div>
+
+  <div class="failure">
+    <div class="narrow">
+      <h3><span class="idx">01</span>Our own code puts words on the page that the student never wrote.</h3>
+      <p>
+        We ran a second paper this week. Five questions, scored ten out of ten.
+        Then we read the evidence text the marks point at.
+      </p>
+    </div>
+
+<pre>Q4  "…a function calls itself to <span class="hi">solvea</span> smaller instance…"
+Q5  "…uses a hash <span class="hi">functionto</span> map keys to indices…"
+
+<span class="dim">what the student actually wrote:</span>
+Q4  "…calls itself to solve a smaller instance…"
+Q5  "…uses a hash function to map keys…"</pre>
+
+    <div class="narrow">
+      <p>
+        Our line-joining code guesses whether a line break is also a word
+        break. If the next line starts with a short lowercase word, it joins
+        with no space. On this page it guessed wrong twice out of three times.
+        The one it got right, it got right by accident: <code>and has</code>
+        survived only because <code>and</code> happens to sit in a hardcoded
+        list of common words.
+      </p>
+      <p>
+        <strong>The transcription error below was the model&rsquo;s, and it was
+        random. This one is ours, and it fires identically every run.</strong>
+        A model that occasionally invents a character is a risk you route
+        around. Code that reliably corrupts the evidence an examiner reads is a
+        defect you ship. No mark changed here, and that was luck: every
+        affected criterion matched somewhere else in the sentence.
+      </p>
+    </div>
+  </div>
+
+  <div class="failure">
+    <div class="narrow">
+      <h3><span class="idx">02</span>We read the examiner&rsquo;s own marking as if the student had written it.</h3>
+      <p>
+        Same image bytes, same pinned model, same prompt version, one day
+        apart. The two runs did not agree.
+      </p>
+    </div>
+
+<pre><span class="dim">=== page 1, same cache key 4b7652ca59ce ===</span>
+  -6. cell state
+  +6. cell
+  +state
+  <span class="hi">+3</span>          <span class="dim">bbox (0.01, 0.60) to (0.08, 0.69)</span></pre>
+
+    <div class="narrow">
+      <p>
+        A <code>3</code> appeared that the student never wrote. We first
+        recorded that as the model inventing a character. It is not. Look at
+        the bounding box: <code>x</code> from <code>0.01</code> to
+        <code>0.08</code>, hard against the left edge, outside the margin rule.
+        It is on the page, in the examiner&rsquo;s red ink, below question 12.
+        It is the teacher&rsquo;s own mark.
+      </p>
+    </div>
+
+    <figure style="margin-top:26px">
+      <img src="assets/annotated-page-2.png"
+           alt="A page of the handwritten answer script. Two red banners read SENT TO TEACHER, answer struck through, over questions 6 and 10. In the far left margin below question 12 there is a large numeral 3 written in the examiner's red ink.">
+      <figcaption>
+        The page itself. The <code>3</code> is in the far left margin below
+        question 12, in the examiner&rsquo;s ink, in the same hand as the ticks
+        beside every answer. The two banners are questions 6 and 10 being
+        routed to a teacher because the candidate struck their answer out.
+      </figcaption>
+    </figure>
+
+    <div class="narrow">
+      <p>
+        So the model read it correctly. Our segmenter then read it as question
+        3, arriving after question 12, and question 12&rsquo;s text was
+        absorbed into a question that does not exist.
+      </p>
+    </div>
+
+<pre>Q12  | OUT_OF_ORDER      | NO (MANDATORY_HUMAN)
+Q3   | AMBIGUOUS_MAPPING | NO (MANDATORY_HUMAN)</pre>
+
+    <div class="narrow">
+      <p>
+        It marked neither. It declined, named the reason, and handed both to a
+        teacher. That is the direction we built it to fail in.
+      </p>
+      <p>
+        <strong>This is worse than a hallucination and better as a finding.</strong>
+        A model that occasionally invents a character is random. Every marked
+        script in existence has examiner ink in the margin, so this one is
+        systematic, and we will meet it on every script we ingest. The two runs
+        differ in whether the marginalia was captured at all, which is what
+        makes it hard to see.
+      </p>
+      <p class="small quiet">
+        One thing did hold. The number the examiner wrote in that margin was a
+        mark. It reached our pipeline as text, and it could not become a score,
+        because marks come from arithmetic over a scheme and the model is never
+        asked for a number. It became a wrong question number instead, which is
+        a failure the system can detect and did. We fixed the blast radius, not
+        the cause: an earlier version voided the whole script over one
+        out-of-sequence number, and a student whose question 7 is smudged
+        should not lose their question 13.
+      </p>
+    </div>
+  </div>
+</section>
+
+<!-- ================= 5. LIMITATIONS ================= -->
+<section class="wrap">
+  <div class="narrow">
+    <h2>What is wrong with it.</h2>
+    <p>
+      This list is longer than the feature list. That is the honest ratio at
+      this stage, and every item is a measurement rather than a worry.
+    </p>
+  </div>
+
+  <ol class="limits">
+    <li><span class="claim">Two scripts, one of them synthetic, and no ground truth for either.</span>
+      <span class="detail">Nobody has marked either by hand to compare against, so no accuracy claim is possible and none is made.</span></li>
+    <li><span class="claim">9 of 15 questions have no marking scheme at all.</span>
+      <span class="detail">They are not scored, and they are not counted as anything.</span></li>
+    <li><span class="claim">Questions 14 and 15 do not match the printed paper.</span>
+      <span class="detail">The paper asks candidates to interpret attention mechanisms. Our key credits CNN, LSTM and the forget gate. The word &ldquo;attention&rdquo; appears nowhere in the scheme. Any score we previously reported for those two is void.</span></li>
+    <li><span class="claim">The paper says answer any two of 13 to 15. Our scheme models three as mandatory.</span>
+      <span class="detail">A student answering exactly two has followed the instruction, and our scheme would under-credit them.</span></li>
+    <li><span class="claim">That scheme was written by an AI agent against one student&rsquo;s answer.</span>
+      <span class="detail">Not authored blind by a teacher from the paper. That is how the mismatch above happened.</span></li>
+    <li><span class="claim">12 of 36 adversarial probes still fail.</span>
+      <span class="detail">Keyword salad and negated answers score full marks. &ldquo;This process does not involve X, Y, Z&rdquo; credits X, Y and Z. Containment detects presence, not assertion.</span></li>
+    <li><span class="claim">Semantic thresholds are uncalibrated.</span>
+      <span class="detail">Documented defaults, never derived from a labelled set, flagged as such in every result they touch.</span></li>
+    <li><span class="claim">Transcription is not deterministic. We measured it twice.</span>
+      <span class="detail">Two pages, a day apart, identical inputs. Neither run was uniformly better: one lost the student&rsquo;s insertion caret, the other picked up the examiner&rsquo;s margin mark and fed it downstream as a question number.</span></li>
+    <li><span class="claim">We transcribe the examiner&rsquo;s margin marks as if they were student writing.</span>
+      <span class="detail">This is the same defect as the stray <code>3</code> above, not a second one, and we had them recorded as two until we opened the scan. Nothing in the pipeline distinguishes the margin from the answer body. Every marked script has examiner ink in the margin, so this is systematic.</span></li>
+    <li><span class="claim">Page 3 was never transcribed.</span>
+      <span class="detail">The API returned 504 three times and we stopped rather than retrying into the quota.</span></li>
+    <li><span class="claim">Identity masking removes page headers, so section markers are gone.</span>
+      <span class="detail">Any future segmentation that depends on section headers has to account for the masked band.</span></li>
+    <li><span class="claim">The system is assist-only and the autonomous lane is disabled in config.</span>
+      <span class="detail">It suggests marks with full working. A human awards them.</span></li>
+    <li><span class="claim">Our line-joining code corrupts the evidence text, deterministically.</span>
+      <span class="detail">It guessed wrong twice out of three on the second paper. Words that are not on the page, sitting in the text a mark points at. Not fixed.</span></li>
+    <li><span class="claim">The second paper&rsquo;s scheme was not authored blind either, and we do not claim it was.</span>
+      <span class="detail">The question paper and the answer sheet arrived together, so the answer was in front of the author. The scheme was committed to git before anything was transcribed, which proves the order of events. Ordering is not ignorance. No marking scheme in this project has yet been written by anyone who had not seen the script.</span></li>
+    <li><span class="claim">Our own contamination check fired on our own scheme, 8 times against 3, and the count is backwards.</span>
+      <span class="detail">The scheme we know is contaminated scored 3; the new one scored 8. The check cannot tell canonical phrasing from a lift. &ldquo;Push and pop&rdquo; is what every author writes; &ldquo;details are more preserved&rdquo; is nobody&rsquo;s textbook. We are not treating our own explanation as an acquittal.</span></li>
+    <li><span class="claim">Confidence came back 1.00 on all 57 lines of the second paper.</span>
+      <span class="detail">That paper is a rendered font, not handwriting, and it is labelled synthetic everywhere it appears. A self-reported legibility score that saturates is a signal that distinguishes nothing.</span></li>
+  </ol>
+
+  <div class="narrow" style="margin-top:34px">
+    <p class="small quiet">
+      The second paper scored 10 out of 10 on five questions. That number means
+      very little: every answer on it is complete and correct, so an engine
+      awarding full marks to everything would score identically. What it does
+      establish is narrower. The paper and the scheme agree, five marks each
+      came with a derivation, and none of them are void the way 14 and 15 are.
+    </p>
+  </div>
+</section>
+
+<!-- ================= 6. WHAT'S NEXT ================= -->
+<section class="wrap">
+  <div class="narrow">
+    <h2>What happens next, in order.</h2>
+    <ol class="next">
+      <li><strong>A human-marked set.</strong> Until marks exist that a teacher
+        awarded, there is nothing to measure agreement against, and every
+        number on this page is uncomparable.</li>
+      <li><strong>One marking scheme authored by someone who has not seen the
+        script.</strong> Neither of ours qualifies.</li>
+      <li><strong>Fix the line-joining defect,</strong> with its own test. Not
+        by adding more words to the list, which is the same guess with more
+        entries.</li>
+      <li><strong>Show the engine an answer that is wrong.</strong> It has
+        never been given a script it should refuse to award full marks to.</li>
+      <li><strong>Identity, audit trail, and asynchronous evaluation,</strong>
+        then handwriting validation across more scripts.</li>
+    </ol>
+  </div>
+</section>
+
+<footer class="wrap">
+  <p style="margin:0">
+    Suggested marks. Not validated against human examiners.
+    Assist-only: AUTO is disabled at config level.
+  </p>
+  <p style="margin:6px 0 0">
+    value-point-engine/0.1.0-demo &nbsp; value-point-matcher/1.0.0 &nbsp;
+    transcribe/1.0.0
+  </p>
+</footer>
+
+<script>
+(function () {
+  var wrap = document.getElementById('evidence');
+  var svg  = document.getElementById('links');
+  var vps  = Array.prototype.slice.call(document.querySelectorAll('.vp'));
+
+  function draw() {
+    svg.innerHTML = '';
+    var base = wrap.getBoundingClientRect();
+    svg.setAttribute('viewBox', '0 0 ' + base.width + ' ' + base.height);
+    svg.setAttribute('width', base.width);
+    svg.setAttribute('height', base.height);
+
+    vps.forEach(function (vp) {
+      var span = document.getElementById(vp.dataset.target);
+      if (!span) return;
+      // Measure the LAST client rect: a span wrapping several lines should
+      // connect from where it ends, nearest the criteria column.
+      var rects = span.getClientRects();
+      if (!rects.length) return;
+      var r = rects[rects.length - 1];
+      var v = vp.getBoundingClientRect();
+
+      var x1 = r.right - base.left, y1 = r.bottom - base.top - 2;
+      var x2 = v.left  - base.left, y2 = v.top   - base.top + 22;
+      var mid = x1 + (x2 - x1) * 0.55;
+
+      var p = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+      p.setAttribute('d', 'M' + x1 + ' ' + y1 + ' H' + mid + ' V' + y2 + ' H' + x2);
+      p.dataset.for = vp.dataset.target;
+      svg.appendChild(p);
+    });
+  }
+
+  function set(target, on) {
+    // Exclusive. Clearing everything first means a missed mouseleave cannot
+    // strand a second span in the lit state.
+    document.querySelectorAll('.span.on, .vp.on, #links path.on')
+      .forEach(function (el) { el.classList.remove('on'); });
+    if (!on) return;
+
+    var span = document.getElementById(target);
+    var vp   = document.querySelector('.vp[data-target="' + target + '"]');
+    var path = svg.querySelector('path[data-for="' + target + '"]');
+    if (span) span.classList.add('on');
+    if (vp)   vp.classList.add('on');
+    if (path) path.classList.add('on');
+  }
+
+  vps.forEach(function (vp) {
+    var t = vp.dataset.target;
+    ['mouseenter', 'focus'].forEach(function (e) {
+      vp.addEventListener(e, function () { set(t, true); });
+    });
+    ['mouseleave', 'blur'].forEach(function (e) {
+      vp.addEventListener(e, function () { set(t, false); });
+    });
+  });
+
+  draw();
+
+  // Redraw on ANY change to the element's box, not just on window resize.
+  //
+  // Found by measurement: the connector was drawn once at parse time, against
+  // a single-column layout, and still carried that geometry after the page
+  // reflowed to two columns. `document.fonts.ready` did not save it, because
+  // this page uses system fallbacks so that promise resolves immediately,
+  // before the real layout exists.
+  //
+  // ResizeObserver fires for every cause of a geometry change: window resize,
+  // an image finishing loading and pushing content around, a font swapping in,
+  // a devtools panel opening. A resize listener catches one of those.
+  if (window.ResizeObserver) {
+    new ResizeObserver(draw).observe(wrap);
+  } else {
+    window.addEventListener('resize', draw);
+  }
+  // Belt and braces for the case that matters in a live room: a projector at a
+  // resolution nobody tested, and images still in flight.
+  window.addEventListener('load', draw);
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(draw);
+})();
+</script>
+</body>
+</html>

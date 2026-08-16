@@ -64,16 +64,24 @@ Q13  [3.0 / 3.0 marks]  Compare standard autoencoders and sparse autoencoders...
 > Every mark points at a criterion, a character range, and the words that
 > earned it. That's the appeal record.
 
-**Point at `idata`.** It's a transcription error, sitting visibly inside the
-quoted evidence.
+**Point at `idata`,** then open the annotated page and point at the same word
+in the handwriting.
 
-> That's a mistake our transcription made — "data" became "idata". A teacher
-> reading this span sees it. We're not hiding the artefact behind a number.
+> The page really does carry a stroke there that reads as an "i". We can't tell
+> you from the scan whether the student wrote a stray mark or our model misread
+> this writer's lead-in flourish, and we're not going to guess.
+>
+> What matters is that nothing corrected it. The evidence a teacher reads is
+> what we read, exactly, and they can judge it themselves. A pipeline that had
+> quietly normalised this to "data" would have looked better and told them
+> less.
 
 ### 4. The annotated PDF
 
-Open it on the original handwriting. Show highlights over the words that earned
-each mark, and the Q10 banner where the script was routed to a teacher.
+Open it on the original handwriting. Page 3 carries the Q13 highlights over the
+words that earned each mark. Page 2 carries the Q6 and Q10 banners where the
+candidate struck their answer out and the script was routed to a teacher, and
+the examiner's margin mark that Act 2 is about.
 
 ---
 
@@ -106,18 +114,18 @@ Q5  "...uses a hash functionto map keys to indices..."
 > The one it got right, it got right by accident — "and has" survived only
 > because "and" happens to be in a hardcoded list of common words.
 
-> And here's the part that matters. The transcription error I'll show you next
-> was the model's, and it was random. **This one is ours, and it fires
-> identically every single time.** A model that occasionally invents a
-> character is a known risk you route around. Code that reliably corrupts the
-> evidence an examiner reads is a defect you ship.
+> And here's the part that matters. **This one is ours, and it fires
+> identically every single time.** It is not a model being unpredictable, it is
+> our code being confidently wrong on a rule we wrote. Deterministic corruption
+> of the evidence an examiner reads is worse than an occasional model slip,
+> because nothing about it looks like a failure.
 >
 > No mark changed on this run. That was luck — every affected criterion matched
 > somewhere else in the sentence. We have not fixed it yet, because we found it
 > during a measurement run and fixing it mid-run would have made the result
 > unreportable.
 
-### 2. The one the model caused
+### 2. The one we misdiagnosed
 
 > Yesterday this pipeline scored Q13. Today we re-ran the same page — same
 > image bytes, same pinned model, same prompt version, one day apart — and got
@@ -130,12 +138,25 @@ Show the diff:
   -6. cell state
   +6. cell
   +state
-  +3          <- a character that is not on the page
+  +3          bbox (0.01, 0.60) to (0.08, 0.69)
 ```
 
-> A "3" appeared that the student never wrote. Our segmenter read it as
-> question 3, arriving after question 12. Question 12's text was absorbed into
-> a question that doesn't exist.
+> A "3" appeared that the student never wrote.
+
+**Then correct yourself, out loud, because this is the strongest thing in the
+deck.**
+
+> We recorded that as the model inventing a character. It isn't. Look at the
+> bounding box: x from 0.01 to 0.08, hard against the left edge, outside the
+> margin rule. It's on the page, in the examiner's red ink, below question 12.
+> It's the teacher's own mark.
+
+**Open the annotated page and point at it.** It is there, bottom left, in the
+same hand as the ticks beside every answer.
+
+> So the model read it correctly. Our segmenter then read it as question 3,
+> arriving after question 12, and question 12's text was absorbed into a
+> question that doesn't exist.
 >
 > The system marked neither. It routed both to a teacher and said why.
 
@@ -147,14 +168,27 @@ Q3   | AMBIGUOUS_MAPPING | NO (MANDATORY_HUMAN)
 > That's the direction we built it to fail in. It did not produce a confident
 > wrong mark. It declined, loudly, and handed the script to a human.
 
+> This is worse than a hallucination, and better as a finding. A model that
+> occasionally invents a character is random. Every marked script in existence
+> has examiner ink in the margin, so this one is systematic and we will meet it
+> on every script we ingest. The two runs differ in whether the marginalia was
+> captured at all, which is what made it hard to see.
+
+**One thing did hold, and it is worth saying.**
+
+> The number the examiner wrote in that margin was a mark. It reached our
+> pipeline as text and it could not become a score, because marks come from
+> arithmetic over a scheme and the model is never asked for a number. It became
+> a wrong question number instead, which is a failure the system can detect,
+> and did.
+
 **If asked "did you fix it?"**
 
-> We fixed the blast radius, not the hallucination. The first version of that
-> rule voided the entire script — all sixteen questions — because one number
-> was out of sequence. A student whose Q7 is smudged shouldn't lose their Q13.
-> Now it scopes to the region that was actually split and the one before it.
-> The hallucinated "3" is still in our fixture. We kept it, because it's the
-> evidence.
+> We fixed the blast radius, not the cause. The first version of that rule
+> voided the entire script, all sixteen questions, because one number was out
+> of sequence. A student whose Q7 is smudged shouldn't lose their Q13. Now it
+> scopes to the region that was actually split and the one before it. The
+> margin "3" is still in our fixture. We kept it, because it's the evidence.
 
 ---
 
@@ -211,8 +245,9 @@ Results Summary : 3 scored, 4 routed with reasons, 9 no-scheme
 State it as a list. It takes ninety seconds and it is the most credible part of
 the presentation.
 
-1. **One student, one question, no ground truth. No accuracy claim is possible
-   and we make none.** Nobody has marked this script by hand to compare against.
+1. **Two scripts, one of them synthetic, and no ground truth for either. No
+   accuracy claim is possible and we make none.** Nobody has marked either by
+   hand to compare against.
 2. **9 of 15 questions have no marking scheme at all.**
 3. **Q14 and Q15's value points do not match the printed paper.** The paper
    asks candidates to *interpret the impact of attention mechanisms*. Our key
@@ -232,10 +267,13 @@ the presentation.
    derived from a labelled set, and flagged as such in every result.
 8. **Transcription is non-deterministic. We measured it twice**, on two
    different pages, a day apart, identical inputs. Neither run was uniformly
-   better: one lost the student's insertion caret, the other invented a
-   character.
-9. **A teacher's own margin mark was transcribed as student text** in an
-   earlier run.
+   better: one lost the student's insertion caret, the other picked up the
+   examiner's margin mark and fed it downstream as a question number.
+9. **We transcribe the examiner's margin marks as if they were student
+   writing.** This is the same defect as the stray "3", not a second one, and
+   we had it recorded as two until we opened the scan. Nothing in the pipeline
+   distinguishes the margin from the answer body, and every marked script has
+   examiner ink in the margin.
 10. **Page 3 was never transcribed** — the API returned 504 three times and we
     stopped rather than retrying into the quota.
 11. **Identity masking removes page headers**, so section markers like
@@ -247,9 +285,8 @@ the presentation.
     whether a line break is a word break, and on the DSA page it guessed wrong
     twice out of three: `"to solve" + "a smaller"` became `solvea`, and
     `"a hash function" + "to map"` became `functionto`. Words that are not on
-    the page, sitting in the text a mark points at. **Unlike the hallucinated
-    `3`, this is deterministic — it fires the same way every run.** No mark
-    changed, by luck. Not fixed.
+    the page, sitting in the text a mark points at. **Deterministic: it fires
+    the same way every run.** No mark changed, by luck. Not fixed.
 14. **The DSA scheme was not authored blind, and we do not claim it was.** The
     question paper and the answer sheet arrived together, so the answer was in
     front of the author. The scheme was committed to git before anything was

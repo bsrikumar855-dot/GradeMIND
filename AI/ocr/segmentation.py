@@ -265,7 +265,11 @@ def segment_script(
     # conservatism: a student whose Q7 is smudged had their Q13 sent to a
     # human too.
     #
-    # Measured: a single hallucinated line "3" at the foot of page 1 -- an
+    # Measured: a single stray line "3" at the foot of page 1 -- NOT a
+    # hallucination. It is the examiner's own margin mark (bbox x 0.01-0.08,
+    # hard against the left edge), transcribed faithfully and then read here as
+    # a question number. Every marked script carries examiner ink, so this is
+    # systematic rather than random. An
     # artefact of transcription non-determinism, not anything on the paper --
     # produced the sequence 1..12, 3, 13, 14, 15 and took the script from
     # "Q13 scored with a derivation" to 0 scored / 16 routed.
@@ -302,7 +306,7 @@ def segment_script(
             # and keeps all of its own text -- the spurious number took
             # nothing from it. Marking it too would be symmetry for its own
             # sake, and it is what kept Q13 routed here purely because a
-            # hallucinated "3" landed on the line above it.
+            # stray margin "3" landed on the line above it.
             affected.update({index - 1, index})
         affected = {i for i in affected if 0 <= i < len(regions)}
 
