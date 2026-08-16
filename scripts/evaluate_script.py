@@ -22,6 +22,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from AI.fixtures.real_script_page_1_3 import REAL_SCRIPT_PAGES
 from AI.ocr.content_classifier import ContentClassifier, ContentFlags
+from AI.ocr.providers.base import Line, Page
 from AI.ocr.segmentation import QuestionRegion, SegmentationStatus, segment_script
 from AI.evaluation.scheme_loader import load_marking_scheme
 from AI.evaluation.score_computer import compute
@@ -31,12 +32,58 @@ from AI.evaluation.value_point_matcher import match
 MATCHER_VERSION = "value-point-matcher/1.0.0"
 
 
+def load_transcription(path: Path) -> list:
+    """Rebuild Pages from a saved transcription artifact.
+
+    Lets a second script run through THIS pipeline rather than a parallel copy
+    of it. Running the same code is the whole point of evaluating a second
+    paper: a bespoke runner would test a bespoke runner.
+
+    Accepts one page object or a list of them.
+    """
+    data = json.loads(path.read_text(encoding="utf-8"))
+    records = data if isinstance(data, list) else [data]
+
+    pages = []
+    for record in records:
+        lines = tuple(
+            Line(
+                text=l["text"],
+                confidence=l.get("confidence"),
+                bbox=tuple(l["bbox"]) if l.get("bbox") else None,
+                script=l.get("script"),
+                struck_through=bool(l.get("struck_through", False)),
+            )
+            for l in record["lines"]
+        )
+        pages.append(
+            Page(
+                lines=lines,
+                page_confidence=record.get("page_confidence"),
+                provider=record.get("provider", "gemini_vision"),
+                model_id=record["model_id"],
+                prompt_version=record["prompt_version"],
+                page_number=record.get("page_number", 1),
+                page_sha256=record["page_sha256"],
+                extraction_sha256=record["extraction_sha256"],
+                rasterize_version=record.get("rasterize_version", "rasterize/1.0.0"),
+                raw_response_sha256=record.get("raw_response_sha256"),
+                warnings=tuple(record.get("warnings", ())),
+            )
+        )
+    return pages
+
+
 def main():
     parser = argparse.ArgumentParser(description="P3 GradeMIND Full Pipeline CLI")
     parser.add_argument("--from-fixture", action="store_true", default=True, help="Load pages from authentic P0 fixture (zero API calls)")
     parser.add_argument("--scheme", type=str, default=None, help="Path to marking scheme JSON file")
     parser.add_argument("--offline", action="store_true", default=True, help="Enforce offline cache-only execution")
     parser.add_argument("--annotate", type=str, default=None, help="Path to output annotated PDF")
+    parser.add_argument("--transcription", type=str, default=None,
+                        help="Path to a saved transcription JSON, used instead of the built-in fixture")
+    parser.add_argument("--report", type=str, default="tmp/p3_evaluation_report.json",
+                        help="Where to write the evaluation report artifact")
     args = parser.parse_args()
 
     print("GradeMIND — P3 FULL PIPELINE EVALUATION CLI")
@@ -54,7 +101,11 @@ def main():
         print(f"Loaded marking scheme from {s_path} ({len(scheme_questions)} questions defined)")
 
     # 1. Load Transcribed Pages
-    if args.from_fixture:
+    if args.transcription:
+        t_path = Path(args.transcription)
+        pages = load_transcription(t_path)
+        print(f"Loaded {len(pages)} transcribed pages from {t_path}")
+    elif args.from_fixture:
         pages = REAL_SCRIPT_PAGES
         print(f"Loaded {len(pages)} transcribed pages from AI.fixtures.real_script_page_1_3")
     else:
@@ -194,7 +245,7 @@ def main():
     print("=" * 80)
 
     # Save summary report artifact
-    report_path = Path("tmp/p3_evaluation_report.json")
+    report_path = Path(args.report)
     report_path.parent.mkdir(parents=True, exist_ok=True)
 
     # Clean results for JSON serialization (remove Line objects)
