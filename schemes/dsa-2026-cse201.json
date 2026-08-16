@@ -1,0 +1,208 @@
+{
+  "_scheme_id": "dsa-2026-cse201",
+  "_paper": "Institute of Technology and Science, Dept. of CSE, Mid Semester Examination August 2026, Data Structures and Algorithms, CSE201, Semester III, 13/08/2026, Max Marks 50",
+  "_scope": "SECTION A, questions 1-5 only. Section B (Q11-Q15) is deliberately not modelled.",
+  "_authored_from": "The printed question paper only. The value points below were written against the wording of each question, not against any candidate response.",
+  "_blindness_disclosure": "NOT BLIND-AUTHORED. The question paper and a candidate answer sheet were supplied in the same message, so the answer sheet was already in the authoring agent's context before authoring began. The 'authored without reading the answer sheet' claim asked for by the task CANNOT honestly be made and is not made. Two weaker forms of evidence are offered instead: (a) this file was committed before the answer sheet was transcribed, which git orders verifiably; (b) a mechanical check that no acceptable_variant is a verbatim phrase lifted from the transcribed answer. See docs/phases/DSA_SECTION_A_REPORT.md.",
+  "_authoring_notes": [
+    "Value points are written as terse crediting claims, not as full model answers. That is what an examiner's scheme looks like, and it also keeps the matcher's evidence span pointed at the words that actually earned the mark rather than at a whole paragraph.",
+    "Marks are split according to the number of distinct demands the QUESTION makes. Q1 asks for a difference, which is two sides. Q2 asks for a definition and two operations. Q3 asks for one fact. Q4 asks for a definition and an example. Q5 asks for a definition and an advantage.",
+    "Nothing here credits material the question did not ask for. A candidate who answers exactly what was asked must be able to score full marks."
+  ],
+  "questions": [
+    {
+      "id": "q1",
+      "question_number": "1",
+      "question_text": "What is the difference between an array and a linked list?",
+      "max_marks": 2.0,
+      "_split_rationale": "A 'difference between X and Y' question has two sides. One mark for characterising the array, one for characterising the linked list. A candidate who describes only one side has answered half the question.",
+      "value_points": [
+        {
+          "id": "1.1",
+          "text": "Array: elements in contiguous memory, fixed size",
+          "marks": 1.0,
+          "match_mode": "EXACT",
+          "acceptable_variants": [
+            "array stores elements in contiguous memory",
+            "arrays are stored in adjacent memory locations",
+            "array has a fixed size",
+            "array size is static and decided at declaration",
+            "contiguous memory allocation"
+          ]
+        },
+        {
+          "id": "1.2",
+          "text": "Linked list: non-contiguous memory using nodes, dynamic size",
+          "marks": 1.0,
+          "match_mode": "EXACT",
+          "acceptable_variants": [
+            "linked list stores elements in non-contiguous memory",
+            "linked list uses nodes connected by pointers",
+            "each node holds data and a pointer to the next node",
+            "linked list has dynamic size",
+            "linked list can grow or shrink at run time"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "q2",
+      "question_number": "2",
+      "question_text": "Define stack. List its two primary operations.",
+      "max_marks": 2.0,
+      "_split_rationale": "Two explicit demands in the question text: 'Define stack' and 'List its two primary operations'. One mark each. Naming both operations is a single mark, not half a mark each, because the question asks for the pair.",
+      "value_points": [
+        {
+          "id": "2.1",
+          "text": "Stack is a linear data structure following LIFO (Last In First Out)",
+          "marks": 1.0,
+          "match_mode": "EXACT",
+          "acceptable_variants": [
+            "stack follows the LIFO principle",
+            "last in first out",
+            "LIFO data structure",
+            "the last element inserted is the first removed"
+          ]
+        },
+        {
+          "id": "2.2",
+          "text": "The two primary operations are push and pop",
+          "marks": 1.0,
+          "match_mode": "EXACT",
+          "acceptable_variants": [
+            "push and pop",
+            "push inserts an element and pop removes an element",
+            "push for insertion and pop for deletion",
+            "insertion and deletion at the top"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "q3",
+      "question_number": "3",
+      "question_text": "What is the time complexity of binary search?",
+      "max_marks": 2.0,
+      "_split_rationale": "The question asks for one thing: the complexity. It does not ask the candidate to justify it, so the scheme does not require a justification. Splitting this into 'state O(log n)' plus 'explain why' would penalise a candidate who answered the question exactly as printed. Single value point worth the full 2 marks. This is a deliberate authoring choice and is the one most likely to be disputed by a human examiner.",
+      "value_points": [
+        {
+          "id": "3.1",
+          "text": "O(log n)",
+          "marks": 2.0,
+          "match_mode": "EXACT",
+          "acceptable_variants": [
+            "O(log n) time complexity",
+            "logarithmic time",
+            "log n",
+            "O(log2 n)"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "q4",
+      "question_number": "4",
+      "question_text": "Define recursion. Give one example where recursion is used.",
+      "max_marks": 2.0,
+      "_split_rationale": "Two demands: the definition, and one example. The example is modelled as an ANY_N group with n=1 over the standard textbook cases, because the question says 'one example' and any valid one earns the mark. A candidate naming three examples still earns exactly one mark, which the group allocation enforces.",
+      "value_points": [
+        {
+          "id": "4.1",
+          "text": "Recursion is a function that calls itself to solve a smaller instance of the same problem",
+          "marks": 1.0,
+          "match_mode": "EXACT",
+          "acceptable_variants": [
+            "a function calls itself",
+            "function calling itself",
+            "a function invokes itself",
+            "solving a problem by reducing it to a smaller instance of itself"
+          ]
+        },
+        {
+          "id": "4.2a",
+          "text": "Factorial of a number",
+          "marks": 1.0,
+          "match_mode": "EXACT",
+          "group_id": "q4_example",
+          "group_rule": "ANY_N",
+          "group_n": 1,
+          "acceptable_variants": ["factorial"]
+        },
+        {
+          "id": "4.2b",
+          "text": "Fibonacci series",
+          "marks": 1.0,
+          "match_mode": "EXACT",
+          "group_id": "q4_example",
+          "group_rule": "ANY_N",
+          "group_n": 1,
+          "acceptable_variants": ["fibonacci"]
+        },
+        {
+          "id": "4.2c",
+          "text": "Towers of Hanoi",
+          "marks": 1.0,
+          "match_mode": "EXACT",
+          "group_id": "q4_example",
+          "group_rule": "ANY_N",
+          "group_n": 1,
+          "acceptable_variants": ["tower of hanoi", "hanoi"]
+        },
+        {
+          "id": "4.2d",
+          "text": "Tree traversal",
+          "marks": 1.0,
+          "match_mode": "EXACT",
+          "group_id": "q4_example",
+          "group_rule": "ANY_N",
+          "group_n": 1,
+          "acceptable_variants": ["inorder traversal", "preorder traversal", "postorder traversal"]
+        },
+        {
+          "id": "4.2e",
+          "text": "Merge sort or quick sort",
+          "marks": 1.0,
+          "match_mode": "EXACT",
+          "group_id": "q4_example",
+          "group_rule": "ANY_N",
+          "group_n": 1,
+          "acceptable_variants": ["merge sort", "quick sort", "quicksort", "mergesort"]
+        }
+      ]
+    },
+    {
+      "id": "q5",
+      "question_number": "5",
+      "question_text": "What is a hash table? What is its advantage over an array?",
+      "max_marks": 2.0,
+      "_split_rationale": "Two explicit questions, one mark each. The second asks specifically for an advantage OVER AN ARRAY, so the crediting claim is about lookup cost, not about hash tables in general.",
+      "value_points": [
+        {
+          "id": "5.1",
+          "text": "Stores key-value pairs, using a hash function to map keys to indices",
+          "marks": 1.0,
+          "match_mode": "EXACT",
+          "acceptable_variants": [
+            "stores key value pairs",
+            "uses a hash function",
+            "hash function maps a key to an index",
+            "key is converted into an array index by hashing"
+          ]
+        },
+        {
+          "id": "5.2",
+          "text": "Advantage over an array: average O(1) search, insertion and deletion",
+          "marks": 1.0,
+          "match_mode": "EXACT",
+          "acceptable_variants": [
+            "faster search",
+            "constant time lookup",
+            "O(1) on average",
+            "searching an array takes linear time whereas a hash table is constant on average",
+            "direct access without scanning every element"
+          ]
+        }
+      ]
+    }
+  ]
+}
