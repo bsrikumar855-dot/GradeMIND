@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 
 export interface NavbarProps {
   onMenuClick?: () => void;
+  onSearchClick?: () => void;
   onLogout?: () => void;
   userDisplayName?: string;
   userRole?: string;
@@ -13,6 +14,7 @@ export interface NavbarProps {
 
 export const Navbar: React.FC<NavbarProps> = ({
   onMenuClick,
+  onSearchClick,
   userDisplayName = "Academic Administrator",
   userRole = "Faculty Lead",
 }) => {
@@ -26,23 +28,22 @@ export const Navbar: React.FC<NavbarProps> = ({
         )}
         
         {/* Quick Search Bar */}
-        <div className="hidden md:flex items-center gap-2 px-4 py-2 bg-slate-100/80 hover:bg-slate-100 border border-slate-200/60 rounded-xl w-72 text-slate-400 text-sm transition-all focus-within:w-80 focus-within:border-emerald-500 focus-within:bg-white focus-within:ring-2 focus-within:ring-emerald-500/20">
-          <Search className="w-4 h-4 text-slate-400" />
-          <input 
-            type="text" 
-            placeholder="Search exams, students, roll nos..."
-            className="bg-transparent border-0 outline-none text-slate-800 text-xs w-full placeholder:text-slate-400"
-          />
-          <kbd className="px-1.5 py-0.5 text-[10px] font-bold text-slate-400 bg-white border border-slate-200 rounded">⌘K</kbd>
-        </div>
+        <button 
+          onClick={onSearchClick}
+          className="hidden md:flex items-center gap-2 px-4 py-2 bg-slate-100/80 hover:bg-slate-100 border border-slate-200/60 rounded-xl w-72 text-slate-400 text-sm transition-all text-left group"
+        >
+          <Search className="w-4 h-4 text-slate-400 group-hover:text-indigo-600 transition-colors" />
+          <span className="text-xs text-slate-400 font-medium flex-1">Quick search or command...</span>
+          <kbd className="px-1.5 py-0.5 text-[10px] font-mono font-bold text-slate-400 bg-white border border-slate-200 rounded shadow-xs">⌘K</kbd>
+        </button>
       </div>
 
       {/* Right Action Icons & Profile */}
       <div className="flex items-center gap-4">
-        {/* Model Status Pill */}
-        <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs font-semibold shadow-sm">
-          <Cpu className="w-3.5 h-3.5 text-emerald-600 animate-pulse" />
-          <span>Groq 120B & Gemini Active</span>
+        {/* Workspace Status Pill */}
+        <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-900 text-white text-xs font-bold shadow-xs">
+          <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+          <span>Examination System Active</span>
         </div>
 
         {/* Notifications Button */}

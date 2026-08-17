@@ -4,6 +4,7 @@ import * as React from "react";
 import { useRouter } from "next/navigation";
 import { Sidebar } from "./sidebar";
 import { Navbar } from "./navbar";
+import { CommandMenu } from "@/components/ui/command-menu";
 import { useAuth } from "@/store/auth-context";
 
 export interface DashboardLayoutProps {
@@ -12,22 +13,39 @@ export interface DashboardLayoutProps {
 
 export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
   const [isSidebarOpen, setIsSidebarOpen] = React.useState(false);
-  const { user, isAuthenticated, isLoading, logout } = useAuth();
-  const router = useRouter();
+  const [isCommandOpen, setIsCommandOpen] = React.useState(false);
+  const { user, logout } = useAuth();
 
   const toggleSidebar = () => setIsSidebarOpen((prev) => !prev);
   const closeSidebar = () => setIsSidebarOpen(false);
 
-  // In local mode / demo mode, fallback gracefully if auth is disabled
+  // Global Ctrl+K / Cmd+K listener
+  React.useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
+        e.preventDefault();
+        setIsCommandOpen((prev) => !prev);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, []);
+
   const currentUser = user || { name: "Academic Administrator", role: "Faculty Lead" };
 
   return (
     <div className="min-h-screen bg-slate-50 flex">
-      {/* Sidebar - Desktop is fixed w-72 */}
+      {/* Sidebar - Desktop fixed w-72 */}
       <Sidebar
         isOpen={isSidebarOpen}
         onClose={closeSidebar}
         onLogout={logout}
+      />
+
+      {/* Command Palette Modal */}
+      <CommandMenu
+        isOpen={isCommandOpen}
+        onClose={() => setIsCommandOpen(false)}
       />
 
       {/* Main Content Area */}
@@ -35,6 +53,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) =>
         {/* Navbar */}
         <Navbar
           onMenuClick={toggleSidebar}
+          onSearchClick={() => setIsCommandOpen(true)}
           onLogout={logout}
           userDisplayName={currentUser.name}
           userRole={currentUser.role}
