@@ -676,12 +676,14 @@ class SubmissionService:
         if not exam.answer_key_url:
             return None
 
-        if not os.path.exists(exam.answer_key_url):
+        if os.path.exists(exam.answer_key_url):
+            answer_key_text = self._load_source_file_text(exam.answer_key_url, str(exam.id), "answer key")
+        elif len(exam.answer_key_url.strip()) > 0 and not exam.answer_key_url.lower().endswith((".pdf", ".txt", ".png", ".jpg", ".jpeg")):
+            answer_key_text = exam.answer_key_url.strip()
+        else:
             raise ValueError(
                 f"Exam {submission.exam_id} has an answer key path that is not readable."
             )
-
-        answer_key_text = self._load_source_file_text(exam.answer_key_url, str(exam.id), "answer key")
 
         if not answer_key_text:
             raise ValueError(f"Exam {submission.exam_id} answer key is empty; evaluation cannot run.")

@@ -84,8 +84,9 @@ def get_submission_review(
 
 
 @student_router.get("/results/{submission_id}/pdf")
-def download_submission_pdf(
+def download_pdf_result(
     submission_id: UUID,
+    inline: bool = False,
     current_user: dict = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
@@ -103,7 +104,8 @@ def download_submission_pdf(
         return FileResponse(
             path=pdf_path,
             media_type="application/pdf",
-            filename=filename
+            filename=filename,
+            content_disposition_type="inline" if inline else "attachment"
         )
     except ValueError as e:
         error_code = str(e)

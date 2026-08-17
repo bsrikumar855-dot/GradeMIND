@@ -131,25 +131,73 @@ class OCRManager:
             logger.info("PDF_TEXT_STAGE start submission_id=%s path=%s", submission_id, image_path)
             try:
                 pdf_doc = self.extract_pdf_text(image_path, submission_id)
+                # Ensure extracted text lines are actual readable words, not PostScript stream metadata
+                sample_text = " ".join(l.text for l in pdf_doc.lines[:20])
+                if pdf_doc.lines and not any(kw in sample_text for kw in ["endstream", "/Shading", "endobj", "/XObject", "/ColorSpace"]):
+                    logger.info(
+                        "PDF_TEXT_STAGE completed submission_id=%s lines=%s",
+                        submission_id, len(pdf_doc.lines),
+                    )
+                    return pdf_doc
+                else:
+                    logger.warning(
+                        "PDF_TEXT_STAGE extracted raw PDF object metadata/streams; routing to page rasterisation",
+                    )
             except UnreadablePDFError as exc:
-                # Fall through to the engines, exactly as before. Note the
-                # fallback is currently illusory for a scanned PDF -- the
-                # engines take image paths and nothing in this package converts
-                # PDF pages to images -- so this path ends at "All OCR engines
-                # failed", which is a raise. That is the correct outcome; it is
-                # just a less clear message than the one being swallowed here.
-                # Rasterisation is Phase 3.
                 logger.warning(
-                    "PDF_TEXT_STAGE no_embedded_text submission_id=%s (%s); "
-                    "falling_back_to_ocr",
+                    "PDF_TEXT_STAGE no_embedded_text submission_id=%s (%s); rasterising PDF pages",
                     submission_id, exc,
                 )
-            else:
-                logger.info(
-                    "PDF_TEXT_STAGE completed submission_id=%s lines=%s",
-                    submission_id, len(pdf_doc.lines),
+
+            # Rasterise PDF pages to images via PyMuPDF fitz
+            try:
+                import fitz
+                import tempfile
+                doc_pdf = fitz.open(image_path)
+                page_docs: List[OCRDocument] = []
+                from AI.ocr.ocr_router import OCRRouter
+                router = OCRRouter(preprocess=True)
+                for page_idx in range(len(doc_pdf)):
+                    page = doc_pdf[page_idx]
+                    pix = page.get_pixmap(dpi=150)
+                    temp_img_path = os.path.join(
+                        tempfile.gettempdir(),
+                        f"grademind_pdf_{submission_id}_p{page_idx}.jpg"
+                    )
+                    pix.save(temp_img_path)
+                    try:
+                        p_doc = router.route(temp_img_path, f"{submission_id}_p{page_idx}")
+                        if p_doc and p_doc.lines:
+                            page_docs.append(p_doc)
+                    finally:
+                        if os.path.exists(temp_img_path):
+                            try:
+                                os.remove(temp_img_path)
+                            except Exception:
+                                pass
+
+                if page_docs:
+                    combined_lines: List[OCRLine] = []
+                    total_conf = 0.0
+                    for p_doc in page_docs:
+                        combined_lines.extend(p_doc.lines)
+                        total_conf += p_doc.confidence
+                    avg_conf = total_conf / len(page_docs)
+                    logger.info(
+                        "PDF_RASTER_STAGE completed submission_id=%s total_pages=%d total_lines=%d conf=%.3f",
+                        submission_id, len(doc_pdf), len(combined_lines), avg_conf
+                    )
+                    return OCRDocument(
+                        submission_id=submission_id,
+                        confidence=avg_conf,
+                        lines=combined_lines,
+                        regions=[]
+                    )
+            except Exception as raster_exc:
+                logger.warning(
+                    "PDF_RASTER_STAGE failed submission_id=%s error=%s",
+                    submission_id, raster_exc,
                 )
-                return pdf_doc
 
         # ── Primary: content-aware OCR Router ────────────────────────────
         try:

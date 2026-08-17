@@ -138,4 +138,4 @@ class RAGService:
         retrieved_docs = self.retriever.retrieve(query, top_k=top_k)
         
         # Build structured evaluation context
-        return self.context_builder.build_context(retrieved_docs)
+        return self.context_builder.build_context(retrieved_docs, query=query)

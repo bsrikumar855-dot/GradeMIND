@@ -463,6 +463,7 @@ def get_submission_report(
 )
 def download_pdf_report_direct(
     submission_id: UUID,
+    inline: bool = False,
     user: dict = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
@@ -478,7 +479,8 @@ def download_pdf_report_direct(
         return FileResponse(
             path=pdf_path,
             media_type="application/pdf",
-            filename=f"report_{submission.student_roll_number}.pdf"
+            filename=f"report_{submission.student_roll_number}.pdf",
+            content_disposition_type="inline" if inline else "attachment"
         )
     except ValueError as e:
         error_code = str(e)

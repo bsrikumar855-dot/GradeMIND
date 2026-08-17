@@ -18,6 +18,8 @@ class AutonomousEvaluator:
 
     def __init__(self) -> None:
         self.concept_engine = ConceptCoverageEngine()
+        from AI.evaluation.groq_evaluator import GroqEvaluator
+        self.groq_evaluator = GroqEvaluator()
 
     def analyze_question(self, question: str, marks: float, subject: str = "") -> Dict[str, Any]:
         if not question or not question.strip():
@@ -94,18 +96,37 @@ class AutonomousEvaluator:
                 expected_depth=analysis["expected_depth"],
             )
 
+        # ── Primary: Groq 120B LLM Evaluator ─────────────────────────
+        if self.groq_evaluator.is_available():
+            try:
+                eval_res = self.groq_evaluator.evaluate(
+                    question=question,
+                    student_answer=sanitized_answer,
+                    max_marks=max_marks,
+                    question_number=question_number,
+                    subject=subject,
+                )
+                eval_res.difficulty = analysis["difficulty"]
+                eval_res.expected_depth = analysis["expected_depth"]
+                return eval_res
+            except Exception as exc:
+                import logging
+                logging.getLogger("GradeMIND.AutonomousEvaluator").warning(
+                    "GroqEvaluator failed for Q%s (%s); falling back to local engine.", question_number, exc
+                )
+
         coverage = self.concept_engine.evaluate_coverage(question, sanitized_answer, subject)
         semantic_confidence = self.concept_engine.semantic_similarity(question, sanitized_answer, subject)
         concept_coverage_ratio = float(coverage["coverage_percentage"]) / 100.0
         rubric_alignment = self._depth_alignment(sanitized_answer, analysis["expected_depth"])
         factual_penalty = self._factual_error_penalty(sanitized_answer)
 
-        score_ratio = (
+        base_ratio = (
             (concept_coverage_ratio * 0.60)
             + (semantic_confidence * 0.25)
             + (rubric_alignment * 0.15)
-            - factual_penalty
         )
+        score_ratio = max(concept_coverage_ratio, base_ratio) - factual_penalty
         score_ratio = min(max(score_ratio, 0.0), 1.0)
         marks_awarded = round(max_marks * score_ratio * 2) / 2
         marks_awarded = round(min(max(marks_awarded, 0.0), max_marks), 2)

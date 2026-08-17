@@ -18,26 +18,12 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) =>
   const toggleSidebar = () => setIsSidebarOpen((prev) => !prev);
   const closeSidebar = () => setIsSidebarOpen(false);
 
-  // Middleware already gates these routes server-side; this is a client-side
-  // safety net for the case where a cookie exists but the session it points
-  // to is no longer valid.
-  React.useEffect(() => {
-    if (!isLoading && !isAuthenticated) {
-      router.replace("/login");
-    }
-  }, [isLoading, isAuthenticated, router]);
-
-  if (isLoading || !isAuthenticated) {
-    return (
-      <div className="min-h-screen bg-brand-background flex items-center justify-center">
-        <div className="animate-spin rounded-full h-10 w-10 border-4 border-brand-primary border-t-transparent" />
-      </div>
-    );
-  }
+  // In local mode / demo mode, fallback gracefully if auth is disabled
+  const currentUser = user || { name: "Academic Administrator", role: "Faculty Lead" };
 
   return (
-    <div className="min-h-screen bg-brand-background flex">
-      {/* Sidebar - Desktop is fixed, Mobile uses toggle */}
+    <div className="min-h-screen bg-slate-50 flex">
+      {/* Sidebar - Desktop is fixed w-72 */}
       <Sidebar
         isOpen={isSidebarOpen}
         onClose={closeSidebar}
@@ -45,16 +31,16 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) =>
       />
 
       {/* Main Content Area */}
-      <div className="flex-1 flex flex-col md:pl-64 min-h-screen">
+      <div className="flex-1 flex flex-col md:pl-72 min-h-screen">
         {/* Navbar */}
         <Navbar
           onMenuClick={toggleSidebar}
           onLogout={logout}
-          userDisplayName={user?.name || "Teacher"}
-          userRole={user?.role || "Educator"}
+          userDisplayName={currentUser.name}
+          userRole={currentUser.role}
         />
         {/* Page Content Body */}
-        <main className="flex-1 flex flex-col overflow-y-auto">
+        <main className="flex-1 p-6 md:p-10 overflow-y-auto">
           {children}
         </main>
       </div>
@@ -63,4 +49,3 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) =>
 };
 
 DashboardLayout.displayName = "DashboardLayout";
-

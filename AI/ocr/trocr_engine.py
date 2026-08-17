@@ -313,7 +313,7 @@ class TrOCREngine:
             generated_ids = _model.generate(
                 pixel_values,
                 max_new_tokens=128,
-                num_beams=4,         # Beam search for better accuracy
+                num_beams=1,         # Greedy decoding for fast CPU inference
                 early_stopping=True,
             )
 

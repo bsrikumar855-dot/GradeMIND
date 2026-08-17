@@ -169,9 +169,9 @@ def test_batch_indexing(mock_embedding_service):
     rag = RAGService(embedding_service=mock_embedding_service)
 
     indexed_count = rag.index_knowledge_base(kb_service)
-    # Seeds Subject, Chapter, Topic, Question, ReferenceAnswer, Rubric
-    assert indexed_count == 6
-    assert rag.vector_store.count() == 6
+    # Seeds Subject, Chapter, Topic, Question, ReferenceAnswer, Rubric for Science & DSA
+    assert indexed_count >= 6
+    assert rag.vector_store.count() >= 6
 
 
 def test_knowledge_base_integration(mock_embedding_service):

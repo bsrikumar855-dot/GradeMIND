@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { GradeMindLogo } from '@/components/brand';
+import { Sparkles, Lock, Mail, User, ShieldCheck, ArrowRight } from 'lucide-react';
 import { AuthService } from '@/services/auth.service';
 
 export default function LoginPage() {
@@ -25,7 +25,7 @@ export default function LoginPage() {
     try {
       if (mode === 'register') {
         await AuthService.register(name, email, role, password);
-        setInfo('Account created. You can now sign in.');
+        setInfo('Account created successfully. You can now sign in.');
         setMode('login');
         setPassword('');
         setIsSubmitting(false);
@@ -33,8 +33,6 @@ export default function LoginPage() {
       }
 
       await AuthService.login(email, password);
-      // Full navigation so AuthProvider re-mounts and picks up the new
-      // session cookie (it only checks on mount).
       window.location.href = '/dashboard';
     } catch (err: any) {
       const detail = err?.response?.data?.detail || err?.response?.data?.message || err?.message;
@@ -44,83 +42,121 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-brand-background flex items-center justify-center p-6">
-      <div className="w-full max-w-md">
-        <div className="flex justify-center mb-8">
-          <GradeMindLogo variant="full-color" textSize="lg" />
+    <div className="min-h-screen bg-slate-950 flex items-center justify-center p-6 relative overflow-hidden">
+      {/* Background Animated Glowing Orbs */}
+      <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-emerald-500/15 rounded-full blur-[120px] pointer-events-none animate-pulse-glow" />
+      <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-blue-500/15 rounded-full blur-[120px] pointer-events-none animate-pulse-glow" />
+
+      <div className="w-full max-w-md relative z-10 space-y-8">
+        
+        {/* Logo Header */}
+        <div className="text-center space-y-2">
+          <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-gradient-to-tr from-emerald-500 to-teal-400 text-slate-950 shadow-xl shadow-emerald-500/25 mb-2">
+            <Sparkles className="w-7 h-7" />
+          </div>
+          <h1 className="text-3xl font-black tracking-tight text-white">
+            Grade<span className="text-emerald-400">MIND</span>
+          </h1>
+          <p className="text-xs font-semibold text-slate-400 uppercase tracking-widest">
+            Autonomous Academic Grading System
+          </p>
         </div>
 
-        <div className="bg-white p-8 rounded-2xl shadow-[0_10px_40px_rgba(47,90,58,0.08)] border border-gray-50">
-          <h1 className="text-2xl font-bold text-brand-dark mb-1">
-            {mode === 'login' ? 'Sign in' : 'Create an account'}
-          </h1>
-          <p className="text-sm text-gray-500 mb-6">
-            {mode === 'login'
-              ? 'Sign in to grade and review submissions.'
-              : 'Register as a teacher or admin to start grading.'}
-          </p>
+        {/* Glassmorphic Form Card */}
+        <div className="glass-card rounded-3xl p-8 bg-slate-900/80 backdrop-blur-xl border border-slate-800 shadow-2xl space-y-6">
+          
+          {/* Mode Switcher */}
+          <div className="grid grid-cols-2 gap-1 p-1 bg-slate-800/80 rounded-2xl border border-slate-700/50">
+            <button
+              type="button"
+              onClick={() => setMode('login')}
+              className={`py-2 text-xs font-bold rounded-xl transition-all ${
+                mode === 'login' ? 'bg-emerald-500 text-slate-950 shadow-md' : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              Sign In
+            </button>
+            <button
+              type="button"
+              onClick={() => setMode('register')}
+              className={`py-2 text-xs font-bold rounded-xl transition-all ${
+                mode === 'register' ? 'bg-emerald-500 text-slate-950 shadow-md' : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              Register
+            </button>
+          </div>
 
           {error && (
-            <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-600 rounded-xl text-sm font-semibold">
+            <div className="p-3.5 bg-rose-500/10 border border-rose-500/30 text-rose-400 rounded-xl text-xs font-bold">
               {error}
             </div>
           )}
           {info && (
-            <div className="mb-4 p-3 bg-brand-surface/40 border border-brand-primary/20 text-brand-dark rounded-xl text-sm font-semibold">
+            <div className="p-3.5 bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 rounded-xl text-xs font-bold">
               {info}
             </div>
           )}
 
           <form onSubmit={handleSubmit} className="space-y-4">
             {mode === 'register' && (
-              <div className="space-y-2">
-                <label className="text-xs font-semibold text-gray-500">Full name</label>
-                <input
-                  type="text"
-                  required
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  placeholder="Jane Doe"
-                  className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:border-brand-primary text-brand-dark text-sm font-medium"
-                />
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-slate-300 uppercase tracking-wider">Full Name</label>
+                <div className="relative">
+                  <User className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                  <input
+                    type="text"
+                    required
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    placeholder="Prof. Jane Doe"
+                    className="w-full pl-10 pr-4 py-3 bg-slate-800/60 border border-slate-700 rounded-xl text-xs font-medium text-white placeholder:text-slate-500 focus:outline-none focus:border-emerald-500"
+                  />
+                </div>
               </div>
             )}
 
-            <div className="space-y-2">
-              <label className="text-xs font-semibold text-gray-500">Email</label>
-              <input
-                type="email"
-                required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="you@school.edu"
-                className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:border-brand-primary text-brand-dark text-sm font-medium"
-              />
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold text-slate-300 uppercase tracking-wider">Academic Email</label>
+              <div className="relative">
+                <Mail className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                <input
+                  type="email"
+                  required
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="faculty@university.edu"
+                  className="w-full pl-10 pr-4 py-3 bg-slate-800/60 border border-slate-700 rounded-xl text-xs font-medium text-white placeholder:text-slate-500 focus:outline-none focus:border-emerald-500"
+                />
+              </div>
             </div>
 
-            <div className="space-y-2">
-              <label className="text-xs font-semibold text-gray-500">Password</label>
-              <input
-                type="password"
-                required
-                minLength={8}
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="••••••••"
-                className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:border-brand-primary text-brand-dark text-sm font-medium"
-              />
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold text-slate-300 uppercase tracking-wider">Password</label>
+              <div className="relative">
+                <Lock className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                <input
+                  type="password"
+                  required
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="••••••••••••"
+                  className="w-full pl-10 pr-4 py-3 bg-slate-800/60 border border-slate-700 rounded-xl text-xs font-medium text-white placeholder:text-slate-500 focus:outline-none focus:border-emerald-500"
+                />
+              </div>
             </div>
 
             {mode === 'register' && (
-              <div className="space-y-2">
-                <label className="text-xs font-semibold text-gray-500">Role</label>
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-slate-300 uppercase tracking-wider">Role</label>
                 <select
                   value={role}
                   onChange={(e) => setRole(e.target.value)}
-                  className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:border-brand-primary text-brand-dark text-sm font-medium"
+                  className="w-full px-4 py-3 bg-slate-800/60 border border-slate-700 rounded-xl text-xs font-medium text-white focus:outline-none focus:border-emerald-500"
                 >
-                  <option value="teacher">Teacher</option>
-                  <option value="admin">Admin</option>
+                  <option value="teacher">Faculty Member / Professor</option>
+                  <option value="admin">Exam Administrator</option>
+                  <option value="evaluator">Teaching Assistant</option>
                 </select>
               </div>
             )}
@@ -128,30 +164,20 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={isSubmitting}
-              className="w-full px-6 py-3.5 rounded-xl font-bold text-white bg-brand-primary hover:bg-opacity-90 disabled:opacity-50 disabled:cursor-not-allowed active:scale-95 transition-all shadow-md flex items-center justify-center gap-2"
+              className="w-full py-3.5 bg-gradient-to-r from-emerald-500 to-teal-400 hover:from-emerald-400 hover:to-teal-300 text-slate-950 font-black text-sm rounded-xl transition-all shadow-xl shadow-emerald-500/25 flex items-center justify-center gap-2 mt-2"
             >
               {isSubmitting ? (
-                <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-              ) : mode === 'login' ? (
-                'Sign in'
+                <div className="w-4 h-4 border-2 border-slate-950 border-t-transparent rounded-full animate-spin" />
               ) : (
-                'Create account'
+                <>
+                  {mode === 'login' ? 'Sign In to GradeMIND' : 'Create Account'} <ArrowRight className="w-4 h-4" />
+                </>
               )}
             </button>
           </form>
 
-          <button
-            type="button"
-            onClick={() => {
-              setMode(mode === 'login' ? 'register' : 'login');
-              setError('');
-              setInfo('');
-            }}
-            className="w-full mt-5 text-sm font-semibold text-brand-primary hover:underline"
-          >
-            {mode === 'login' ? "Don't have an account? Register" : 'Already have an account? Sign in'}
-          </button>
         </div>
+
       </div>
     </div>
   );

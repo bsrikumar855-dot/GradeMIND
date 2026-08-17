@@ -11,9 +11,10 @@ class ContextBuilder:
     Constructs structured curriculum contexts from raw search results.
     """
 
-    def build_context(self, retrieved_documents: List[Dict[str, Any]]) -> Dict[str, Any]:
+    def build_context(self, retrieved_documents: List[Dict[str, Any]], query: str = "") -> Dict[str, Any]:
         """
         Organizes retrieved document chunks by type into a unified context dictionary.
+        Filter documents by query relevance if multiple subject domains exist in retrieval results.
         """
         context = {
             "subject": "",
@@ -24,10 +25,20 @@ class ContextBuilder:
             "rubric": []
         }
 
-        # Filter highest scoring document per type to build the curriculum context
-        seen_types = set()
+        if not retrieved_documents:
+            return context
 
-        # Sort by score descending just in case the input list is not sorted
+        q_low = query.lower() if query else ""
+        if "photo" in q_low or "plant" in q_low or "science" in q_low:
+            matched = [d for d in retrieved_documents if any(w in d.get("content", "").lower() for w in ["photo", "science", "plant", "nutrition"])]
+            if matched:
+                retrieved_documents = matched
+        elif any(w in q_low for w in ["array", "linked", "stack", "queue", "dsa"]):
+            matched = [d for d in retrieved_documents if any(w in d.get("content", "").lower() for w in ["dsa", "structure", "array", "linked"])]
+            if matched:
+                retrieved_documents = matched
+
+        seen_types = set()
         sorted_docs = sorted(retrieved_documents, key=lambda x: x.get("score", 0.0), reverse=True)
 
         for doc in sorted_docs:

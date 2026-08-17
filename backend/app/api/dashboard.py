@@ -113,6 +113,7 @@ def get_submission_review(
 )
 def download_pdf_report(
     submission_id: UUID,
+    inline: bool = False,
     user: dict = Depends(require_teacher_or_admin),
     db: Session = Depends(get_db)
 ):
@@ -146,7 +147,8 @@ def download_pdf_report(
     return FileResponse(
         path=pdf_path,
         media_type="application/pdf",
-        filename=f"report_{submission.student_roll_number}.pdf"
+        filename=f"report_{submission.student_roll_number}.pdf",
+        content_disposition_type="inline" if inline else "attachment"
     )
 
 

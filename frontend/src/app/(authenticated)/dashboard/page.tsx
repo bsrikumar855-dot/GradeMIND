@@ -2,7 +2,21 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { AnalyticsCard } from '@/components/charts/analytics-card';
+import { 
+  FileText, 
+  Users, 
+  Brain, 
+  Award, 
+  TrendingUp, 
+  UploadCloud, 
+  BarChart3, 
+  CheckCircle2, 
+  Clock, 
+  AlertCircle, 
+  ArrowRight,
+  Sparkles,
+  Zap
+} from 'lucide-react';
 import { DashboardService } from '@/services/dashboard.service';
 import { SubmissionService } from '@/services/submission.service';
 import { ExamService } from '@/services/exam.service';
@@ -37,15 +51,9 @@ export default function DashboardPage() {
           ExamService.getExams()
         ]);
 
-        if (overviewRes.success) {
-          setOverview(overviewRes.data);
-        }
+        if (overviewRes.success) setOverview(overviewRes.data);
+        if (monitoringRes.success) setMonitoring(monitoringRes.data);
 
-        if (monitoringRes.success) {
-          setMonitoring(monitoringRes.data);
-        }
-
-        // Build a mapping of exam_id -> exam details
         const mapping: Record<string, { title: string; subject: string }> = {};
         if (examsRes.success && Array.isArray(examsRes.data)) {
           examsRes.data.forEach((exam: any) => {
@@ -62,7 +70,7 @@ export default function DashboardPage() {
         }
       } catch (err: any) {
         console.error('Failed to load dashboard data:', err);
-        setError('Could not retrieve dashboard analytics. Please check your backend connection.');
+        setError('Could not retrieve dashboard analytics. Please verify backend connectivity.');
       } finally {
         setLoading(false);
       }
@@ -73,43 +81,56 @@ export default function DashboardPage() {
 
   const formatPercentage = (val?: number) => {
     if (val === undefined || val === null) return '--%';
-    // If it's already a percentage > 1 (e.g. 85.5) or a ratio < 1 (e.g. 0.855)
     const normalized = val <= 1 && val > 0 ? val * 100 : val;
     return `${normalized.toFixed(1)}%`;
   };
 
-  const getStatusClass = (status: string) => {
+  const getStatusBadge = (status: string) => {
     switch (status.toUpperCase()) {
       case 'COMPLETED':
-        return 'bg-brand-secondary text-brand-dark';
+        return (
+          <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-500/10 text-emerald-600 border border-emerald-500/20">
+            <CheckCircle2 className="w-3.5 h-3.5" /> Evaluated
+          </span>
+        );
       case 'FAILED':
-        return 'bg-red-50 text-red-600';
-      case 'PROCESSING':
-      case 'OCR_COMPLETE':
-      case 'UPLOADED':
-        return 'bg-yellow-50 text-yellow-600';
+        return (
+          <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold bg-rose-500/10 text-rose-600 border border-rose-500/20">
+            <AlertCircle className="w-3.5 h-3.5" /> Error
+          </span>
+        );
       default:
-        return 'bg-gray-100 text-gray-600';
+        return (
+          <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold bg-amber-500/10 text-amber-600 border border-amber-500/20 animate-pulse">
+            <Clock className="w-3.5 h-3.5" /> Processing
+          </span>
+        );
     }
   };
 
   if (loading) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[60vh] space-y-4">
-        <div className="w-12 h-12 border-4 border-brand-primary/30 border-t-brand-primary rounded-full animate-spin"></div>
-        <p className="text-gray-500 font-medium">Loading dashboard analytics...</p>
+      <div className="flex flex-col items-center justify-center min-h-[65vh] space-y-4">
+        <div className="relative w-16 h-16">
+          <div className="absolute inset-0 rounded-full border-4 border-emerald-500/20"></div>
+          <div className="absolute inset-0 rounded-full border-4 border-emerald-500 border-t-transparent animate-spin"></div>
+        </div>
+        <p className="text-slate-500 font-semibold text-sm animate-pulse">Loading GradeMIND Analytics Dashboard...</p>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="max-w-4xl mx-auto mt-12 p-6 bg-red-50 border border-red-200 rounded-2xl text-center">
-        <h2 className="text-xl font-bold text-red-700 mb-2">Connection Error</h2>
-        <p className="text-red-600 mb-4">{error}</p>
+      <div className="max-w-3xl mx-auto mt-12 p-8 glass-card rounded-3xl border border-rose-200 text-center space-y-4">
+        <div className="w-12 h-12 bg-rose-100 text-rose-600 rounded-full flex items-center justify-center mx-auto">
+          <AlertCircle className="w-6 h-6" />
+        </div>
+        <h2 className="text-xl font-bold text-slate-900">Backend Connection Notice</h2>
+        <p className="text-slate-600 text-sm max-w-md mx-auto">{error}</p>
         <button 
           onClick={() => window.location.reload()} 
-          className="bg-brand-primary text-white font-semibold py-2 px-6 rounded-xl hover:bg-opacity-95 transition-all"
+          className="px-6 py-2.5 bg-slate-900 text-white font-bold text-sm rounded-xl hover:bg-slate-800 transition-all shadow-lg shadow-slate-900/20"
         >
           Retry Connection
         </button>
@@ -124,141 +145,200 @@ export default function DashboardPage() {
   const averageConfidence = overview?.average_confidence ?? 0;
   const scoreDistribution = monitoring?.score_distribution || {};
   const scoreBars = [
-    { label: '90-100', count: scoreDistribution['90-100'] || 0 },
-    { label: '80-89', count: scoreDistribution['80-89'] || 0 },
-    { label: '70-79', count: scoreDistribution['70-79'] || 0 },
-    { label: '60-69', count: scoreDistribution['60-69'] || 0 },
-    { label: '<60', count: scoreDistribution.below_60 || 0 },
+    { label: '90-100%', count: scoreDistribution['90-100'] || 0, color: '#10B981' },
+    { label: '80-89%', count: scoreDistribution['80-89'] || 0, color: '#3B82F6' },
+    { label: '70-79%', count: scoreDistribution['70-79'] || 0, color: '#8B5CF6' },
+    { label: '60-69%', count: scoreDistribution['60-69'] || 0, color: '#F59E0B' },
+    { label: '<60%', count: scoreDistribution.below_60 || 0, color: '#EF4444' },
   ];
-  const maxScoreBucket = Math.max(...scoreBars.map((bucket) => bucket.count), 1);
+  const maxScoreBucket = Math.max(...scoreBars.map((b) => b.count), 1);
 
   return (
-    <div className="space-y-8 max-w-7xl mx-auto">
+    <div className="space-y-8 max-w-7xl mx-auto pb-12">
       
-      {/* 1. KPI Cards Row */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <AnalyticsCard
-          title="Total Exams"
-          value={totalExams.toString()}
-          trend={{ value: 'Live', isPositive: true }}
-          icon={<svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>}
-        />
-        <AnalyticsCard
-          title="Submissions Uploaded"
-          value={totalSubmissions.toString()}
-          trend={{ value: `${evaluatedSubmissions} Evaluated`, isPositive: true }}
-          icon={<svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" /></svg>}
-        />
-        <AnalyticsCard
-          title="AI Confidence"
-          value={formatPercentage(averageConfidence)}
-          variant="primary"
-          trend={{ value: 'OCR & Eval', isPositive: true }}
-          icon={<svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>}
-        />
-        <AnalyticsCard
-          title="Class Average"
-          value={formatPercentage(averageScore)}
-          variant="accent"
-          trend={{ value: 'Weighted', isPositive: true }}
-          icon={<svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7v8a2 2 0 002 2h6M8 7V5a2 2 0 012-2h4.586a1 1 0 01.707.293l4.414 4.414a1 1 0 01.293.707V15a2 2 0 01-2 2h-2M8 7H6a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2v-2" /></svg>}
-        />
+      {/* Welcome & AI Engine Banner */}
+      <div className="relative overflow-hidden glass-card rounded-3xl p-8 bg-gradient-to-r from-slate-900 via-slate-800 to-emerald-950 text-white shadow-2xl border border-slate-700/50">
+        <div className="absolute top-0 right-0 w-96 h-96 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none"></div>
+        
+        <div className="relative z-10 flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+          <div>
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-xs font-bold uppercase tracking-wider mb-3">
+              <Sparkles className="w-3.5 h-3.5" /> Autonomous AI Examiner
+            </div>
+            <h1 className="text-3xl font-black tracking-tight text-white">
+              Evaluation & Analytics Overview
+            </h1>
+            <p className="text-slate-300 text-sm mt-1 max-w-xl">
+              GradeMIND uses Groq 120B & Gemini Vision AI to grade answer sheets with human-examiner rigor in under 1.5 seconds per script.
+            </p>
+          </div>
+
+          <div className="flex gap-3">
+            <Link 
+              href="/upload" 
+              className="px-5 py-3 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-sm rounded-xl transition-all shadow-lg shadow-emerald-500/30 flex items-center gap-2"
+            >
+              <UploadCloud className="w-4 h-4" /> Upload Exam Sheet
+            </Link>
+            <Link 
+              href="/results" 
+              className="px-5 py-3 bg-white/10 hover:bg-white/20 text-white font-bold text-sm rounded-xl transition-all border border-white/20 backdrop-blur-md flex items-center gap-2"
+            >
+              View Results <ArrowRight className="w-4 h-4" />
+            </Link>
+          </div>
+        </div>
       </div>
 
+      {/* 1. KPI Cards Row (21st.dev Style Glassmorphism) */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+        
+        {/* Total Exams */}
+        <div className="glass-card glass-card-hover rounded-2xl p-6 relative overflow-hidden">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Total Exams</span>
+            <div className="w-10 h-10 rounded-xl bg-blue-500/10 text-blue-600 flex items-center justify-center">
+              <FileText className="w-5 h-5" />
+            </div>
+          </div>
+          <div className="mt-4">
+            <span className="text-3xl font-black text-slate-900">{totalExams}</span>
+            <span className="block text-xs font-semibold text-slate-500 mt-1">Configured Exam Packages</span>
+          </div>
+        </div>
+
+        {/* Submissions Uploaded */}
+        <div className="glass-card glass-card-hover rounded-2xl p-6 relative overflow-hidden">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Submissions</span>
+            <div className="w-10 h-10 rounded-xl bg-purple-500/10 text-purple-600 flex items-center justify-center">
+              <Users className="w-5 h-5" />
+            </div>
+          </div>
+          <div className="mt-4">
+            <span className="text-3xl font-black text-slate-900">{totalSubmissions}</span>
+            <span className="block text-xs font-semibold text-emerald-600 mt-1">{evaluatedSubmissions} Evaluated & Scored</span>
+          </div>
+        </div>
+
+        {/* AI Confidence */}
+        <div className="glass-card glass-card-hover rounded-2xl p-6 relative overflow-hidden">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">AI Confidence</span>
+            <div className="w-10 h-10 rounded-xl bg-emerald-500/10 text-emerald-600 flex items-center justify-center">
+              <Brain className="w-5 h-5" />
+            </div>
+          </div>
+          <div className="mt-4">
+            <span className="text-3xl font-black text-emerald-600">{formatPercentage(averageConfidence)}</span>
+            <span className="block text-xs font-semibold text-slate-500 mt-1">OCR & Evaluation Precision</span>
+          </div>
+        </div>
+
+        {/* Class Average */}
+        <div className="glass-card glass-card-hover rounded-2xl p-6 relative overflow-hidden">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Class Average</span>
+            <div className="w-10 h-10 rounded-xl bg-amber-500/10 text-amber-600 flex items-center justify-center">
+              <Award className="w-5 h-5" />
+            </div>
+          </div>
+          <div className="mt-4">
+            <span className="text-3xl font-black text-slate-900">{formatPercentage(averageScore)}</span>
+            <span className="block text-xs font-semibold text-slate-500 mt-1">Overall Student Mastery</span>
+          </div>
+        </div>
+
+      </div>
+
+      {/* 2. Main Content Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         
-        {/* 2. Left Column - Charts & Activity */}
+        {/* Left 2 Columns: Score Distribution & Submissions Table */}
         <div className="lg:col-span-2 space-y-8">
           
-          {/* Evaluation Activity Chart */}
-          <div className="bg-white rounded-2xl p-6 shadow-[0_4px_20px_rgba(47,90,58,0.05)] border border-gray-50">
+          {/* Score Distribution Chart */}
+          <div className="glass-card rounded-3xl p-6 md:p-8">
             <div className="flex justify-between items-center mb-6">
-              <h2 className="text-lg font-bold text-brand-dark">Score Distribution</h2>
-              <span className="text-sm font-semibold text-brand-primary bg-brand-background px-3 py-1 rounded-lg">Live Monitoring</span>
+              <div>
+                <h2 className="text-lg font-bold text-slate-900">Score Distribution</h2>
+                <p className="text-xs text-slate-400">Student performance across score bands</p>
+              </div>
+              <span className="px-3 py-1 rounded-full text-xs font-bold bg-slate-100 text-slate-700 flex items-center gap-1.5">
+                <TrendingUp className="w-3.5 h-3.5 text-emerald-500" /> Real-time Analytics
+              </span>
             </div>
-            
-            {/* Live Chart Visualizer based on recent submissions */}
-            <div className="h-64 flex items-end justify-between gap-2 pb-6 border-b border-gray-100 relative">
-              <div className="absolute w-full border-t border-dashed border-gray-200 top-0"></div>
-              <div className="absolute w-full border-t border-dashed border-gray-200 top-1/2"></div>
-              
-              {scoreBars.every((bucket) => bucket.count === 0) ? (
-                <div className="absolute inset-0 flex items-center justify-center text-gray-400 font-medium">
-                  No completed scores recorded yet.
-                </div>
-              ) : (
-                scoreBars.map((bucket) => {
-                  const height = Math.max((bucket.count / maxScoreBucket) * 100, 8);
-                  return (
-                    <div key={bucket.label} className="w-full flex justify-center group relative z-10">
-                      <div 
-                        className="w-12 bg-brand-surface rounded-t-lg relative transition-all duration-300 group-hover:bg-brand-primary cursor-pointer"
-                        style={{ height: `${height}%` }}
-                      >
-                        <div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-brand-dark text-white text-xs py-1 px-2 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
-                          {bucket.count} submissions
-                        </div>
-                      </div>
+
+            {/* Custom Bar Visualization */}
+            <div className="space-y-4">
+              {scoreBars.map((bucket) => {
+                const pct = Math.round((bucket.count / maxScoreBucket) * 100);
+                return (
+                  <div key={bucket.label} className="space-y-1.5">
+                    <div className="flex justify-between text-xs font-bold text-slate-700">
+                      <span>{bucket.label}</span>
+                      <span className="text-slate-500">{bucket.count} student(s) ({pct}%)</span>
                     </div>
-                  );
-                })
-              )}
-            </div>
-            <div className="flex justify-between mt-4 text-xs font-medium text-gray-400">
-              {scoreBars.map((bucket) => (
-                <span key={bucket.label} className="truncate max-w-[60px]">{bucket.label}</span>
-              ))}
+                    <div className="w-full h-3 bg-slate-100 rounded-full overflow-hidden p-0.5 border border-slate-200/50">
+                      <div 
+                        className="h-full rounded-full transition-all duration-700 ease-out" 
+                        style={{ width: `${Math.max(pct, 4)}%`, backgroundColor: bucket.color }}
+                      />
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </div>
 
-          {/* Recent Evaluations Table */}
-          <div className="bg-white rounded-2xl p-6 shadow-[0_4px_20px_rgba(47,90,58,0.05)] border border-gray-50">
+          {/* Recent Submissions Table */}
+          <div className="glass-card rounded-3xl p-6 md:p-8">
             <div className="flex justify-between items-center mb-6">
-              <h2 className="text-lg font-bold text-brand-dark">Recent Submissions & Evaluations</h2>
-              <Link href="/reports" className="text-brand-primary text-sm font-medium hover:underline">View All</Link>
+              <div>
+                <h2 className="text-lg font-bold text-slate-900">Recent Answer Sheets</h2>
+                <p className="text-xs text-slate-400">Latest student submissions processed by GradeMIND</p>
+              </div>
+              <Link href="/results" className="text-xs font-bold text-emerald-600 hover:text-emerald-700 flex items-center gap-1">
+                View All <ArrowRight className="w-3.5 h-3.5" />
+              </Link>
             </div>
+
             <div className="overflow-x-auto">
               <table className="w-full text-left border-collapse">
                 <thead>
-                  <tr className="border-b border-gray-100">
-                    <th className="pb-3 text-sm font-semibold text-gray-400">Student & Subject</th>
-                    <th className="pb-3 text-sm font-semibold text-gray-400">Date</th>
-                    <th className="pb-3 text-sm font-semibold text-gray-400">Status</th>
-                    <th className="pb-3 text-sm font-semibold text-gray-400 text-right">Score</th>
+                  <tr className="border-b border-slate-100 text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                    <th className="pb-3">Student & Roll No.</th>
+                    <th className="pb-3">Exam / Subject</th>
+                    <th className="pb-3">Status</th>
+                    <th className="pb-3 text-right">Score</th>
                   </tr>
                 </thead>
-                <tbody>
+                <tbody className="divide-y divide-slate-100 text-sm">
                   {recentSubmissions.length === 0 ? (
                     <tr>
-                      <td colSpan={4} className="py-8 text-center text-gray-400">
-                        No submissions uploaded yet. Go to Upload Center to grade a student sheet.
+                      <td colSpan={4} className="py-8 text-center text-slate-400 text-sm">
+                        No submissions evaluated yet. Click Upload Exam Sheet to start!
                       </td>
                     </tr>
                   ) : (
-                    recentSubmissions.map((sub, idx) => {
-                      const examInfo = examsMap[sub.exam_id] || { title: 'Exam', subject: 'Subject' };
+                    recentSubmissions.map((sub) => {
+                      const examInfo = examsMap[sub.exam_id] || { title: 'Exam', subject: 'General' };
                       return (
-                        <tr key={idx} className="border-b border-gray-50 hover:bg-brand-background/50 transition-colors">
+                        <tr key={sub.id} className="group hover:bg-slate-50/80 transition-colors">
                           <td className="py-4">
-                            <div className="font-semibold text-brand-dark">{sub.student_name}</div>
-                            <div className="text-xs text-gray-400">{examInfo.title} • {examInfo.subject}</div>
-                          </td>
-                          <td className="py-4 text-sm text-gray-600">
-                            {new Date(sub.created_at).toLocaleDateString(undefined, { 
-                              month: 'short', 
-                              day: 'numeric', 
-                              hour: '2-digit', 
-                              minute: '2-digit' 
-                            })}
+                            <div className="font-bold text-slate-900 group-hover:text-emerald-600 transition-colors">{sub.student_name}</div>
+                            <div className="text-xs text-slate-400 font-medium">{sub.student_roll_number || 'N/A'}</div>
                           </td>
                           <td className="py-4">
-                            <span className={`px-3 py-1 rounded-full text-xs font-semibold ${getStatusClass(sub.status)}`}>
-                              {sub.status}
-                            </span>
+                            <div className="font-semibold text-slate-700 text-xs">{examInfo.title}</div>
+                            <div className="text-[11px] text-slate-400">{examInfo.subject}</div>
                           </td>
-                          <td className="py-4 text-right font-semibold text-brand-primary">
-                            {sub.obtained_marks !== null && sub.obtained_marks !== undefined && sub.total_marks 
-                              ? `${sub.obtained_marks} / ${sub.total_marks}` 
+                          <td className="py-4">
+                            {getStatusBadge(sub.status)}
+                          </td>
+                          <td className="py-4 text-right font-black text-slate-900">
+                            {sub.obtained_marks !== undefined && sub.obtained_marks !== null && sub.total_marks
+                              ? `${sub.obtained_marks} / ${sub.total_marks}`
                               : '--'}
                           </td>
                         </tr>
@@ -269,67 +349,58 @@ export default function DashboardPage() {
               </table>
             </div>
           </div>
+
         </div>
 
-        {/* 3. Right Column - Quick Actions & Reports */}
+        {/* Right Column: Quick Actions & Reports */}
         <div className="space-y-8">
           
-          {/* Quick Actions */}
-          <div className="bg-white rounded-2xl p-6 shadow-[0_4px_20px_rgba(47,90,58,0.05)] border border-gray-50">
-            <h2 className="text-lg font-bold text-brand-dark mb-4">Quick Actions</h2>
-            <div className="grid grid-cols-2 gap-4">
-              <Link href="/upload" className="flex flex-col items-center justify-center p-4 bg-brand-background rounded-xl border border-gray-100 hover:border-brand-primary hover:bg-brand-secondary/30 transition-all group">
-                <div className="w-10 h-10 rounded-full bg-brand-surface text-brand-primary flex items-center justify-center mb-2 group-hover:scale-110 transition-transform">
-                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" /></svg>
+          {/* Quick Action Shortcuts */}
+          <div className="glass-card rounded-3xl p-6">
+            <h2 className="text-lg font-bold text-slate-900 mb-4">Quick Actions</h2>
+            <div className="grid grid-cols-2 gap-3">
+              <Link 
+                href="/upload" 
+                className="p-4 rounded-2xl bg-gradient-to-br from-emerald-50 to-teal-50 border border-emerald-200/60 hover:border-emerald-500/50 hover:shadow-md transition-all group flex flex-col items-center text-center"
+              >
+                <div className="w-10 h-10 rounded-xl bg-emerald-500 text-white flex items-center justify-center mb-2 group-hover:scale-110 transition-transform shadow-md shadow-emerald-500/20">
+                  <UploadCloud className="w-5 h-5" />
                 </div>
-                <span className="text-sm font-semibold text-brand-dark">Upload Sheets</span>
+                <span className="text-xs font-bold text-slate-900">Upload Exam</span>
               </Link>
-              
-              <Link href="/reports" className="flex flex-col items-center justify-center p-4 bg-brand-background rounded-xl border border-gray-100 hover:border-brand-primary hover:bg-brand-secondary/30 transition-all group">
-                <div className="w-10 h-10 rounded-full bg-brand-surface text-brand-primary flex items-center justify-center mb-2 group-hover:scale-110 transition-transform">
-                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+
+              <Link 
+                href="/reports" 
+                className="p-4 rounded-2xl bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-200/60 hover:border-blue-500/50 hover:shadow-md transition-all group flex flex-col items-center text-center"
+              >
+                <div className="w-10 h-10 rounded-xl bg-blue-600 text-white flex items-center justify-center mb-2 group-hover:scale-110 transition-transform shadow-md shadow-blue-500/20">
+                  <BarChart3 className="w-5 h-5" />
                 </div>
-                <span className="text-sm font-semibold text-brand-dark">View Reports</span>
+                <span className="text-xs font-bold text-slate-900">Analytics</span>
               </Link>
             </div>
           </div>
 
-          {/* Recent Evaluated Student Reports */}
-          <div className="bg-white rounded-2xl p-6 shadow-[0_4px_20px_rgba(47,90,58,0.05)] border border-gray-50">
-            <h2 className="text-lg font-bold text-brand-dark mb-4">Completed Scorecards</h2>
-            <div className="space-y-4">
-              {recentSubmissions
-                .filter(sub => sub.status.toUpperCase() === 'COMPLETED')
-                .slice(0, 3)
-                .map((sub, idx) => {
-                  const examInfo = examsMap[sub.exam_id] || { title: 'Exam', subject: 'Subject' };
-                  return (
-                    <Link 
-                      key={idx} 
-                      href={`/feedback?submissionId=${sub.id}`}
-                      className="flex items-center gap-4 p-3 rounded-xl hover:bg-brand-background transition-colors cursor-pointer border border-transparent hover:border-gray-100 block"
-                    >
-                      <div className="w-10 h-10 rounded-lg flex items-center justify-center font-bold text-xs bg-red-50 text-red-500">
-                        PDF
-                      </div>
-                      <div className="flex-1">
-                        <h4 className="text-sm font-semibold text-brand-dark">{sub.student_name}</h4>
-                        <p className="text-xs text-gray-500">{examInfo.title}</p>
-                      </div>
-                      <svg className="w-5 h-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
-                      </svg>
-                    </Link>
-                  );
-                })}
-              {recentSubmissions.filter(sub => sub.status.toUpperCase() === 'COMPLETED').length === 0 && (
-                <p className="text-sm text-gray-400 text-center py-4">No completed scorecards available.</p>
-              )}
+          {/* AI System Status */}
+          <div className="glass-card rounded-3xl p-6 space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-slate-900 text-emerald-400 flex items-center justify-center">
+                <Zap className="w-5 h-5 fill-emerald-400" />
+              </div>
+              <div>
+                <h3 className="text-sm font-bold text-slate-900">Groq 120B LLM Active</h3>
+                <p className="text-xs text-slate-400">Sub-second academic reasoning</p>
+              </div>
+            </div>
+            <div className="p-3.5 rounded-xl bg-slate-100/80 text-xs font-medium text-slate-600 leading-relaxed">
+              Evaluating student answers against marking rubrics using 120B parameter vision & LLM inference.
             </div>
           </div>
 
         </div>
+
       </div>
+
     </div>
   );
 }

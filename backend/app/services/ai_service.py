@@ -21,6 +21,7 @@ from AI.evaluation.confidence_engine import ConfidenceEngine
 from AI.evaluation.gemini_evaluator import GeminiEvaluator
 from AI.evaluation.verification_engine import VerificationEngine
 from AI.evaluation.semantic_engine import SemanticEvaluationEngine
+from AI.evaluation.groq_evaluator import GroqEvaluator
 from AI.evaluation.curriculum_context_engine import CurriculumContextEngine
 from AI.evaluation.or_question_resolver import resolve_or_question
 from AI.analytics.analytics_service import LearningAnalyticsService
@@ -33,6 +34,7 @@ _concept_engine = ConceptCoverageEngine()
 _explainability_engine = ExplainabilityEngine()
 _confidence_engine = ConfidenceEngine()
 _gemini_evaluator = GeminiEvaluator()
+_groq_evaluator = GroqEvaluator()
 _verification_engine = VerificationEngine()
 _semantic_engine = SemanticEvaluationEngine()
 _curriculum_context_engine = CurriculumContextEngine()
@@ -155,17 +157,40 @@ def evaluate_with_answer_key(
     
     # 2. Iterate through segmented answers and evaluate each
     for q_id, student_ans in segmented_answers.items():
-        if q_id not in metadata:
+        q_info = (
+            metadata.get(q_id)
+            or metadata.get(q_id.replace("question_", "q"))
+            or metadata.get(q_id.replace("q", "question_"))
+            or metadata.get("question_1")
+            or (next(iter(metadata.values())) if metadata else None)
+        )
+        if not q_info:
             logger.warning(f"Extracted answer {q_id} not found in exam metadata. Skipping.")
             continue
-            
-        q_info = metadata[q_id]
+
         q_text = q_info["text"]
         ak_text = q_info["answer_key"]
         
         # Analyze question intent
         analysis = understanding_agent.analyze_question(q_text)
         
+        # ── Primary: Groq 120B AI Evaluator ──────────────────────────
+        if _groq_evaluator.is_available():
+            try:
+                max_m = float(q_info.get("max_marks", q_info.get("marks", 5.0)))
+                q_eval = _groq_evaluator.evaluate(
+                    question=q_text,
+                    student_answer=student_ans,
+                    max_marks=max_m,
+                    question_number=q_id.replace("question_", ""),
+                    reference_answer=ak_text,
+                )
+                question_evaluations.append(q_eval)
+                logger.info("EVALUATION_STAGE groq_scored submission_id=%s question=%s score=%s max=%s", submission_id, q_id, q_eval.score_awarded, q_eval.max_marks)
+                continue
+            except Exception as exc:
+                logger.warning("GroqEvaluator failed for Q%s (%s); falling back to local rubric engine.", q_id, exc)
+
         # Evaluate against rubric
         rubric_eval_input = {
             "question_text": q_text,
@@ -221,7 +246,8 @@ def evaluate_with_answer_key(
         # Retrieve Curriculum Context
         curr_context = None
         try:
-            curr_context = _curriculum_context_engine.build_context(q_text)
+            exam_subj = metadata.get("subject", "") if metadata else ""
+            curr_context = _curriculum_context_engine.build_context(q_text, subject_hint=exam_subj)
         except Exception:
             logger.exception("Failed to build curriculum context for question %s", q_id)
 
@@ -416,10 +442,17 @@ def evaluate_autonomously(
     per_question_marks = _marks_by_question(questions, total_marks)
 
     for q_id, student_ans in segmented_answers.items():
-        question_info = questions.get(q_id) or questions.get("question_1")
+        question_info = (
+            questions.get(q_id)
+            or questions.get(q_id.replace("question_", "q"))
+            or questions.get(q_id.replace("q", "question_"))
+            or questions.get("question_1")
+            or (next(iter(questions.values())) if questions else None)
+        )
         if not question_info:
-            discrepancies.append(f"No question text available for {q_id}.")
-            continue
+            default_q_text = f"Evaluate student answer for {subject} ({q_id})"
+            question_info = {"text": default_q_text, "marks": total_marks / max(1, len(segmented_answers))}
+
 
         # ── OR-question resolution ────────────────────────────────────────
         # Detect whether this question has OR-type alternatives and, if so,
@@ -472,7 +505,7 @@ def evaluate_autonomously(
         # Retrieve Curriculum Context
         curr_context = None
         try:
-            curr_context = _curriculum_context_engine.build_context(q_text)
+            curr_context = _curriculum_context_engine.build_context(q_text, subject_hint=subject)
         except Exception:
             logger.exception("Failed to build curriculum context for question %s", q_id)
 
@@ -481,7 +514,9 @@ def evaluate_autonomously(
         try:
             ref_ans = question_info.get("answer_key") or question_info.get("reference_answer") or ""
             if not ref_ans.strip() and curr_context and curr_context.reference_answer.strip():
-                ref_ans = curr_context.reference_answer
+                # Only use curr_context.reference_answer if the subject aligns!
+                if not subject or subject.lower() in (curr_context.subject or "").lower():
+                    ref_ans = curr_context.reference_answer
             semantic_eval_res = _semantic_engine.evaluate(
                 question=q_text,
                 reference_answer=ref_ans,

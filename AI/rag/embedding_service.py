@@ -3,7 +3,8 @@ RAG Embedding Service wrapper for GradeMIND.
 Wraps the existing evaluation EmbeddingService for consistency.
 """
 
-from typing import List
+import os
+from typing import List, Optional
 from AI.evaluation.embeddings import EmbeddingService as EvalEmbeddingService
 
 
@@ -12,9 +13,15 @@ class EmbeddingService:
     Service to generate embeddings for text chunks using local inference.
     """
 
-    def __init__(self, model_name: str = "BAAI/bge-large-en-v1.5"):
+    def __init__(self, model_name: Optional[str] = None):
+        target_model = (
+            model_name
+            or os.environ.get("EMBEDDING_MODEL")
+            or "sentence-transformers/all-MiniLM-L6-v2"
+        )
         # Delegate to existing robust evaluation embedding service
-        self._service = EvalEmbeddingService(model_name=model_name)
+        self._service = EvalEmbeddingService(model_name=target_model)
+
 
     def embed_text(self, text: str) -> List[float]:
         """

@@ -47,6 +47,10 @@ class SemanticEvaluationEngine:
         # If no segments were found but text exists, return original text as single segment
         if not segments and text.strip():
             segments.append(text.strip())
+
+        # Cap at top 100 longest segments to keep embedding inference fast on CPU
+        if len(segments) > 100:
+            segments = sorted(segments, key=len, reverse=True)[:100]
             
         return segments
 

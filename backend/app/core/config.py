@@ -55,7 +55,9 @@ class Settings(BaseSettings):
         "http://localhost:3000,"
         "http://127.0.0.1:3000,"
         "http://localhost:3001,"
-        "http://127.0.0.1:3001"
+        "http://127.0.0.1:3001,"
+        "http://localhost:5173,"
+        "http://127.0.0.1:5173"
     )
     # Deliberately no origin *regex*. The previous value was
     # r"https://.*\.vercel\.app", which combined with allow_credentials=True
@@ -67,7 +69,10 @@ class Settings(BaseSettings):
     # Gemini API Configuration (optional secondary/cross-check evaluator;
     # core grading works with zero LLM keys via the local autonomous evaluator)
     GEMINI_API_KEY: Optional[str] = None
-    GEMINI_MODEL: str = "gemini-3.5-flash"
+    GEMINI_MODEL: str = "gemini-1.5-flash"
+
+    # Unlimited OCR Configuration (uses local neural TrOCR for 100% offline, unconstrained extraction)
+    UNLIMITED_OCR_ENABLED: bool = True
 
     @field_validator("DEBUG", mode="before")
     @classmethod

@@ -283,10 +283,74 @@ class OCRRouter:
         Raises:
             RuntimeError: When all OCR engines and the Gemini fallback fail.
         """
-        if not os.path.exists(image_path):
-            raise FileNotFoundError(f"OCRRouter: image not found: {image_path}")
+        if image_path.lower().endswith(".pdf"):
+            try:
+                import fitz
+                import tempfile
+                pdf_doc = fitz.open(image_path)
+                page_results = []
+                for page_idx in range(len(pdf_doc)):
+                    page = pdf_doc[page_idx]
+                    pix = page.get_pixmap(dpi=150)
+                    temp_img_path = os.path.join(
+                        tempfile.gettempdir(),
+                        f"router_pdf_{submission_id}_p{page_idx}.jpg"
+                    )
+                    pix.save(temp_img_path)
+                    try:
+                        res_doc = self.route(temp_img_path, f"{submission_id}_p{page_idx}")
+                        if res_doc and res_doc.lines:
+                            page_results.append(res_doc)
+                    finally:
+                        if os.path.exists(temp_img_path):
+                            try:
+                                os.remove(temp_img_path)
+                            except Exception:
+                                pass
 
-        # ── Step 1: Classify content type (always on the original image) ──
+                if page_results:
+                    all_lines = []
+                    tot_conf = 0.0
+                    for pr in page_results:
+                        all_lines.extend(pr.lines)
+                        tot_conf += pr.confidence
+                    return OCRDocument(
+                        submission_id=submission_id,
+                        confidence=tot_conf / len(page_results),
+                        lines=all_lines,
+                        regions=[]
+                    )
+            except Exception as pdf_err:
+                logger.warning("OCRRouter: PDF rasterization failed: %s", pdf_err)
+
+        # ── Step 1: PRIMARY - Baidu Unlimited-OCR (baidu/Unlimited-OCR) ────────
+        logger.info("OCRRouter: running Baidu Unlimited-OCR (baidu/Unlimited-OCR) as primary #1 engine for submission_id=%s", submission_id)
+        try:
+            baidu_engine = self._get_baidu_unlimited()
+            if baidu_engine.is_available():
+                baidu_doc = baidu_engine.extract(image_path, submission_id)
+                if baidu_doc and baidu_doc.lines and sum(len(l.text) for l in baidu_doc.lines) >= _MIN_TEXT_LENGTH:
+                    logger.info(
+                        "OCRRouter: accepted primary Baidu Unlimited-OCR confidence=%.3f lines=%d submission_id=%s",
+                        baidu_doc.confidence, len(baidu_doc.lines), submission_id,
+                    )
+                    return baidu_doc
+        except Exception as baidu_err:
+            logger.warning("OCRRouter: primary Baidu Unlimited-OCR unavailable/failed (%s); trying Unlimited AI Vision OCR.", baidu_err)
+
+        # ── Step 2: SECONDARY - Unlimited AI Vision OCR ──────────────────
+        try:
+            gemini_doc = _gemini_vision_ocr(image_path, submission_id)
+            if gemini_doc and gemini_doc.lines and sum(len(l.text) for l in gemini_doc.lines) >= _MIN_TEXT_LENGTH:
+                logger.info(
+                    "OCRRouter: accepted Unlimited AI Vision OCR confidence=%.3f lines=%d submission_id=%s",
+                    gemini_doc.confidence, len(gemini_doc.lines), submission_id,
+                )
+                return gemini_doc
+        except Exception as gemini_err:
+            logger.warning("OCRRouter: Unlimited AI Vision OCR failed (%s); switching to fallback engines.", gemini_err)
+
+        # ── Step 2: Classify content type for fallbacks ────────────────────
         content_type = ContentType.UNKNOWN if self.force_engine else classify_content_type(image_path)
 
         logger.info(
@@ -294,15 +358,10 @@ class OCRRouter:
             submission_id, content_type, self.force_engine,
         )
 
-        # ── Step 2: Build engine priority list ───────────────────────────
+        # ── Step 3: Build engine priority list for local fallbacks ─────────
         engine_order = self._build_engine_order(content_type)
 
-        # ── Step 3: Try engines in order, preprocessing per-engine ────────
-        # Each engine gets a preprocessing profile tuned to it (see
-        # AI/ocr/preprocess.py ENGINE_PREPROCESS_PROFILES) — e.g. Tesseract
-        # wants a hard-binarised image, neural engines want plain grayscale.
-        # Results are cached per profile so engines sharing a profile don't
-        # redo the same preprocessing work.
+        # ── Step 4: Try local engines in order ─────────────────────────────
         best_doc: Optional[OCRDocument] = None
         last_error: Optional[Exception] = None
         preprocessed_cache: dict = {}
@@ -313,19 +372,14 @@ class OCRRouter:
                 doc = self._run_engine(engine_name, working_path, submission_id)
                 text_len = sum(len(l.text) for l in doc.lines)
                 logger.info(
-                    "OCRRouter: engine=%s confidence=%.3f lines=%d chars=%d",
+                    "OCRRouter: fallback engine=%s confidence=%.3f lines=%d chars=%d",
                     engine_name, doc.confidence, len(doc.lines), text_len,
                 )
 
                 if best_doc is None or doc.confidence > best_doc.confidence:
                     best_doc = doc
 
-                # Accept result if it meets the threshold
                 if doc.confidence >= self.confidence_threshold and text_len >= _MIN_TEXT_LENGTH:
-                    logger.info(
-                        "OCRRouter: accepted engine=%s confidence=%.3f submission_id=%s",
-                        engine_name, doc.confidence, submission_id,
-                    )
                     return doc
 
             except Exception as exc:
@@ -364,24 +418,38 @@ class OCRRouter:
 
     def _build_engine_order(self, content_type: ContentType) -> list[str]:
         """Return the ordered list of engine names to try for a content type."""
+        has_gpu = False
+        try:
+            import torch
+            has_gpu = torch.cuda.is_available()
+        except Exception:
+            pass
+
         if self.force_engine:
             # User-specified override — still allow fallback to others
-            others = [e for e in ["trocr", "easyocr", "paddle", "tesseract"]
+            others = [e for e in ["tesseract", "easyocr", "paddle", "trocr", "baidu_unlimited"]
                       if e != self.force_engine]
             return [self.force_engine] + others
 
+        # On CPU, heavy PyTorch Vision Transformer models (TrOCR/Baidu) take ~10 mins per page.
+        # Prioritise fast, lightweight engines on CPU for sub-second performance.
+        if not has_gpu:
+            return ["tesseract", "easyocr", "paddle", "trocr", "baidu_unlimited"]
+
         order_map = {
-            ContentType.PRINTED:     ["easyocr", "paddle", "trocr", "tesseract"],
-            ContentType.HANDWRITTEN: ["trocr", "easyocr", "paddle", "tesseract"],
-            ContentType.MIXED:       ["trocr", "easyocr", "paddle", "tesseract"],
-            ContentType.UNKNOWN:     ["trocr", "easyocr", "paddle", "tesseract"],
+            ContentType.PRINTED:     ["baidu_unlimited", "easyocr", "paddle", "trocr", "tesseract"],
+            ContentType.HANDWRITTEN: ["baidu_unlimited", "trocr", "easyocr", "paddle", "tesseract"],
+            ContentType.MIXED:       ["baidu_unlimited", "trocr", "easyocr", "paddle", "tesseract"],
+            ContentType.UNKNOWN:     ["baidu_unlimited", "trocr", "easyocr", "paddle", "tesseract"],
         }
-        return order_map.get(content_type, ["trocr", "easyocr", "paddle", "tesseract"])
+        return order_map.get(content_type, ["tesseract", "easyocr", "paddle", "trocr", "baidu_unlimited"])
 
     def _run_engine(self, engine_name: str, image_path: str, submission_id: str) -> OCRDocument:
         """Dispatch to named engine and return its OCRDocument."""
         if engine_name == "trocr":
             return self._get_trocr().extract(image_path, submission_id)
+        elif engine_name == "baidu_unlimited":
+            return self._get_baidu_unlimited().extract(image_path, submission_id)
         elif engine_name == "easyocr":
             return self._get_easyocr().extract(image_path, submission_id)
         elif engine_name == "paddle":
@@ -390,6 +458,12 @@ class OCRRouter:
             return self._get_tesseract().extract(image_path, submission_id)
         else:
             raise ValueError(f"Unknown engine: {engine_name}")
+
+    def _get_baidu_unlimited(self):
+        if not hasattr(self, "_baidu_unlimited") or self._baidu_unlimited is None:
+            from AI.ocr.baidu_unlimited_engine import BaiduUnlimitedOCREngine
+            self._baidu_unlimited = BaiduUnlimitedOCREngine()
+        return self._baidu_unlimited
 
     def _get_trocr(self):
         if self._trocr is None:
