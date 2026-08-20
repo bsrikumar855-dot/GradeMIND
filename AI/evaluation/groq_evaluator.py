@@ -1,7 +1,45 @@
 """
-GradeMIND Groq AI Evaluator.
-Powered by Groq's high-speed, 120B parameter model (openai/gpt-oss-120b or qwen/qwen3.6-27b).
-Delivers expert human-examiner level grading, precise concept coverage, and feedback in ~1.5 seconds.
+GradeMIND Groq AI Evaluator. DISABLED BY DEFAULT. See below before re-enabling.
+
+THIS CLASS TAKES THE MARK FROM AN LLM AND THAT CANNOT SATISFY RULE 3.
+
+Master spec rule 3 requires every mark awarded to be traceable to three things:
+a marking-scheme criterion id, a character span in the extracted answer text,
+and the engine version that produced it. This evaluator produces none of them.
+It prompts a model with:
+
+    "1. Assign a fair score_awarded between 0.0 and {max_marks}"
+
+and then lifts the number straight out of the reply:
+
+    score = min(max(float(parsed.get("score_awarded", 0.0)), 0.0), max_marks)
+
+There is no scheme, no evidence span, and no arithmetic. The number cannot be
+re-derived later from stored evidence, so it cannot survive an appeal: asked
+why a student got 3.5, the only truthful answer is "a language model said so
+on a Tuesday".
+
+Two further properties make it worse than merely untraceable:
+
+  * `parsed.get("score_awarded", 0.0)` DEFAULTS TO ZERO. A reply that omits
+    the key marks the candidate zero, and nothing distinguishes that from a
+    model that read the answer and judged it worth nothing. That is the
+    silent-zero defect Phase 0 removed from the OCR path, re-entering through
+    the evaluator.
+  * `parsed.get("confidence", 0.95)` DEFAULTS TO 0.95, so a missing field
+    becomes high confidence in a fabricated mark.
+
+WHAT THIS CLASS IS STILL GOOD FOR. Nothing above says an LLM has no place
+here. It says an LLM may not be the authority on a number. Extracting
+evidence, paraphrasing, classifying, and explaining are all legitimate work
+for the language layer, and `extract_evidence` is the shape that work should
+take: the model finds the span, and deterministic arithmetic decides the mark.
+That is why this file is kept rather than deleted, and why the full pipeline
+is preserved on `archive/groq-baidu-pipeline`.
+
+TO RE-ENABLE, deliberately: set GROQ_ALLOW_LLM_MARKING=true. Construction
+raises otherwise. Any mark it produces is undefensible on appeal and must
+never reach a student.
 """
 
 from __future__ import annotations
@@ -21,12 +59,36 @@ FALLBACK_GROQ_MODEL = "qwen/qwen3.6-27b"
 GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions"
 
 
+class LLMMarkingDisabled(RuntimeError):
+    """Raised when something tries to build an evaluator that marks by LLM.
+
+    A distinct type so a caller can catch exactly this and route to
+    MANDATORY_HUMAN, rather than swallowing it in a bare `except Exception`
+    and silently producing no mark at all.
+    """
+
+
 class GroqEvaluator:
     """
     Expert AI Evaluator powered by Groq LLM API.
     """
 
     def __init__(self, api_key: Optional[str] = None, model: Optional[str] = None):
+        # Refuse at CONSTRUCTION, not at evaluate(). A class that can be built
+        # and only fails when it marks something is one code path away from
+        # marking something.
+        if os.environ.get("GROQ_ALLOW_LLM_MARKING", "").strip().lower() != "true":
+            raise LLMMarkingDisabled(
+                "GroqEvaluator is disabled. It takes score_awarded from an LLM "
+                "reply, which cannot satisfy master spec rule 3: no criterion "
+                "id, no evidence span, no arithmetic, and no way to re-derive "
+                "the mark on appeal. It also defaults a missing score to 0.0 "
+                "and a missing confidence to 0.95. Set "
+                "GROQ_ALLOW_LLM_MARKING=true to override, and read this "
+                "module's docstring before you do. The full pipeline is "
+                "preserved on branch archive/groq-baidu-pipeline."
+            )
+
         self.api_key = api_key or os.environ.get("GROQ_API_KEY")
         if not self.api_key:
             # Try loading from backend/.env if available

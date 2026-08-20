@@ -323,22 +323,14 @@ class OCRRouter:
             except Exception as pdf_err:
                 logger.warning("OCRRouter: PDF rasterization failed: %s", pdf_err)
 
-        # ── Step 1: PRIMARY - Baidu Unlimited-OCR (baidu/Unlimited-OCR) ────────
-        logger.info("OCRRouter: running Baidu Unlimited-OCR (baidu/Unlimited-OCR) as primary #1 engine for submission_id=%s", submission_id)
-        try:
-            baidu_engine = self._get_baidu_unlimited()
-            if baidu_engine.is_available():
-                baidu_doc = baidu_engine.extract(image_path, submission_id)
-                if baidu_doc and baidu_doc.lines and sum(len(l.text) for l in baidu_doc.lines) >= _MIN_TEXT_LENGTH:
-                    logger.info(
-                        "OCRRouter: accepted primary Baidu Unlimited-OCR confidence=%.3f lines=%d submission_id=%s",
-                        baidu_doc.confidence, len(baidu_doc.lines), submission_id,
-                    )
-                    return baidu_doc
-        except Exception as baidu_err:
-            logger.warning("OCRRouter: primary Baidu Unlimited-OCR unavailable/failed (%s); trying Unlimited AI Vision OCR.", baidu_err)
+        # Baidu Unlimited-OCR was wired in here as primary #1 by f5d7e7c and is
+        # removed again: its extract() tokenizes the file PATH rather than the
+        # image, so it cannot transcribe anything, and merely asking it
+        # is_available() performed a network call to huggingface.co on every
+        # page. Restored to the engine order as it stood at 99dcb1b. The code is
+        # preserved on branch archive/groq-baidu-pipeline.
 
-        # ── Step 2: SECONDARY - Unlimited AI Vision OCR ──────────────────
+        # ── Step 1: Unlimited AI Vision OCR ──────────────────────────────
         try:
             gemini_doc = _gemini_vision_ocr(image_path, submission_id)
             if gemini_doc and gemini_doc.lines and sum(len(l.text) for l in gemini_doc.lines) >= _MIN_TEXT_LENGTH:
@@ -427,22 +419,24 @@ class OCRRouter:
 
         if self.force_engine:
             # User-specified override — still allow fallback to others
-            others = [e for e in ["tesseract", "easyocr", "paddle", "trocr", "baidu_unlimited"]
+            others = [e for e in ["tesseract", "easyocr", "paddle", "trocr"]
                       if e != self.force_engine]
             return [self.force_engine] + others
 
         # On CPU, heavy PyTorch Vision Transformer models (TrOCR/Baidu) take ~10 mins per page.
         # Prioritise fast, lightweight engines on CPU for sub-second performance.
         if not has_gpu:
-            return ["tesseract", "easyocr", "paddle", "trocr", "baidu_unlimited"]
+            return ["tesseract", "easyocr", "paddle", "trocr"]
 
+        # Exactly the order that stood at 99dcb1b, before baidu_unlimited was
+        # prepended to every content type by f5d7e7c.
         order_map = {
-            ContentType.PRINTED:     ["baidu_unlimited", "easyocr", "paddle", "trocr", "tesseract"],
-            ContentType.HANDWRITTEN: ["baidu_unlimited", "trocr", "easyocr", "paddle", "tesseract"],
-            ContentType.MIXED:       ["baidu_unlimited", "trocr", "easyocr", "paddle", "tesseract"],
-            ContentType.UNKNOWN:     ["baidu_unlimited", "trocr", "easyocr", "paddle", "tesseract"],
+            ContentType.PRINTED:     ["easyocr", "paddle", "trocr", "tesseract"],
+            ContentType.HANDWRITTEN: ["trocr", "easyocr", "paddle", "tesseract"],
+            ContentType.MIXED:       ["trocr", "easyocr", "paddle", "tesseract"],
+            ContentType.UNKNOWN:     ["trocr", "easyocr", "paddle", "tesseract"],
         }
-        return order_map.get(content_type, ["tesseract", "easyocr", "paddle", "trocr", "baidu_unlimited"])
+        return order_map.get(content_type, ["tesseract", "easyocr", "paddle", "trocr"])
 
     def _run_engine(self, engine_name: str, image_path: str, submission_id: str) -> OCRDocument:
         """Dispatch to named engine and return its OCRDocument."""

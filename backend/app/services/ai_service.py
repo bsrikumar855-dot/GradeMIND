@@ -21,7 +21,7 @@ from AI.evaluation.confidence_engine import ConfidenceEngine
 from AI.evaluation.gemini_evaluator import GeminiEvaluator
 from AI.evaluation.verification_engine import VerificationEngine
 from AI.evaluation.semantic_engine import SemanticEvaluationEngine
-from AI.evaluation.groq_evaluator import GroqEvaluator
+from AI.evaluation.groq_evaluator import GroqEvaluator, LLMMarkingDisabled
 from AI.evaluation.curriculum_context_engine import CurriculumContextEngine
 from AI.evaluation.or_question_resolver import resolve_or_question
 from AI.analytics.analytics_service import LearningAnalyticsService
@@ -34,7 +34,33 @@ _concept_engine = ConceptCoverageEngine()
 _explainability_engine = ExplainabilityEngine()
 _confidence_engine = ConfidenceEngine()
 _gemini_evaluator = GeminiEvaluator()
-_groq_evaluator = GroqEvaluator()
+# Constructed lazily, NOT at import time. GroqEvaluator now raises
+# LLMMarkingDisabled on construction because it takes score_awarded straight
+# from an LLM reply, which cannot satisfy master spec rule 3. A module-level
+# instance made that ban render this whole module un-importable, and a backend
+# that cannot start is not a safer backend, it is an absent one.
+#
+# None means "LLM marking is off". The use site below already has a local
+# rubric fallback for exactly that case.
+_groq_evaluator = None
+
+
+def _get_groq_evaluator():
+    """Return a GroqEvaluator, or None when LLM marking is disabled.
+
+    Returns None rather than propagating, so the caller takes its existing
+    local-rubric branch. The refusal is logged at the point of use, so it lands
+    in the request log instead of vanishing.
+    """
+    global _groq_evaluator
+    if _groq_evaluator is not None:
+        return _groq_evaluator
+    try:
+        _groq_evaluator = GroqEvaluator()
+        return _groq_evaluator
+    except LLMMarkingDisabled as exc:
+        logger.warning("LLM marking disabled, using local rubric engine: %s", exc)
+        return None
 _verification_engine = VerificationEngine()
 _semantic_engine = SemanticEvaluationEngine()
 _curriculum_context_engine = CurriculumContextEngine()
@@ -175,10 +201,11 @@ def evaluate_with_answer_key(
         analysis = understanding_agent.analyze_question(q_text)
         
         # ── Primary: Groq 120B AI Evaluator ──────────────────────────
-        if _groq_evaluator.is_available():
+        _groq = _get_groq_evaluator()
+        if _groq is not None and _groq.is_available():
             try:
                 max_m = float(q_info.get("max_marks", q_info.get("marks", 5.0)))
-                q_eval = _groq_evaluator.evaluate(
+                q_eval = _groq.evaluate(
                     question=q_text,
                     student_answer=student_ans,
                     max_marks=max_m,
