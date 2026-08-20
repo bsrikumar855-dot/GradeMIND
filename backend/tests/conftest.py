@@ -1,5 +1,15 @@
+import os
+os.environ["TESTING"] = "true"
+
 import pytest
 from sqlalchemy import create_engine
+
+def pytest_configure(config):
+    os.environ["TESTING"] = "true"
+    from app.core.celery_app import celery_app
+    celery_app.conf.task_always_eager = True
+    celery_app.conf.task_eager_propagates = True
+
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 from app.core.database import Base
@@ -12,6 +22,12 @@ from app.models.exam import Exam  # noqa: F401
 from app.models.submission import Submission  # noqa: F401
 from app.models.refresh_token import RefreshToken  # noqa: F401
 from app.models.audit_log import AuditLog  # noqa: F401
+
+from app.core.celery_app import celery_app
+celery_app.conf.update(
+    task_always_eager=True,
+    task_eager_propagates=True,
+)
 
 # Create a single, shared in-memory SQLite database engine for the entire test session.
 # Using StaticPool is critical because in-memory SQLite is per-connection.

@@ -14,10 +14,15 @@ from app.core.database import Base, GUID
 class SubmissionStatus:
     """Submission lifecycle status constants."""
     UPLOADED = "UPLOADED"
-    PROCESSING = "PROCESSING"
+    QUEUED = "QUEUED"
+    PROCESSING_OCR = "PROCESSING_OCR"
     OCR_COMPLETE = "OCR_COMPLETE"
+    SEGMENTING = "SEGMENTING"
     EVALUATING = "EVALUATING"
+    VERIFYING = "VERIFYING"
+    REVIEW_REQUIRED = "REVIEW_REQUIRED"
     COMPLETED = "COMPLETED"
+    PENDING_REVIEW = "PENDING_REVIEW"
     FAILED = "FAILED"
 
 
@@ -61,11 +66,20 @@ class Submission(Base):
     ocr_confidence = Column(Float, nullable=True)
     evaluation_confidence = Column(Float, nullable=True)
 
-    # Error tracking
+    # Error tracking & Retries
+    error_type = Column(String(100), nullable=True)
     error_message = Column(Text, nullable=True)
+    failed_stage = Column(String(50), nullable=True)
+    retry_count = Column(Integer, default=0, nullable=False)
 
-    # Timestamps
+    # Observability Timestamps
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
+    queued_at = Column(DateTime, nullable=True)
+    ocr_started_at = Column(DateTime, nullable=True)
+    ocr_completed_at = Column(DateTime, nullable=True)
+    evaluation_started_at = Column(DateTime, nullable=True)
+    evaluation_completed_at = Column(DateTime, nullable=True)
+    completed_at = Column(DateTime, nullable=True)
     updated_at = Column(
         DateTime,
         default=lambda: datetime.now(timezone.utc),

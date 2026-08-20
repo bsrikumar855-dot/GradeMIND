@@ -1,37 +1,40 @@
 import * as React from "react";
+import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/utils/cn";
 
-export interface BadgeProps extends React.HTMLAttributes<HTMLSpanElement> {
-  variant?: "success" | "warning" | "danger" | "info" | "neutral";
+const badgeVariants = cva(
+  "inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2",
+  {
+    variants: {
+      variant: {
+        default: "border-slate-200 bg-slate-100 text-slate-800",
+        primary: "border-blue-200 bg-blue-50 text-blue-800",
+        secondary: "border-slate-300 bg-slate-200 text-slate-900",
+        success: "border-emerald-200 bg-emerald-50 text-emerald-800",
+        warning: "border-amber-200 bg-amber-50 text-amber-900",
+        danger: "border-rose-200 bg-rose-50 text-rose-800",
+        info: "border-sky-200 bg-sky-50 text-sky-800",
+        academic: "border-slate-300 bg-slate-100 text-slate-900 font-mono text-[11px]",
+        outline: "border-slate-300 bg-transparent text-slate-700",
+      },
+    },
+    defaultVariants: {
+      variant: "default",
+    },
+  }
+);
+
+export interface BadgeProps
+  extends React.HTMLAttributes<HTMLDivElement>,
+    VariantProps<typeof badgeVariants> {
+  icon?: React.ReactNode;
 }
 
-export const Badge: React.FC<BadgeProps> = ({
-  className,
-  variant = "neutral",
-  ...props
-}) => {
-  const baseStyles =
-    "inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold select-none border";
-
-  const variants = {
-    success:
-      "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900/35 dark:bg-emerald-950/30 dark:text-emerald-400",
-    warning:
-      "border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-900/35 dark:bg-amber-950/30 dark:text-amber-400",
-    danger:
-      "border-red-200 bg-red-50 text-red-700 dark:border-red-900/35 dark:bg-red-950/30 dark:text-red-400",
-    info:
-      "border-blue-200 bg-blue-50 text-blue-700 dark:border-blue-900/35 dark:bg-blue-950/30 dark:text-blue-400",
-    neutral:
-      "border-gray-200 bg-gray-50 text-gray-700 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-400",
-  };
-
+export function Badge({ className, variant, icon, children, ...props }: BadgeProps) {
   return (
-    <span
-      className={cn(baseStyles, variants[variant], className)}
-      {...props}
-    />
+    <div className={cn(badgeVariants({ variant }), className)} {...props}>
+      {icon && <span className="mr-1 flex items-center">{icon}</span>}
+      {children}
+    </div>
   );
-};
-
-Badge.displayName = "Badge";
+}

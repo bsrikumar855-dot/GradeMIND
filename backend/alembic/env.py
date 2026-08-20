@@ -9,6 +9,8 @@ from alembic import context
 
 # Add the parent directory of this file to sys.path to make the "app" module importable
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from dotenv import load_dotenv
+load_dotenv(os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), '.env'))
 
 from app.core.config import settings
 from app.core.database import Base

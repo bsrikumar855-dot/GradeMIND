@@ -19,6 +19,7 @@ from app.api.dashboard import router as dashboard_router, root_router as dashboa
 from app.api.student import student_router, results_router, feedback_router
 from app.api.evaluation import router as evaluation_router
 from app.api.evaluate_v2 import router as evaluate_v2_router
+from app.api.benchmark import router as benchmark_router
 
 from app.middleware.logger import LoggingMiddleware
 from app.middleware.auth import JWTAuthMiddleware
@@ -119,3 +120,4 @@ app.include_router(evaluation_router)
 # Demo surface for the value-point engine. See backend/app/api/evaluate_v2.py
 # for its scope limits — unauthenticated, fixture-backed, nothing persisted.
 app.include_router(evaluate_v2_router)
+app.include_router(benchmark_router)

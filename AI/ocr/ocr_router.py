@@ -287,39 +287,39 @@ class OCRRouter:
             try:
                 import fitz
                 import tempfile
-                pdf_doc = fitz.open(image_path)
-                page_results = []
-                for page_idx in range(len(pdf_doc)):
-                    page = pdf_doc[page_idx]
-                    pix = page.get_pixmap(dpi=150)
-                    temp_img_path = os.path.join(
-                        tempfile.gettempdir(),
-                        f"router_pdf_{submission_id}_p{page_idx}.jpg"
-                    )
-                    pix.save(temp_img_path)
-                    try:
-                        res_doc = self.route(temp_img_path, f"{submission_id}_p{page_idx}")
-                        if res_doc and res_doc.lines:
-                            page_results.append(res_doc)
-                    finally:
-                        if os.path.exists(temp_img_path):
-                            try:
-                                os.remove(temp_img_path)
-                            except Exception:
-                                pass
+                with fitz.open(image_path) as pdf_doc:
+                    page_results = []
+                    for page_idx in range(len(pdf_doc)):
+                        page = pdf_doc[page_idx]
+                        pix = page.get_pixmap(dpi=150)
+                        temp_img_path = os.path.join(
+                            tempfile.gettempdir(),
+                            f"router_pdf_{submission_id}_p{page_idx}.jpg"
+                        )
+                        pix.save(temp_img_path)
+                        try:
+                            res_doc = self.route(temp_img_path, f"{submission_id}_p{page_idx}")
+                            if res_doc and res_doc.lines:
+                                page_results.append(res_doc)
+                        finally:
+                            if os.path.exists(temp_img_path):
+                                try:
+                                    os.remove(temp_img_path)
+                                except Exception:
+                                    pass
 
-                if page_results:
-                    all_lines = []
-                    tot_conf = 0.0
-                    for pr in page_results:
-                        all_lines.extend(pr.lines)
-                        tot_conf += pr.confidence
-                    return OCRDocument(
-                        submission_id=submission_id,
-                        confidence=tot_conf / len(page_results),
-                        lines=all_lines,
-                        regions=[]
-                    )
+                    if page_results:
+                        all_lines = []
+                        tot_conf = 0.0
+                        for pr in page_results:
+                            all_lines.extend(pr.lines)
+                            tot_conf += pr.confidence
+                        return OCRDocument(
+                            submission_id=submission_id,
+                            confidence=tot_conf / len(page_results),
+                            lines=all_lines,
+                            regions=[]
+                        )
             except Exception as pdf_err:
                 logger.warning("OCRRouter: PDF rasterization failed: %s", pdf_err)
 

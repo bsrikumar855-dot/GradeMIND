@@ -11,6 +11,7 @@ from typing import Any, Dict, List
 
 from AI.evaluation.concept_engine import ConceptCoverageEngine
 from AI.schemas.evaluation_schema import QuestionEvaluation, RubricCriterion
+from AI.evaluation.evidence_fusion_engine import EvidenceFusionEngine
 
 
 class AutonomousEvaluator:
@@ -18,8 +19,12 @@ class AutonomousEvaluator:
 
     def __init__(self) -> None:
         self.concept_engine = ConceptCoverageEngine()
+        self.fusion_engine = EvidenceFusionEngine()
         from AI.evaluation.groq_evaluator import GroqEvaluator
         self.groq_evaluator = GroqEvaluator()
+        
+        from AI.evaluation.semantic_engine import SemanticEvaluationEngine
+        self.semantic_evaluator = SemanticEvaluationEngine()
 
     def analyze_question(self, question: str, marks: float, subject: str = "") -> Dict[str, Any]:
         if not question or not question.strip():
@@ -68,6 +73,7 @@ class AutonomousEvaluator:
         max_marks: float,
         question_number: str = "1",
         subject: str = "",
+        teacher_overrides: Optional[Dict[str, Any]] = None,
     ) -> QuestionEvaluation:
         if max_marks <= 0:
             raise ValueError("Maximum marks must be greater than zero for autonomous evaluation.")
@@ -97,61 +103,96 @@ class AutonomousEvaluator:
             )
 
         # ── Primary: Groq 120B LLM Evaluator ─────────────────────────
+        llm_eval = None
         if self.groq_evaluator.is_available():
             try:
-                eval_res = self.groq_evaluator.evaluate(
+                llm_eval = self.groq_evaluator.evaluate(
                     question=question,
                     student_answer=sanitized_answer,
                     max_marks=max_marks,
                     question_number=question_number,
                     subject=subject,
                 )
-                eval_res.difficulty = analysis["difficulty"]
-                eval_res.expected_depth = analysis["expected_depth"]
-                return eval_res
+                llm_eval.difficulty = analysis["difficulty"]
+                llm_eval.expected_depth = analysis["expected_depth"]
             except Exception as exc:
                 import logging
                 logging.getLogger("GradeMIND.AutonomousEvaluator").warning(
                     "GroqEvaluator failed for Q%s (%s); falling back to local engine.", question_number, exc
                 )
 
-        coverage = self.concept_engine.evaluate_coverage(question, sanitized_answer, subject)
-        semantic_confidence = self.concept_engine.semantic_similarity(question, sanitized_answer, subject)
-        concept_coverage_ratio = float(coverage["coverage_percentage"]) / 100.0
-        rubric_alignment = self._depth_alignment(sanitized_answer, analysis["expected_depth"])
-        factual_penalty = self._factual_error_penalty(sanitized_answer)
-
-        base_ratio = (
-            (concept_coverage_ratio * 0.60)
-            + (semantic_confidence * 0.25)
-            + (rubric_alignment * 0.15)
+        from AI.evaluation.rubric_engine import generate_autonomous_rubric
+        from AI.evaluation.curriculum_context_engine import CurriculumContextEngine
+        
+        ctx_engine = CurriculumContextEngine()
+        context = ctx_engine.build_context(question, subject_hint=subject)
+        
+        if teacher_overrides and "criteria" in teacher_overrides:
+            rubric_data = {
+                "criteria": teacher_overrides["criteria"],
+                "is_autonomous_rubric": False
+            }
+        else:
+            rubric_data = generate_autonomous_rubric(question, analysis["expected_concepts"], context)
+        
+        sem_res = self.semantic_evaluator.evaluate(
+            question=question,
+            student_answer=sanitized_answer,
+            rubric_criteria=rubric_data["criteria"],
+            is_autonomous_rubric=rubric_data["is_autonomous_rubric"]
         )
-        score_ratio = max(concept_coverage_ratio, base_ratio) - factual_penalty
-        score_ratio = min(max(score_ratio, 0.0), 1.0)
-        marks_awarded = round(max_marks * score_ratio * 2) / 2
-        marks_awarded = round(min(max(marks_awarded, 0.0), max_marks), 2)
+
+        local_marks = sem_res.overall_score
+        concept_coverage_ratio = sem_res.semantic_confidence # approximate fallback
+        semantic_confidence = sem_res.semantic_confidence
+
+        # ── Evidence Fusion ───────────────────────────────────────
+        fused_score, fused_matched, fused_missing = self.fusion_engine.fuse(
+            llm_eval=llm_eval,
+            local_score=local_marks,
+            max_marks=max_marks,
+            concept_coverage=concept_coverage_ratio,
+            semantic_similarity=semantic_confidence,
+        )
 
         confidence = self.calculate_confidence(
             semantic_confidence=semantic_confidence,
             concept_coverage=concept_coverage_ratio,
-            rubric_alignment=rubric_alignment,
+            rubric_alignment=1.0,
         )
-        found = self.concept_engine.filter_concepts(list(coverage["concepts_found"]))
-        missing = self.concept_engine.filter_concepts(list(coverage["concepts_missing"]))
-        expected_concepts = self.concept_engine.filter_concepts(analysis["expected_concepts"])
-        rubric_points = self._rubric_points(expected_concepts, found, max_marks)
-        feedback = self.generate_feedback(found, missing, marks_awarded, max_marks)
+        
+        found = []
+        missing = []
+        for ev in sem_res.evidence:
+            if ev.satisfied:
+                found.append(ev.criterion[:15])
+            else:
+                missing.append(ev.criterion[:15])
+                
+        rubric_points = []
+        for ev in sem_res.evidence:
+            matched_crit = next((c for c in rubric_data["criteria"] if c["description"] == ev.criterion), None)
+            alloc = matched_crit["allocated_marks"] if matched_crit else 0.0
+            rubric_points.append(RubricCriterion(
+                criterion_id=f"crit_{len(rubric_points)+1}",
+                description=ev.criterion,
+                allocated_marks=alloc,
+                marks_awarded=alloc if ev.satisfied else 0.0,
+                met=ev.satisfied
+            ))
+            
+        feedback = self.generate_feedback(found, missing, fused_score, max_marks)
 
         return QuestionEvaluation(
             question_number=question_number,
             max_marks=max_marks,
-            score_awarded=marks_awarded,
+            score_awarded=fused_score,
             student_answer_extracted=sanitized_answer,
-            criteria_feedback=feedback["criteria_feedback"],
+            criteria_feedback=llm_eval.criteria_feedback if llm_eval else feedback["criteria_feedback"],
             matched_keywords=found,
             rubric_points=rubric_points,
             confidence=confidence,
-            concept_coverage=float(coverage["coverage_percentage"]),
+            concept_coverage=concept_coverage_ratio,
             missing_concepts=missing,
             evaluation_mode="AI_AUTONOMOUS",
             difficulty=analysis["difficulty"],

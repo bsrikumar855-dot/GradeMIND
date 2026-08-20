@@ -5,7 +5,7 @@ Covers 10 scenarios as per Day 9 requirements.
 
 import pytest
 from AI.schemas.evaluation_schema import (
-    SubmissionEvaluation, QuestionEvaluation, RubricCriterion, CurriculumContext, SemanticEvaluationResult
+    SubmissionEvaluation, QuestionEvaluation, RubricCriterion, CurriculumContext, SemanticEvaluationResult, SemanticEvidence
 )
 from AI.analytics.mastery_engine import MasteryEngine
 from AI.analytics.gap_detector import GapDetector
@@ -52,10 +52,13 @@ def test_strong_performance():
     
     ctx = CurriculumContext(topic="Photosynthesis. Objectives: ...")
     sem = SemanticEvaluationResult(
-        semantic_similarity=0.95,
+        is_autonomous_rubric=False,
+        overall_score=5.0,
+        max_score=5.0,
         semantic_confidence=0.95,
-        matched_semantic_concepts=["sunlight", "chlorophyll"],
-        missing_semantic_concepts=[],
+        evidence=[
+            SemanticEvidence(criterion="sunlight", evidence_span="Sunlight is converted", satisfied=True, confidence=0.9, semantic_similarity=0.95)
+        ],
         explanation=""
     )
     
@@ -86,10 +89,13 @@ def test_weak_performance():
     
     ctx = CurriculumContext(topic="Mitochondria. Objectives: ...")
     sem = SemanticEvaluationResult(
-        semantic_similarity=0.20,
+        is_autonomous_rubric=False,
+        overall_score=1.0,
+        max_score=5.0,
         semantic_confidence=0.90,
-        matched_semantic_concepts=[],
-        missing_semantic_concepts=["ATP", "powerhouse", "cellular respiration"],
+        evidence=[
+            SemanticEvidence(criterion="ATP", evidence_span="", satisfied=False, confidence=0.9, semantic_similarity=0.0)
+        ],
         explanation=""
     )
     
@@ -114,7 +120,7 @@ def test_weak_performance():
     assert res.knowledge_gaps[0].topic == "Mitochondria"
     assert res.knowledge_gaps[0].severity == "HIGH"
     assert len(res.recommendations) > 0
-    assert any("Mitochondria" in r for r in res.recommendations)
+    assert any("ATP" == r.weak_concept for r in res.recommendations)
 
 
 def test_mixed_performance_and_multi_topic():
@@ -131,8 +137,9 @@ def test_mixed_performance_and_multi_topic():
     # Topic 2: Weak
     ctx2 = CurriculumContext(topic="Respiration. Objectives: ...")
     sem2 = SemanticEvaluationResult(
-        semantic_similarity=0.1, semantic_confidence=0.9, matched_semantic_concepts=[],
-        missing_semantic_concepts=["glycolysis"], explanation=""
+        is_autonomous_rubric=False, overall_score=0.5, max_score=5.0, semantic_confidence=0.9, 
+        evidence=[SemanticEvidence(criterion="glycolysis", evidence_span="", satisfied=False, confidence=0.9, semantic_similarity=0.0)], 
+        explanation=""
     )
     q2 = QuestionEvaluation(
         question_number="2", max_marks=5.0, score_awarded=1.0, student_answer_extracted="Oxygen",

@@ -6,14 +6,15 @@ import {
   Search,
   LayoutDashboard,
   FileUp,
-  BrainCircuit,
+  ListTodo,
   FileText,
   BarChart3,
-  MessageSquare,
-  Sparkles,
-  Command,
+  Users,
+  Settings,
+  HelpCircle,
   X,
   ArrowRight,
+  Command as CommandIcon,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -32,8 +33,6 @@ export function CommandMenu({ isOpen, onClose }: CommandMenuProps) {
         e.preventDefault();
         if (isOpen) {
           onClose();
-        } else {
-          // Open triggered from parent or global handler
         }
       }
       if (e.key === "Escape" && isOpen) {
@@ -48,60 +47,68 @@ export function CommandMenu({ isOpen, onClose }: CommandMenuProps) {
 
   const actions = [
     {
-      id: "dashboard",
-      title: "Examination Workspace Overview",
-      category: "Navigation",
-      icon: LayoutDashboard,
-      shortcut: "G D",
-      url: "/dashboard",
-    },
-    {
-      id: "upload",
-      title: "Create Assessment / Upload Sheets",
-      category: "Actions",
+      id: "create-assessment",
+      title: "Create Assessment",
+      category: "Assessments",
       icon: FileUp,
       shortcut: "N A",
       url: "/upload",
     },
     {
-      id: "review",
-      title: "Human Review Queue",
+      id: "upload-sheets",
+      title: "Upload Answer Sheets",
+      category: "Assessments",
+      icon: FileUp,
+      shortcut: "U S",
+      url: "/upload",
+    },
+    {
+      id: "search-assessment",
+      title: "Search Assessment Workspace",
+      category: "Search",
+      icon: LayoutDashboard,
+      shortcut: "G D",
+      url: "/dashboard",
+    },
+    {
+      id: "search-student",
+      title: "Search Student Roster",
+      category: "Students",
+      icon: Users,
+      shortcut: "G S",
+      url: "/student",
+    },
+    {
+      id: "open-review-queue",
+      title: "Open Review Queue",
       category: "Audit",
-      icon: Sparkles,
+      icon: ListTodo,
       shortcut: "G Q",
       url: "/review",
     },
     {
-      id: "evaluation",
-      title: "Live Pipeline Monitor",
-      category: "Actions",
-      icon: BrainCircuit,
-      shortcut: "L P",
-      url: "/evaluation",
-    },
-    {
-      id: "results",
-      title: "Evaluation Workspace & PDF View",
-      category: "Navigation",
-      icon: FileText,
-      shortcut: "G R",
-      url: "/results",
-    },
-    {
-      id: "reports",
-      title: "Academic Intelligence Reports",
+      id: "view-reports",
+      title: "View Examination Reports",
       category: "Reports",
       icon: FileText,
-      shortcut: "G I",
+      shortcut: "G R",
       url: "/reports",
     },
     {
-      id: "analytics",
-      title: "Cohort Performance Analytics",
+      id: "open-analytics",
+      title: "Open Performance Analytics",
       category: "Analytics",
       icon: BarChart3,
       shortcut: "G A",
       url: "/analytics",
+    },
+    {
+      id: "settings",
+      title: "Platform Settings",
+      category: "System",
+      icon: Settings,
+      shortcut: "G S",
+      url: "/settings",
     },
   ];
 
@@ -118,23 +125,23 @@ export function CommandMenu({ isOpen, onClose }: CommandMenuProps) {
 
   return (
     <AnimatePresence>
-      <div className="fixed inset-0 z-50 flex items-start justify-center pt-20 px-4 bg-slate-950/40 backdrop-blur-sm">
+      <div className="fixed inset-0 z-50 flex items-start justify-center pt-20 px-4 bg-slate-950/40 backdrop-blur-xs">
         <motion.div
-          initial={{ opacity: 0, scale: 0.96, y: -10 }}
+          initial={{ opacity: 0, scale: 0.98, y: -8 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
-          exit={{ opacity: 0, scale: 0.96, y: -10 }}
-          transition={{ duration: 0.15, ease: "easeOut" }}
-          className="w-full max-w-2xl bg-white rounded-xl shadow-2xl border border-slate-200 overflow-hidden"
+          exit={{ opacity: 0, scale: 0.98, y: -8 }}
+          transition={{ duration: 0.12, ease: "easeOut" }}
+          className="w-full max-w-xl bg-white rounded-lg shadow-xl border border-slate-200 overflow-hidden"
         >
           {/* Header Input */}
-          <div className="relative flex items-center px-4 border-b border-slate-100">
-            <Search className="w-5 h-5 text-slate-400 mr-3" />
+          <div className="relative flex items-center px-4 border-b border-slate-200">
+            <Search className="w-4 h-4 text-slate-400 mr-3 shrink-0" />
             <input
               type="text"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="Type a command or search assessments, reports, tools..."
-              className="w-full py-4 text-sm bg-transparent border-none outline-none text-slate-900 placeholder:text-slate-400 font-medium"
+              placeholder="Type a command or search assessments, students, reports..."
+              className="w-full py-3.5 text-sm bg-transparent border-none outline-none text-slate-900 placeholder:text-slate-400 font-medium"
               autoFocus
             />
             <button
@@ -145,11 +152,11 @@ export function CommandMenu({ isOpen, onClose }: CommandMenuProps) {
             </button>
           </div>
 
-          {/* Results List */}
-          <div className="max-h-96 overflow-y-auto p-2">
+          {/* Command List */}
+          <div className="max-h-80 overflow-y-auto p-2">
             {filtered.length === 0 ? (
-              <div className="py-12 text-center text-sm text-slate-500">
-                No commands or pages matching &quot;{query}&quot;
+              <div className="py-8 text-center text-xs text-slate-500">
+                No commands matching &quot;{query}&quot;
               </div>
             ) : (
               <div className="space-y-1">
@@ -159,26 +166,26 @@ export function CommandMenu({ isOpen, onClose }: CommandMenuProps) {
                     <button
                       key={item.id}
                       onClick={() => handleSelect(item.url)}
-                      className="w-full flex items-center justify-between p-3 rounded-lg hover:bg-slate-50 transition-colors group text-left"
+                      className="w-full flex items-center justify-between p-2.5 rounded-md hover:bg-slate-100 transition-colors group text-left cursor-pointer"
                     >
                       <div className="flex items-center gap-3">
-                        <div className="p-2 rounded-md bg-slate-100 group-hover:bg-indigo-50 text-slate-600 group-hover:text-indigo-600 transition-colors">
+                        <div className="p-1.5 rounded bg-slate-100 text-slate-600 group-hover:bg-slate-200 group-hover:text-slate-900 transition-colors">
                           <Icon className="w-4 h-4" />
                         </div>
                         <div>
-                          <div className="text-sm font-semibold text-slate-900 group-hover:text-indigo-600 transition-colors">
+                          <div className="text-xs font-bold text-slate-900">
                             {item.title}
                           </div>
-                          <div className="text-xs text-slate-400">
+                          <div className="text-[10px] text-slate-400 font-medium">
                             {item.category}
                           </div>
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
-                        <span className="text-[11px] font-mono font-medium px-2 py-0.5 rounded bg-slate-100 text-slate-500 border border-slate-200">
+                        <span className="text-[10px] font-mono font-semibold px-2 py-0.5 rounded bg-slate-100 text-slate-500 border border-slate-200">
                           {item.shortcut}
                         </span>
-                        <ArrowRight className="w-4 h-4 text-slate-300 group-hover:text-indigo-600 group-hover:translate-x-0.5 transition-all" />
+                        <ArrowRight className="w-3.5 h-3.5 text-slate-300 group-hover:text-slate-700 transition-colors" />
                       </div>
                     </button>
                   );
@@ -188,30 +195,14 @@ export function CommandMenu({ isOpen, onClose }: CommandMenuProps) {
           </div>
 
           {/* Footer Bar */}
-          <div className="px-4 py-2.5 bg-slate-50 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
+          <div className="px-4 py-2 bg-slate-50 border-t border-slate-200 flex items-center justify-between text-[11px] text-slate-500 font-medium">
             <div className="flex items-center gap-3">
-              <span className="flex items-center gap-1">
-                <kbd className="px-1.5 py-0.5 bg-white border border-slate-200 rounded text-[10px] font-mono shadow-2xl">
-                  ↑↓
-                </kbd>{" "}
-                Navigate
-              </span>
-              <span className="flex items-center gap-1">
-                <kbd className="px-1.5 py-0.5 bg-white border border-slate-200 rounded text-[10px] font-mono shadow-2xl">
-                  ↵
-                </kbd>{" "}
-                Select
-              </span>
-              <span className="flex items-center gap-1">
-                <kbd className="px-1.5 py-0.5 bg-white border border-slate-200 rounded text-[10px] font-mono shadow-2xl">
-                  ESC
-                </kbd>{" "}
-                Dismiss
-              </span>
+              <span><kbd className="px-1 py-0.5 bg-white border border-slate-200 rounded text-[10px] font-mono">↑↓</kbd> Navigate</span>
+              <span><kbd className="px-1 py-0.5 bg-white border border-slate-200 rounded text-[10px] font-mono">↵</kbd> Select</span>
+              <span><kbd className="px-1 py-0.5 bg-white border border-slate-200 rounded text-[10px] font-mono">ESC</kbd> Close</span>
             </div>
-            <div className="flex items-center gap-1.5 font-medium text-slate-600">
-              <Command className="w-3.5 h-3.5 text-indigo-600" />
-              GradeMIND OS 2.0
+            <div className="flex items-center gap-1 text-slate-600 font-mono">
+              <CommandIcon className="w-3 h-3 text-teal-600" /> GradeMIND OS
             </div>
           </div>
         </motion.div>

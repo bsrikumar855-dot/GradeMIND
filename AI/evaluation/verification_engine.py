@@ -30,6 +30,7 @@ class VerificationEngine:
         gemini_confidence: float,
         gm_missing_concepts: List[str],
         gemini_missing_concepts: List[str],
+        max_marks: float = 0.0,
     ) -> VerificationResult:
         """
         Compare the primary and secondary evaluations and return a VerificationResult.
@@ -37,20 +38,20 @@ class VerificationEngine:
         try:
             score_diff = abs(gm_score - gemini_score)
             conf_diff = abs(gm_confidence - gemini_confidence)
+            rel_score_diff = (score_diff / max_marks) if max_marks > 0.0 else 0.0
 
             # 1. Determine Disagreement Rules
-            status = VerificationStatus.PASS
-            review_required = False
-
-            if score_diff > 2.0:
+            # Fix order: MAJOR_DISAGREEMENT -> LOW_CONFIDENCE -> MODERATE_DISAGREEMENT -> PASS
+            # This fixes Defect D7 (unreachable conf_diff branch).
+            if score_diff > 2.0 or (max_marks > 0.0 and rel_score_diff > 0.25):
                 status = VerificationStatus.MAJOR_DISAGREEMENT
                 review_required = True
-            elif score_diff > 0.5:
-                status = VerificationStatus.MODERATE_DISAGREEMENT
-                review_required = False
             elif conf_diff > 0.30:
                 status = VerificationStatus.LOW_CONFIDENCE
                 review_required = True
+            elif score_diff > 0.5 or (max_marks > 0.0 and rel_score_diff > 0.10):
+                status = VerificationStatus.MODERATE_DISAGREEMENT
+                review_required = False
             else:
                 status = VerificationStatus.PASS
                 review_required = False
@@ -84,14 +85,14 @@ class VerificationEngine:
 
         except Exception as e:
             logger.error(f"VerificationEngine encountered an error: {e}")
-            # Safe fallback if verification fails
+            # Safe fallback: IF verification engine fails, flag review_required=True
             return VerificationResult(
-                status=VerificationStatus.PASS,
+                status=VerificationStatus.LOW_CONFIDENCE,
                 score_difference=0.0,
                 confidence_difference=0.0,
-                root_cause="UNKNOWN",
-                review_required=False,
-                reason="Verification failed due to an internal error.",
+                root_cause="VERIFICATION_ERROR",
+                review_required=True,
+                reason=f"Verification engine failed due to an internal error: {e}",
             )
 
     def _determine_root_cause(

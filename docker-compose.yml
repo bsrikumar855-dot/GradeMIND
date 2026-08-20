@@ -16,6 +16,17 @@ services:
       timeout: 5s
       retries: 10
 
+  redis:
+    image: redis:7-alpine
+    restart: always
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
   backend:
     build:
       context: .
@@ -42,6 +53,9 @@ services:
       # sufficient to disable authorization on its own.
       AUTH_ENABLED: "${AUTH_ENABLED:-True}"
       CORS_ALLOWED_ORIGINS: "${CORS_ALLOWED_ORIGINS:-http://localhost:3000,http://127.0.0.1:3000}"
+      CELERY_BROKER_URL: "redis://redis:6379/0"
+      CELERY_RESULT_BACKEND: "redis://redis:6379/0"
+      STORAGE_PROVIDER: "${STORAGE_PROVIDER:-local}"
     volumes:
       - backend_storage:/app/backend/storage
     ports:
@@ -55,6 +69,28 @@ services:
       timeout: 5s
       retries: 20
       start_period: 10s
+
+  celery-worker:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    command: ["celery", "-A", "app.core.celery_app.celery_app", "worker", "--loglevel=info"]
+    restart: always
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-grademind}:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}@db:5432/${POSTGRES_DB:-grademind}
+      CELERY_BROKER_URL: "redis://redis:6379/0"
+      CELERY_RESULT_BACKEND: "redis://redis:6379/0"
+      STORAGE_PROVIDER: "${STORAGE_PROVIDER:-local}"
+      GEMINI_API_KEY: "${GEMINI_API_KEY}"
+      GEMINI_MODEL: "${GEMINI_MODEL:-gemini-3.5-flash}"
+      ENVIRONMENT: "${ENVIRONMENT:-production}"
+    volumes:
+      - backend_storage:/app/backend/storage
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
 
   frontend:
     build:

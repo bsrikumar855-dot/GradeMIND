@@ -47,28 +47,34 @@ class RAGService:
                 subject.id, 
                 "Subject", 
                 content, 
-                {"id": subject.id, "name": subject.name, "code": subject.code}
+                {"id": subject.id, "name": subject.name, "code": subject.code, "subject_name": subject.name}
             ))
 
         # 2. Chapters
         for chapter in kb_service.curriculum_store.list_chapters():
+            subject = kb_service.curriculum_store.get_subject(chapter.subject_id)
+            sub_name = subject.name if subject else ""
             content = f"Chapter: {chapter.name}. {chapter.description}".strip()
             index_queue.append((
                 chapter.id, 
                 "Chapter", 
                 content, 
-                {"id": chapter.id, "subject_id": chapter.subject_id, "name": chapter.name}
+                {"id": chapter.id, "subject_id": chapter.subject_id, "name": chapter.name, "subject_name": sub_name}
             ))
 
         # 3. Topics
         for topic in kb_service.curriculum_store.list_topics():
+            chapter = kb_service.curriculum_store.get_chapter(topic.chapter_id)
+            subject = kb_service.curriculum_store.get_subject(chapter.subject_id) if chapter else None
+            sub_name = subject.name if subject else ""
+            
             objectives = "; ".join(topic.learning_objectives)
             content = f"Topic: {topic.name}. Objectives: {objectives}".strip()
             index_queue.append((
                 topic.id, 
                 "Topic", 
                 content, 
-                {"id": topic.id, "chapter_id": topic.chapter_id, "name": topic.name}
+                {"id": topic.id, "chapter_id": topic.chapter_id, "name": topic.name, "subject_name": sub_name, "learning_objectives": topic.learning_objectives}
             ))
 
         # 4. Questions

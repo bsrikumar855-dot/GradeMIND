@@ -168,4 +168,68 @@ Respond ONLY with valid JSON in this exact structure:
 
         except Exception as exc:
             logger.exception("GroqEvaluator call failed for Q%s: %s", question_number, exc)
-            raise exc
+            raise
+
+    def extract_evidence(self, question: str, student_answer: str, criteria: List[str]) -> List[Dict[str, Any]]:
+        """
+        Extracts semantic evidence from the student answer for each criterion.
+        """
+        if not self.api_key:
+            raise ValueError("Groq API key not set.")
+
+        system_prompt = (
+            "You are an expert AI examiner.\n"
+            "Analyze the student's answer against the provided criteria.\n"
+            "For each criterion, determine if the student conceptually satisfied it, even if using synonyms or different phrasing.\n"
+            "Extract the EXACT quote from the student's answer that serves as evidence. If not satisfied or no evidence exists, leave evidence_span empty.\n"
+            "Respond ONLY with a JSON array of objects, strictly following this structure for each criterion:\n"
+            "[\n"
+            "  {\n"
+            "    \"criterion\": \"criterion text\",\n"
+            "    \"evidence_span\": \"exact quote from answer or empty string\",\n"
+            "    \"satisfied\": true/false,\n"
+            "    \"confidence\": 0.9,\n"
+            "    \"reason\": \"short reason\"\n"
+            "  }\n"
+            "]"
+        )
+
+        user_prompt = f"Question:\n{question}\n\nStudent Answer:\n{student_answer}\n\nCriteria:\n"
+        for c in criteria:
+            user_prompt += f"- {c}\n"
+
+        headers = {
+            "Authorization": f"Bearer {self.api_key}",
+            "Content-Type": "application/json"
+        }
+
+        payload = {
+            "model": self.model,
+            "messages": [
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt}
+            ],
+            "response_format": {"type": "json_object"},
+            "temperature": 0.1,
+        }
+
+        try:
+            # We wrap the JSON array in an object because response_format json_object requires an object.
+            # So let's adjust the system prompt slightly to output {"evidence": [...]}
+            payload["messages"][0]["content"] = system_prompt.replace(
+                "Respond ONLY with a JSON array", 
+                "Respond ONLY with a JSON object containing a key 'evidence' which is an array"
+            )
+
+            resp = requests.post(GROQ_API_URL, headers=headers, json=payload, timeout=10)
+            resp.raise_for_status()
+            
+            data = resp.json()
+            content = data["choices"][0]["message"]["content"]
+            parsed = json.loads(content)
+            if isinstance(parsed, list):
+                return parsed
+            return parsed.get("evidence", [])
+        except Exception as exc:
+            logger.exception("GroqEvaluator extract_evidence failed: %s", exc)
+            return []

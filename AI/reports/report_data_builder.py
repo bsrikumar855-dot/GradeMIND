@@ -262,26 +262,28 @@ class ReportDataBuilder:
         """Render a reusable LaTeX report template from evaluation JSON."""
         meta = self._report_metrics(evaluation, metadata=metadata)
         questions = evaluation.questions or []
-        strengths = evaluation.strengths or ["Shows willingness to attempt the assessment."]
-        weaknesses = evaluation.weaknesses or ["No major weak area was detected."]
-        improvements = evaluation.improvements or ["Continue practicing structured answers."]
-        study_topics = evaluation.study_recommendations or ["Core Concepts From This Assessment"]
-        covered_concepts, missing_concepts = self._concept_lists(evaluation)
+        
+        # Load learning analytics if present
+        analytics = getattr(evaluation, "learning_analytics", None)
+        strengths = analytics.strengths if analytics and analytics.strengths else []
+        weaknesses = analytics.weaknesses if analytics and analytics.weaknesses else []
+        misconceptions = analytics.misconceptions if analytics and analytics.misconceptions else []
+        recommendations = analytics.recommendations if analytics and analytics.recommendations else []
+        concept_mastery = analytics.concept_mastery if analytics and analytics.concept_mastery else []
 
         return "\n".join([
             self._latex_preamble(),
             r"\begin{document}",
             self._cover_page(meta, evaluation),
-            self._performance_overview(meta, evaluation),
-            self._question_breakdown(questions),
-            self._concept_analysis(covered_concepts, missing_concepts, evaluation),
-            self._strengths_weaknesses(strengths, weaknesses),
-            self._study_plan(study_topics, improvements, missing_concepts),
-            self._analytics(meta),
-            self._teacher_insights(evaluation, improvements),
-            self._detailed_feedback(questions),
-            self._latex_learning_analytics(evaluation),
-            self._final_summary(meta, strengths, weaknesses, study_topics),
+            self._section_assessment_overview(meta),
+            self._section_student_performance(meta, evaluation),
+            self._section_question_performance(questions),
+            self._section_concept_coverage(concept_mastery),
+            self._section_strengths_weaknesses(strengths, weaknesses),
+            self._section_misconceptions(misconceptions),
+            self._section_evaluation_summaries(evaluation),
+            self._section_recommendations(recommendations),
+            self._section_detailed_evidence(questions),
             r"\end{document}",
         ])
 
@@ -386,235 +388,184 @@ class ReportDataBuilder:
 \nopagecolor
 """
 
-    def _performance_overview(self, meta: Dict[str, Any], evaluation: SubmissionEvaluation) -> str:
-        coords = " ".join(
-            f"({self._latex_escape(str(q.question_number))},{q.score_awarded})"
-            for q in evaluation.questions
-        ) or "(NoData,0)"
-        max_marks = max([q.max_marks for q in evaluation.questions] + [evaluation.max_possible, 1])
+    def _section_assessment_overview(self, meta: Dict[str, Any]) -> str:
         return rf"""
-\section*{{1. Performance Overview}}
+\section*{{1. Assessment Overview}}
+\begin{{gmcard}}{{gmblue}}
+\begin{{tabularx}}{{\textwidth}}{{l X}}
+\textbf{{Exam Name}} & {self._latex_escape(meta['exam_name'])}\\
+\textbf{{Student Name}} & {self._latex_escape(meta['student_name'])}\\
+\textbf{{Submission ID}} & {self._latex_escape(meta['submission_id'])}\\
+\end{{tabularx}}
+\end{{gmcard}}
+"""
+
+    def _section_student_performance(self, meta: Dict[str, Any], evaluation: SubmissionEvaluation) -> str:
+        return rf"""
+\section*{{2. Student Performance}}
 \begin{{multicols}}{{4}}
 \begin{{kpicard}}{{gmgreen}}\textbf{{Score}}\\{{\Large {meta['score_text']}}}\end{{kpicard}}
 \begin{{kpicard}}{{gmblue}}\textbf{{Grade}}\\{{\Large {meta['grade']}}}\end{{kpicard}}
 \begin{{kpicard}}{{gmgreen}}\textbf{{AI Confidence}}\\{{\Large {meta['confidence_pct']}\%}}\end{{kpicard}}
 \begin{{kpicard}}{{gmblue}}\textbf{{Coverage}}\\{{\Large {meta['coverage_pct']}\%}}\end{{kpicard}}
 \end{{multicols}}
-\begin{{gmcard}}{{gmblue}}
-\textbf{{Question-wise Marks}}\\[2mm]
-\begin{{tikzpicture}}
-\begin{{axis}}[
-  ybar, bar width=12pt, width=\textwidth, height=6cm,
-  ymin=0, ymax={max_marks + 1},
-  symbolic x coords={{{','.join(self._latex_escape(str(q.question_number)) for q in evaluation.questions) or 'NoData'}}},
-  xtick=data, ylabel={{Marks}}, xlabel={{Question}},
-  nodes near coords, nodes near coords align={{vertical}},
-  grid=major, grid style={{draw=gray!12}},
-  axis line style={{draw=gray!30}},
-  tick style={{draw=none}},
-  every node near coord/.append style={{font=\scriptsize}},
-  fill=gmgreen
-]
-\addplot coordinates {{{coords}}};
-\end{{axis}}
-\end{{tikzpicture}}
-\end{{gmcard}}
 """
 
-    def _question_breakdown(self, questions: List[Any]) -> str:
+    def _section_question_performance(self, questions: List[Any]) -> str:
         rows = []
-        for idx, q in enumerate(questions):
-            coverage = q.concept_coverage if q.concept_coverage is not None else self._question_percentage(q)
-            shade = "gmgreen!9" if self._question_percentage(q) >= 75 else ("gmyellow!12" if self._question_percentage(q) >= 45 else "gmred!8")
+        for q in questions:
+            shade = "gmgreen!9" if (q.score_awarded / max(q.max_marks, 0.1)) >= 0.75 else ("gmyellow!12" if (q.score_awarded / max(q.max_marks, 0.1)) >= 0.45 else "gmred!8")
+            status = "Human Reviewed" if getattr(q, "is_reviewed", False) else "AI Evaluated"
             rows.append(
                 rf"\rowcolor{{{shade}}} Q{self._latex_escape(str(q.question_number))} & "
-                rf"{q.score_awarded:g}/{q.max_marks:g} & {coverage:.0f}\% & "
-                rf"\footnotesize {self._latex_escape(q.criteria_feedback or 'No AI remark available.')} \\"
+                rf"{q.score_awarded:g}/{q.max_marks:g} & {status} \\"
             )
-        body = "\n".join(rows) or r"\rowcolor{gray!8} -- & -- & -- & No question rows available. \\"
+        body = "\n".join(rows) or r"\rowcolor{gray!8} -- & -- & -- \\"
         return rf"""
-\section*{{2. Question Breakdown}}
-\begin{{longtable}}{{>{{\bfseries}}p{{0.12\textwidth}} p{{0.16\textwidth}} p{{0.16\textwidth}} p{{0.48\textwidth}}}}
+\section*{{3. Question Performance}}
+\begin{{longtable}}{{>{{\bfseries}}p{{0.15\textwidth}} p{{0.20\textwidth}} p{{0.60\textwidth}}}}
 \toprule
-Question & Marks & Coverage & AI Remarks\\
+Question & Marks & Review Status \\
 \midrule
 {body}
 \bottomrule
 \end{{longtable}}
 """
 
-    def _concept_analysis(self, covered: List[str], missing: List[str], evaluation: SubmissionEvaluation) -> str:
-        covered_items = self._latex_items(covered[:16], check=True, empty="No covered concepts were detected.")
-        missing_items = self._latex_items(missing[:16], check=False, empty="No missing concepts were detected.")
-        observation = evaluation.summary or "GradeMIND analyzed the response for conceptual accuracy, explanation depth, and rubric alignment."
+    def _section_concept_coverage(self, concept_mastery: List[Any]) -> str:
+        if not concept_mastery:
+            return r"\section*{4. Concept Coverage}\n\textit{No concept coverage data available.}"
+        
+        rows = []
+        for c in concept_mastery:
+            shade = "gmgreen!9" if c.status == "MASTERED" else ("gmred!8" if c.status in ("WEAK", "CRITICAL") else "gmyellow!12")
+            rows.append(
+                rf"\rowcolor{{{shade}}} {self._latex_escape(c.concept)} & "
+                rf"{c.mastery_score*100:.0f}\% & {c.status} \\"
+            )
+        body = "\n".join(rows)
         return rf"""
-\section*{{3. Concept Analysis}}
-\begin{{multicols}}{{2}}
-\begin{{gmcard}}{{gmgreen}}
-\textbf{{Covered Concepts}}\\
-\begin{{itemize}}{covered_items}\end{{itemize}}
-\end{{gmcard}}
-\begin{{gmcard}}{{gmred}}
-\textbf{{Missing Concepts}}\\
-\begin{{itemize}}{missing_items}\end{{itemize}}
-\end{{gmcard}}
-\end{{multicols}}
-\begin{{gmcard}}{{gmblue}}
-\textbf{{AI Observation}}\\
-{self._latex_escape(observation)}
-\end{{gmcard}}
+\section*{{4. Concept Coverage}}
+\begin{{longtable}}{{p{{0.50\textwidth}} p{{0.25\textwidth}} p{{0.25\textwidth}}}}
+\toprule
+Concept & Mastery \% & Status \\
+\midrule
+{body}
+\bottomrule
+\end{{longtable}}
 """
 
-    def _strengths_weaknesses(self, strengths: List[str], weaknesses: List[str]) -> str:
+    def _section_strengths_weaknesses(self, strengths: List[str], weaknesses: List[str]) -> str:
+        str_items = self._latex_items(strengths[:10], check=True, empty="No major strengths detected.")
+        weak_items = self._latex_items(weaknesses[:10], check=False, empty="No major weaknesses detected.")
         return rf"""
-\section*{{4. Strengths vs Weak Areas}}
+\section*{{5. Strengths \& 6. Weaknesses}}
 \begin{{multicols}}{{2}}
 \begin{{gmcard}}{{gmgreen}}
 \textbf{{Strengths}}\\
-\begin{{itemize}}{self._latex_items(strengths[:8], check=True)}\end{{itemize}}
+\begin{{itemize}}{str_items}\end{{itemize}}
 \end{{gmcard}}
 \begin{{gmcard}}{{gmred}}
-\textbf{{Weak Areas}}\\
-\begin{{itemize}}{self._latex_items(weaknesses[:8], check=False)}\end{{itemize}}
+\textbf{{Weaknesses}}\\
+\begin{{itemize}}{weak_items}\end{{itemize}}
 \end{{gmcard}}
 \end{{multicols}}
 """
 
-    def _study_plan(self, topics: List[str], improvements: List[str], missing: List[str]) -> str:
-        high = missing[:4] or topics[:2]
-        medium = topics[2:6] or improvements[:4]
-        low = topics[6:10] or ["Timed practice", "Answer presentation", "Revision notes"]
-        return rf"""
-\section*{{5. Personalized Study Plan}}
-\begin{{multicols}}{{3}}
-\begin{{gmcard}}{{gmred}}\textbf{{High Priority}}\\\begin{{itemize}}{self._latex_items(high, bullet='--')}\end{{itemize}}\end{{gmcard}}
-\begin{{gmcard}}{{gmblue}}\textbf{{Medium Priority}}\\\begin{{itemize}}{self._latex_items(medium, bullet='--')}\end{{itemize}}\end{{gmcard}}
-\begin{{gmcard}}{{gmgreen}}\textbf{{Low Priority}}\\\begin{{itemize}}{self._latex_items(low, bullet='--')}\end{{itemize}}\end{{gmcard}}
-\end{{multicols}}
-\begin{{gmcard}}{{gmblue}}
-\textbf{{Actionable Recommendations}}\\
-\begin{{itemize}}{self._latex_items(improvements[:8], bullet='--')}\end{{itemize}}
+    def _section_misconceptions(self, misconceptions: List[Any]) -> str:
+        if not misconceptions:
+            return r"\section*{7. Misconceptions}\n\textit{No recurring misconceptions detected.}"
+        
+        cards = []
+        for m in misconceptions:
+            cards.append(rf"""
+\begin{{gmcard}}{{gmred}}
+\textbf{{Concept}}: {self._latex_escape(m.concept)}\\
+\textbf{{Misconception}}: {self._latex_escape(m.description)}\\
+\textbf{{Frequency}}: {m.frequency} (Q: {self._latex_escape(', '.join(m.affected_questions))})\\
+\textbf{{Evidence Snippets}}:\\
+\begin{{itemize}}
+{self._latex_items(m.evidence, bullet='--', empty='')}
+\end{{itemize}}
 \end{{gmcard}}
-"""
+""")
+        return "\\section*{7. Misconceptions}\n" + "\n".join(cards)
 
-    def _analytics(self, meta: Dict[str, Any]) -> str:
-        radar = self._radar_chart(meta)
-        doughnut = self._doughnut_chart(meta["percentage"])
+    def _section_evaluation_summaries(self, evaluation: SubmissionEvaluation) -> str:
         return rf"""
-\section*{{6. Analytics}}
+\section*{{8. AI Evaluation \& 9. Human Review Summary}}
 \begin{{multicols}}{{2}}
 \begin{{gmcard}}{{gmblue}}
-\textbf{{Radar Profile}}\\[2mm]
-{radar}
+\textbf{{AI Evaluation Summary}}\\
+{self._latex_escape(evaluation.summary or "The AI evaluated the submission for conceptual accuracy and rubric alignment.")}\\
+\textbf{{Fairness Index}}: {evaluation.fairness_score*100:.0f}\%
 \end{{gmcard}}
-\begin{{gmcard}}{{gmgreen}}
-\textbf{{Score Doughnut}}\\[2mm]
-{doughnut}
+\begin{{gmcard}}{{gmdark}}
+\textbf{{Human Review Summary}}\\
+\textit{{Teacher overrides and final grading verification are logged in the detailed evidence section below.}}
 \end{{gmcard}}
 \end{{multicols}}
-\begin{{gmcard}}{{gmgreen}}
-\textbf{{Coverage Metrics}}\\
-Score {meta['percentage']}\%, AI Confidence {meta['confidence_pct']}\%, Concept Coverage {meta['coverage_pct']}\%, Fairness Index {meta['fairness_pct']}\%.
-\end{{gmcard}}
 """
 
-    def _teacher_insights(self, evaluation: SubmissionEvaluation, improvements: List[str]) -> str:
-        narrative = evaluation.summary or "The submission was evaluated across marks, conceptual coverage, confidence, and feedback quality."
-        return rf"""
-\section*{{7. Teacher Insights}}
-\begin{{gmcard}}{{gmdark}}
-\textbf{{Professional Narrative Summary}}\\
-{self._latex_escape(narrative)}\\[2mm]
-\textbf{{Improvement Suggestions}}\\
-\begin{{itemize}}{self._latex_items(improvements[:8], bullet='--')}\end{{itemize}}
+    def _section_recommendations(self, recommendations: List[Any]) -> str:
+        if not recommendations:
+            return r"\section*{10. Recommendations}\n\textit{No specific study recommendations available.}"
+        
+        cards = []
+        for r in recommendations:
+            cards.append(rf"""
+\begin{{gmcard}}{{gmblue}}
+\textbf{{To improve on: {self._latex_escape(r.weak_concept)}}}\\
+\begin{{itemize}}
+{self._latex_items(r.recommended_actions, bullet='--')}
+\end{{itemize}}
 \end{{gmcard}}
-"""
+""")
+        return "\\section*{10. Recommendations}\n" + "\n".join(cards)
 
-    def _detailed_feedback(self, questions: List[Any]) -> str:
+    def _section_detailed_evidence(self, questions: List[Any]) -> str:
         cards = []
         for q in questions:
             detail_lines = []
             
-            # 1. Rubric/Curriculum Context
-            if getattr(q, "curriculum_context", None):
-                cc = q.curriculum_context
-                detail_lines.append(rf"\textbf{{Curriculum Context}}: Subject: {self._latex_escape(cc.subject or 'N/A')}, Chapter: {self._latex_escape(cc.chapter or 'N/A')}, Topic: {self._latex_escape(cc.topic or 'N/A')}")
+            is_reviewed = getattr(q, "is_reviewed", False)
+            ai_score = getattr(q, "ai_score", None)
+            teacher_score = getattr(q, "teacher_score", None)
+            reason = getattr(q, "teacher_review_reason", None)
             
-            # 2. Semantic Evaluation
+            # Transparency Block
+            if is_reviewed:
+                detail_lines.append(rf"\textbf{{\textcolor{{gmred}}{{Human Reviewed}}}}")
+                detail_lines.append(rf"AI Score: {ai_score:g}/{q.max_marks:g} | Teacher Score: {teacher_score:g}/{q.max_marks:g}")
+                if reason:
+                    detail_lines.append(rf"Reason: \textit{{{self._latex_escape(reason)}}}")
+                detail_lines.append(r"\vspace{2mm}\hrule\vspace{2mm}")
+            
+            detail_lines.append(rf"\textbf{{Question {self._latex_escape(str(q.question_number))}}}")
+            detail_lines.append(rf"\textbf{{Final Score}}: {q.score_awarded:g}/{q.max_marks:g} (Confidence: {q.confidence*100:.0f}\%)")
+            
+            # Evidence
             if getattr(q, "semantic_evaluation", None):
                 se = q.semantic_evaluation
-                detail_lines.append(rf"\textbf{{Semantic Similarity}}: {se.semantic_similarity * 100:.0f}\% match - {self._latex_escape(se.explanation)}")
+                ev_str = []
+                for ev in se.evidence:
+                    mark = r"\checkmarkgm" if ev.satisfied else r"\crossgm"
+                    ev_str.append(rf"{mark} {self._latex_escape(ev.criterion)}")
+                detail_lines.append(r"\textbf{{Rubric Evidence}}:\\ " + r" \\ ".join(ev_str))
                 
-            # 3. Confidence breakdown
-            if getattr(q, "confidence_breakdown", None):
-                cb = q.confidence_breakdown
-                detail_lines.append(rf"\textbf{{Confidence Breakdown}}: OCR: {cb.ocr_confidence*100:.0f}\%, Concept: {cb.concept_coverage_score*100:.0f}\%, Semantic: {cb.semantic_alignment_score*100:.0f}\%, Explainability: {cb.explainability_score*100:.0f}\%, Fairness: {cb.fairness_score*100:.0f}\%")
-                
-            # 4. Explainability evidence
-            if getattr(q, "explainability", None) and q.explainability.evidence:
-                evs = [f"{ev.concept} (Match: {ev.confidence*100:.0f}\\%): \"{ev.matched_text}\"" for ev in q.explainability.evidence]
-                detail_lines.append(rf"\textbf{{Explainability Proofs}}:\\" + r" \\ ".join(self._latex_escape(ev) for ev in evs[:3]))
-                
-            # 5. Gemini evaluation & verification
-            if getattr(q, "gemini_evaluation", None):
-                ge = q.gemini_evaluation
-                detail_lines.append(rf"\textbf{{Gemini Review}}: Score: {ge.score:g}, Confidence: {ge.confidence*100:.0f}\% - {self._latex_escape(ge.reasoning)}")
-                if getattr(q, "verification", None):
-                    ve = q.verification
-                    detail_lines.append(rf"\textbf{{Verification Status}}: {self._latex_escape(ve.status)} - {self._latex_escape(ve.reason)}")
-
-            detail_str = r" \\[2mm] " + r" \\[2mm] ".join(detail_lines) if detail_lines else ""
-
+            if q.missing_concepts:
+                detail_lines.append(rf"\textbf{{Missing Concepts}}: {self._latex_escape(', '.join(q.missing_concepts))}")
+            
+            detail_lines.append(rf"\textbf{{AI Remarks}}: {self._latex_escape(q.criteria_feedback or 'N/A')}")
+            
+            detail_str = r" \\[2mm] ".join(detail_lines)
+            
             cards.append(rf"""
-\begin{{gmcard}}{{gmblue}}
-\textbf{{Question {self._latex_escape(str(q.question_number))}}} \hfill {q.score_awarded:g}/{q.max_marks:g}\\
-{self._latex_escape(q.criteria_feedback or 'No detailed feedback available.')}
+\begin{{gmcard}}{{gmdark}}
 {detail_str}
 \end{{gmcard}}
 """)
-        return "\\section*{8. Detailed AI Feedback}\n" + ("\n".join(cards) or "No detailed feedback rows available.")
-
-    def _latex_learning_analytics(self, evaluation: SubmissionEvaluation) -> str:
-        analytics = getattr(evaluation, "learning_analytics", None)
-        if not analytics:
-            return ""
-        
-        mastered = analytics.mastered_topics or []
-        weak = analytics.weak_topics or []
-        gaps = analytics.knowledge_gaps or []
-        recs = analytics.recommendations or []
-        
-        mastered_items = self._latex_items(mastered[:8], check=True, empty="No mastered topics detected.")
-        weak_items = self._latex_items(weak[:8], check=False, empty="No critical weak topics detected.")
-        
-        gap_rows = []
-        for gap in gaps[:6]:
-            gap_rows.append(rf"\textbf{{{self._latex_escape(gap.topic)}}}: {self._latex_escape(', '.join(gap.missing_concepts))} ({gap.severity} severity)")
-        gap_items = "\n".join(rf"\item {r}" for r in gap_rows) or r"\item No conceptual gaps detected."
-        
-        rec_items = self._latex_items(recs[:8], bullet='--', empty="No learning recommendations generated.")
-        
-        return rf"""
-\section*{{9. Learning Analytics \& Mastery Gaps}}
-\begin{{multicols}}{{2}}
-\begin{{gmcard}}{{gmgreen}}
-\textbf{{Mastered Topics}}\\
-\begin{{itemize}}{mastered_items}\end{{itemize}}
-\end{{gmcard}}
-\begin{{gmcard}}{{gmred}}
-\textbf{{Topics Needing Practice}}\\
-\begin{{itemize}}{weak_items}\end{{itemize}}
-\end{{gmcard}}
-\end{{multicols}}
-\begin{{gmcard}}{{gmblue}}
-\textbf{{Identified Conceptual Gaps}}\\
-\begin{{itemize}}{gap_items}\end{{itemize}}
-\end{{gmcard}}
-\begin{{gmcard}}{{gmblue}}
-\textbf{{Actionable Study Plan \& Recommendations}}\\
-\begin{{itemize}}{rec_items}\end{{itemize}}
-\end{{gmcard}}
-"""
+        return "\\section*{Detailed Question Evidence}\n" + "\n".join(cards)
 
     def _final_summary(self, meta: Dict[str, Any], strengths: List[str], weaknesses: List[str], topics: List[str]) -> str:
         return rf"""
@@ -687,7 +638,12 @@ Score {meta['percentage']}\%, AI Confidence {meta['confidence_pct']}\%, Concept 
             logger.info("LaTeX compiler command: %s", " ".join(command))
             for attempt in range(1, 3):
                 logger.info("Running LaTeX compiler attempt %s/2", attempt)
-                result = subprocess.run(command, capture_output=True, text=True, timeout=90)
+                try:
+                    result = subprocess.run(command, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, timeout=90)
+                except Exception as proc_exc:
+                    logger.error("LaTeX compilation subprocess failed: %s", proc_exc)
+                    return False
+
                 logger.info(
                     "LaTeX compiler attempt %s finished: returncode=%s stdout=%s stderr=%s",
                     attempt,

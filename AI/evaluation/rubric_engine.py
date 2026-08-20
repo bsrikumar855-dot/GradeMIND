@@ -5,8 +5,10 @@ calculating partial credit and identifying matched points.
 """
 
 import re
+import json
 import logging
 from typing import Dict, List, Any
+import requests
 
 logger = logging.getLogger("GradeMIND.RubricEngine")
 
@@ -66,8 +68,115 @@ def generate_rubric(question_text: str, answer_key_text: str) -> Dict[str, Any]:
         
     return {
         "max_score": max_score,
-        "criteria": criteria_list
+        "criteria": criteria_list,
+        "is_autonomous_rubric": False
     }
+
+def generate_autonomous_rubric(question_text: str, expected_concepts: List[str], curriculum_context: Any) -> Dict[str, Any]:
+    """
+    Generate an autonomous rubric using the LLM based on question, expected concepts, and curriculum context.
+    """
+    logger.info(f"Generating autonomous rubric for question: {question_text[:50]}...")
+    
+    max_score = 5.0
+    marks_match = re.search(r"\[\s*(\d+(?:\.\d+)?)\s*(?:marks?|m)\s*\]|\(\s*(\d+(?:\.\d+)?)\s*(?:marks?|m)\s*\)", question_text, re.IGNORECASE)
+    if marks_match:
+        max_score = float(marks_match.group(1) or marks_match.group(2))
+    
+    from AI.evaluation.groq_evaluator import GroqEvaluator
+    evaluator = GroqEvaluator()
+    
+    if not evaluator.is_available():
+        # Fallback to a basic generic rubric if LLM is unavailable
+        return {
+            "max_score": max_score,
+            "criteria": [{"criterion_id": "crit_1", "description": c, "allocated_marks": round(max_score/max(1, len(expected_concepts)), 2)} for c in expected_concepts],
+            "is_autonomous_rubric": True
+        }
+
+    system_prompt = (
+        "You are an expert curriculum designer.\n"
+        "Generate a grading rubric for the given question based on the expected concepts and curriculum context.\n"
+        "Break it down into individual criteria.\n"
+        "The criteria MUST be derived strictly from the provided Curriculum Context and Objectives, overriding general model knowledge.\n"
+        "Respond ONLY with a JSON object containing a 'criteria' array, where each object has 'description' and 'weight' (relative importance 0.0 to 1.0).\n"
+        "Ensure weights sum to 1.0."
+    )
+
+    lo_str = "\n".join(f"- {lo}" for lo in getattr(curriculum_context, "learning_objectives", [])) if curriculum_context else ""
+    ctx_str = f"Subject: {getattr(curriculum_context, 'subject', 'General')}\nTopic: {getattr(curriculum_context, 'topic', '')}\nObjectives:\n{lo_str}"
+    
+    prompt = (
+        f"Question: {question_text}\n"
+        f"Total Marks: {max_score}\n"
+        f"Curriculum Context:\n{ctx_str}\n"
+        f"Expected Concepts: {', '.join(expected_concepts) if expected_concepts else 'None provided'}\n"
+        "Generate the rubric criteria."
+    )
+
+    headers = {
+        "Authorization": f"Bearer {evaluator.api_key}",
+        "Content-Type": "application/json"
+    }
+
+    payload = {
+        "model": evaluator.model,
+        "messages": [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": prompt}
+        ],
+        "response_format": {"type": "json_object"},
+        "temperature": 0.2,
+    }
+
+    try:
+        from AI.evaluation.groq_evaluator import GROQ_API_URL
+        resp = requests.post(GROQ_API_URL, headers=headers, json=payload, timeout=10)
+        resp.raise_for_status()
+        
+        data = resp.json()
+        content = data["choices"][0]["message"]["content"]
+        parsed = json.loads(content)
+        
+        criteria_list = []
+        accumulated = 0.0
+        
+        # If it returned an object with 'criteria', use it, otherwise assume it's a list
+        if isinstance(parsed, dict) and "criteria" in parsed:
+            parsed_list = parsed["criteria"]
+        elif isinstance(parsed, dict) and "rubric" in parsed:
+            parsed_list = parsed["rubric"]
+        else:
+            parsed_list = parsed if isinstance(parsed, list) else []
+
+        for idx, crit in enumerate(parsed_list):
+            weight = float(crit.get("weight", crit.get("allocated_marks", 1.0/max(1, len(parsed_list)))))
+            marks = weight * max_score if "weight" in crit else weight
+            criteria_list.append({
+                "criterion_id": f"crit_{idx+1}",
+                "description": crit.get("description", "Criterion"),
+                "allocated_marks": marks
+            })
+            accumulated += marks
+            
+        # Normalize marks if they don't exactly match max_score
+        if accumulated > 0 and abs(accumulated - max_score) > 0.01:
+            ratio = max_score / accumulated
+            for c in criteria_list:
+                c["allocated_marks"] = round(c["allocated_marks"] * ratio, 2)
+                
+        return {
+            "max_score": max_score,
+            "criteria": criteria_list,
+            "is_autonomous_rubric": True
+        }
+    except Exception as exc:
+        logger.exception("Failed to generate autonomous rubric: %s", exc)
+        return {
+            "max_score": max_score,
+            "criteria": [{"criterion_id": "crit_1", "description": c, "allocated_marks": round(max_score/max(1, len(expected_concepts)), 2)} for c in expected_concepts],
+            "is_autonomous_rubric": True
+        }
 
 
 def evaluate_keywords(student_answer: str, rubric: Dict[str, Any]) -> Dict[str, Any]:

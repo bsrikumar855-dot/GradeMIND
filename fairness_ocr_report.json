@@ -1,0 +1,14 @@
+{
+  "baseline": {
+    "score": 0.0,
+    "confidence": 0.91
+  },
+  "minor_noise": {
+    "score": 0.0,
+    "confidence": 0.91
+  },
+  "heavy_handwriting_noise": {
+    "score": 0.0,
+    "confidence": 0.91
+  }
+}

@@ -16,6 +16,7 @@ class RubricCriterion(BaseModel):
     allocated_marks: float = Field(..., description="Marks assigned to this item.")
     marks_awarded: float = Field(0.0, description="Marks awarded to student for this item.")
     met: bool = Field(False, description="Flag indicating if the student met the criteria.")
+    teacher_modified: bool = Field(False, description="Flag indicating if this criteria was manually edited or added by a teacher.")
 
 
 class EvidenceItem(BaseModel):
@@ -71,15 +72,28 @@ class VerificationResult(BaseModel):
     reason: str = Field(..., description="Human-readable reason for the verification status.")
 
 
+class SemanticEvidence(BaseModel):
+    """
+    Evidence model representing whether a student's answer semantically satisfies a rubric criterion.
+    """
+    criterion: str = Field(..., description="The rubric criterion being evaluated.")
+    evidence_span: str = Field(..., description="The exact quote from the student's answer that acts as evidence. Empty if not found.")
+    semantic_similarity: float = Field(0.0, description="Semantic similarity score between criterion and evidence (0.0 to 1.0).")
+    satisfied: bool = Field(..., description="Whether the LLM determined the criterion was conceptually satisfied.")
+    confidence: float = Field(..., description="Confidence of the extraction and satisfaction decision (0.0 to 1.0).")
+    reason: Optional[str] = Field(None, description="Concise reason for the decision, particularly if missing or contradictory.")
+
+
 class SemanticEvaluationResult(BaseModel):
     """
-    Result from the Semantic Evaluation Engine.
+    Result from the Semantic Evaluation Engine based on Evidence.
     """
-    semantic_similarity: float = Field(..., description="Cosine similarity score (0.0 to 1.0).")
+    is_autonomous_rubric: bool = Field(False, description="Whether the rubric criteria were autonomously generated via RAG.")
+    evidence: List[SemanticEvidence] = Field(default_factory=list, description="List of semantic evidence for each criterion.")
+    overall_score: float = Field(..., description="Sum of allocated marks for satisfied criteria.")
+    max_score: float = Field(..., description="Maximum possible marks from the rubric.")
     semantic_confidence: float = Field(..., description="Confidence score for semantic evaluation (0.0 to 1.0).")
-    matched_semantic_concepts: List[str] = Field(default_factory=list, description="Semantic concepts matched in the response.")
-    missing_semantic_concepts: List[str] = Field(default_factory=list, description="Semantic concepts missing from the response.")
-    explanation: str = Field(..., description="Explanation of semantic similarity and matches.")
+    explanation: str = Field(..., description="Concise explanation of the semantic evaluation.")
 
 
 class CurriculumContext(BaseModel):
@@ -89,6 +103,8 @@ class CurriculumContext(BaseModel):
     subject: str = Field("", description="Retrieved subject context description.")
     chapter: str = Field("", description="Retrieved chapter context description.")
     topic: str = Field("", description="Retrieved topic context description.")
+    learning_objectives: List[str] = Field(default_factory=list, description="Learning objectives related to the topic.")
+    expected_concepts: List[str] = Field(default_factory=list, description="Expected concepts derived from the topic/chapter.")
     reference_answer: str = Field("", description="Retrieved reference answer.")
     rubric: str = Field("", description="Retrieved rubric title.")
     rubric_criteria: List[str] = Field(default_factory=list, description="Retrieved rubric criteria statements.")
@@ -114,7 +130,14 @@ class QuestionEvaluation(BaseModel):
     """
     question_number: str = Field(..., description="Identifier of the question (e.g., '1', '1a').")
     max_marks: float = Field(..., description="Maximum possible marks for this question.")
-    score_awarded: float = Field(..., description="Score awarded by the evaluation engine.")
+    score_awarded: float = Field(..., description="Final effective score awarded (AI or Teacher).")
+    
+    # Transparency
+    ai_score: Optional[float] = Field(None, description="Original score evaluated by the AI.")
+    teacher_score: Optional[float] = Field(None, description="Score overwritten by human reviewer.")
+    teacher_review_reason: Optional[str] = Field(None, description="Reason for the human score change.")
+    is_reviewed: bool = Field(False, description="True if a human has reviewed this question.")
+    
     student_answer_extracted: str = Field(..., description="Raw transcript of the student answer.")
     criteria_feedback: str = Field(..., description="Written justification or feedback for the score.")
     matched_keywords: List[str] = Field(default_factory=list, description="Keywords from the answer key found in the response.")
@@ -155,6 +178,35 @@ class KnowledgeGap(BaseModel):
     severity: str = Field(..., description="Severity: LOW, MEDIUM, HIGH.")
 
 
+class ConceptMastery(BaseModel):
+    """
+    Represents mastery status of a specific concept/criterion.
+    """
+    concept: str = Field(..., description="Concept name.")
+    mastery_score: float = Field(..., description="Calculated mastery score (0.0 to 1.0).")
+    occurrences: int = Field(..., description="Number of times this concept was evaluated.")
+    status: str = Field(..., description="Status: MASTERED, DEVELOPING, WEAK, CRITICAL.")
+
+
+class Misconception(BaseModel):
+    """
+    Represents a detected recurring misconception.
+    """
+    concept: str = Field(..., description="The concept this misconception relates to.")
+    description: str = Field(..., description="Synthesized description of the misconception (e.g., 'Confuses force with acceleration').")
+    frequency: int = Field(..., description="Number of times this misconception was observed.")
+    affected_questions: List[str] = Field(default_factory=list, description="Question IDs affected by this misconception.")
+    evidence: List[str] = Field(default_factory=list, description="Snippets from the student's answer acting as evidence.")
+
+
+class Recommendation(BaseModel):
+    """
+    Evidence-backed study recommendation.
+    """
+    weak_concept: str = Field(..., description="The weak concept this recommendation addresses.")
+    recommended_actions: List[str] = Field(default_factory=list, description="Specific actions or topics to review.")
+
+
 class LearningAnalyticsResult(BaseModel):
     """
     Aggregated student learning analytics results.
@@ -162,7 +214,14 @@ class LearningAnalyticsResult(BaseModel):
     mastered_topics: List[str] = Field(default_factory=list, description="Topics mastered by the student.")
     weak_topics: List[str] = Field(default_factory=list, description="Topics where student is weak.")
     knowledge_gaps: List[KnowledgeGap] = Field(default_factory=list, description="Detected knowledge gaps.")
-    recommendations: List[str] = Field(default_factory=list, description="Actionable learning recommendations.")
+    
+    # Concept-level intelligence
+    concept_mastery: List[ConceptMastery] = Field(default_factory=list, description="Concept-level mastery profiles.")
+    strengths: List[str] = Field(default_factory=list, description="Concepts with strong evidence of mastery.")
+    weaknesses: List[str] = Field(default_factory=list, description="Concepts with repeated evidence of misunderstanding.")
+    misconceptions: List[Misconception] = Field(default_factory=list, description="Detected recurring errors and misconceptions.")
+    recommendations: List[Recommendation] = Field(default_factory=list, description="Actionable learning recommendations mapped directly to weaknesses.")
+    
     overall_mastery: float = Field(0.0, description="Overall mastery percentage (0.0 to 1.0).")
 
 

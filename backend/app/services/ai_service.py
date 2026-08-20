@@ -25,6 +25,7 @@ from AI.evaluation.groq_evaluator import GroqEvaluator
 from AI.evaluation.curriculum_context_engine import CurriculumContextEngine
 from AI.evaluation.or_question_resolver import resolve_or_question
 from AI.analytics.analytics_service import LearningAnalyticsService
+from AI.evaluation.evidence_fusion_engine import EvidenceFusionEngine
 
 # Schemas
 from AI.schemas.evaluation_schema import RubricCriterion, QuestionEvaluation, SubmissionEvaluation
@@ -39,6 +40,7 @@ _verification_engine = VerificationEngine()
 _semantic_engine = SemanticEvaluationEngine()
 _curriculum_context_engine = CurriculumContextEngine()
 _analytics_service = LearningAnalyticsService()
+_fusion_engine = EvidenceFusionEngine()
 
 def parse_ocr_text(ocr_output: Dict[str, Any], submission_id: str) -> Dict[str, str]:
     """
@@ -83,6 +85,22 @@ def parse_ocr_text(ocr_output: Dict[str, Any], submission_id: str) -> Dict[str, 
         )
         return segmented
 
+    # If document has multiple lines / significant text but segmentation produced no question keys:
+    non_empty_lines = [line for line in ocr_lines if line.text and line.text.strip()]
+    total_text_len = sum(len(line.text.strip()) for line in non_empty_lines)
+    if len(non_empty_lines) > 3 and total_text_len > 100:
+        logger.warning(
+            "QUESTION_SEGMENTATION_FAILED submission_id=%s lines=%d chars=%d - unable to find question boundaries",
+            submission_id,
+            len(non_empty_lines),
+            total_text_len,
+        )
+        raise ValueError(
+            f"Question segmentation failed for submission {submission_id}: "
+            f"found {len(non_empty_lines)} OCR text lines ({total_text_len} chars) but no valid question boundaries (e.g. Q1, 1.). "
+            f"Submission requires mandatory human review."
+        )
+
     full_text = " ".join(line.text.strip() for line in ocr_lines if line.text.strip()).strip()
     fallback = {"question_1": full_text} if full_text else {}
     logger.info(
@@ -100,6 +118,7 @@ def evaluate_submission(
     ocr_output: Dict[str, Any],
     exams_metadata: Optional[Dict[str, Any]] = None,
     exam_context: Optional[Dict[str, Any]] = None,
+    teacher_overrides: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
     """
     Runs the entire AI evaluation pipeline on OCR output.
@@ -136,6 +155,7 @@ def evaluate_submission(
         ocr_output=ocr_output,
         segmented_answers=segmented_answers,
         exam_context=exam_context or {},
+        teacher_overrides=teacher_overrides,
     )
 
 
@@ -175,66 +195,93 @@ def evaluate_with_answer_key(
         analysis = understanding_agent.analyze_question(q_text)
         
         # ── Primary: Groq 120B AI Evaluator ──────────────────────────
+        llm_eval = None
+        max_m = float(q_info.get("max_marks", q_info.get("marks", 5.0)))
         if _groq_evaluator.is_available():
             try:
-                max_m = float(q_info.get("max_marks", q_info.get("marks", 5.0)))
-                q_eval = _groq_evaluator.evaluate(
+                llm_eval = _groq_evaluator.evaluate(
                     question=q_text,
                     student_answer=student_ans,
                     max_marks=max_m,
                     question_number=q_id.replace("question_", ""),
                     reference_answer=ak_text,
                 )
-                question_evaluations.append(q_eval)
-                logger.info("EVALUATION_STAGE groq_scored submission_id=%s question=%s score=%s max=%s", submission_id, q_id, q_eval.score_awarded, q_eval.max_marks)
-                continue
+                logger.info("EVALUATION_STAGE groq_scored submission_id=%s question=%s score=%s max=%s", submission_id, q_id, llm_eval.score_awarded, llm_eval.max_marks)
             except Exception as exc:
                 logger.warning("GroqEvaluator failed for Q%s (%s); falling back to local rubric engine.", q_id, exc)
 
-        # Evaluate against rubric
-        rubric_eval_input = {
-            "question_text": q_text,
-            "answer_key_text": ak_text,
-            "student_answer": student_ans
-        }
-        rubric_result = calculate_partial_credit(rubric_eval_input)
+        # Generate rubric from answer key
+        ref_rubric = generate_rubric(q_text, ak_text)
         
-        # Compile rubric criteria list
+        # Run Semantic Evaluation Engine based on Evidence Model
+        semantic_eval_res = _semantic_engine.evaluate(
+            question=q_text,
+            student_answer=student_ans,
+            rubric_criteria=ref_rubric["criteria"],
+            is_autonomous_rubric=False
+        )
+        
+        # Compile rubric criteria list from Evidence
         rubric_points = []
-        for item in rubric_result["matched_points"]:
+        for ev in semantic_eval_res.evidence:
+            matched_crit = next((c for c in ref_rubric["criteria"] if c["description"] == ev.criterion), None)
+            alloc = matched_crit["allocated_marks"] if matched_crit else 0.0
             rubric_points.append(
                 RubricCriterion(
-                    criterion_id=item["criterion_id"],
-                    description=item["description"],
-                    allocated_marks=item["allocated_marks"],
-                    marks_awarded=item["marks_awarded"],
-                    met=item["met"]
+                    criterion_id=f"crit_{len(rubric_points)+1}",
+                    description=ev.criterion,
+                    allocated_marks=alloc,
+                    marks_awarded=alloc if ev.satisfied else 0.0,
+                    met=ev.satisfied
                 )
             )
             
-        # Audit biases and fairness
-        bias_check = detect_bias({
-            "student_answer_extracted": student_ans,
-            "criteria_feedback": f"Graded criteria: matched {len([pt for pt in rubric_points if pt.met])} items."
-        })
-        
-        ref_rubric = generate_rubric(q_text, ak_text)
-        marking_check = verify_marking(rubric_result, ref_rubric)
-        
-        if not marking_check["verified"]:
-            discrepancies.extend(marking_check["issues"])
-            
+
         # Pydantic model for QuestionEvaluation
         q_number_clean = q_id.replace("question_", "")
-
-        # Derive matched/missing concepts from rubric for explainability
-        ak_matched_concepts = [pt.description[:15] for pt in rubric_points if pt.met]
-        ak_missing_concepts = [pt.description[:15] for pt in rubric_points if not pt.met]
 
         # Compute rubric coverage (fraction of criteria met) as concept_coverage proxy
         total_pts = len(rubric_points)
         met_pts = len([pt for pt in rubric_points if pt.met])
-        ak_concept_coverage = (met_pts / total_pts * 100.0) if total_pts > 0 else 0.0
+        ak_concept_coverage_ratio = (met_pts / total_pts) if total_pts > 0 else 0.0
+
+        try:
+            ak_semantic_alignment = _concept_engine.semantic_similarity(q_text, student_ans)
+        except Exception:
+            ak_semantic_alignment = 0.5
+            logger.warning("Semantic similarity failed for %s; defaulting to 0.5.", q_id)
+
+        # Fuse LLM and Evidence Score
+        fused_score, fused_matched, fused_missing = _fusion_engine.fuse(
+            llm_eval=llm_eval,
+            local_score=semantic_eval_res.overall_score,
+            max_marks=ref_rubric["max_score"],
+            concept_coverage=ak_concept_coverage_ratio,
+            semantic_similarity=semantic_eval_res.semantic_confidence
+        )
+
+        ak_matched_concepts = []
+        ak_missing_concepts = []
+        for ev in semantic_eval_res.evidence:
+            if ev.satisfied:
+                ak_matched_concepts.append(ev.criterion[:15])
+            else:
+                ak_missing_concepts.append(ev.criterion[:15])
+                
+        ak_matched_concepts = list(set(ak_matched_concepts + fused_matched))
+        ak_missing_concepts = list(set(ak_missing_concepts + fused_missing))
+        ak_concept_coverage = ak_concept_coverage_ratio * 100.0
+
+        if llm_eval:
+            criteria_feedback = llm_eval.criteria_feedback
+        else:
+            criteria_feedback = semantic_eval_res.explanation
+
+        # Audit biases and fairness
+        bias_check = detect_bias({
+            "student_answer_extracted": student_ans,
+            "criteria_feedback": criteria_feedback
+        })
 
         # Semantic alignment from concept engine (reuses existing logic)
         try:
@@ -251,26 +298,12 @@ def evaluate_with_answer_key(
         except Exception:
             logger.exception("Failed to build curriculum context for question %s", q_id)
 
-        # Run Semantic Evaluation Engine (observational only)
-        semantic_eval_res = None
-        try:
-            semantic_eval_res = _semantic_engine.evaluate(
-                question=q_text,
-                reference_answer=ak_text,
-                student_answer=student_ans,
-                expected_concepts=ak_matched_concepts + ak_missing_concepts,
-                topic_context=curr_context.topic if curr_context else "",
-                chapter_context=curr_context.chapter if curr_context else ""
-            )
-        except Exception:
-            logger.exception("Semantic Evaluation Engine failed for question %s", q_id)
-
         q_eval = QuestionEvaluation(
             question_number=q_number_clean,
-            max_marks=rubric_result["max_score"],
-            score_awarded=rubric_result["score"],
+            max_marks=ref_rubric["max_score"],
+            score_awarded=fused_score,
             student_answer_extracted=student_ans,
-            criteria_feedback=f"Criteria details: {', '.join([f'{pt.criterion_id}({pt.marks_awarded}/{pt.allocated_marks})' for pt in rubric_points])}.",
+            criteria_feedback=criteria_feedback,
             matched_keywords=ak_matched_concepts,
             rubric_points=rubric_points,
             confidence=float(bias_check["bias_score"]),  # will be updated below
@@ -332,6 +365,7 @@ def evaluate_with_answer_key(
                     gemini_confidence=q_eval.gemini_evaluation.confidence,
                     gm_missing_concepts=ak_missing_concepts,
                     gemini_missing_concepts=q_eval.gemini_evaluation.missing_concepts,
+                    max_marks=q_eval.max_marks,
                 )
         except Exception:
             logger.exception("Verification Engine failed for question %s; skipping.", q_id)
@@ -390,12 +424,18 @@ def evaluate_with_answer_key(
             bias_free_overall = False
         overall_fairness_score = min(overall_fairness_score, b_audit["bias_score"])
         
+    has_verification_review_flag = any(
+        q.verification and q.verification.review_required for q in question_evaluations
+    )
+    from app.models.submission import SubmissionStatus
+    submission_status = SubmissionStatus.REVIEW_REQUIRED if (overall_confidence < 0.70 or has_verification_review_flag) else SubmissionStatus.COMPLETED
+
     # SubmissionEvaluation instance
     submission_eval = SubmissionEvaluation(
         submission_id=submission_id,
         total_score=total_score,
         max_possible=max_possible,
-        status="COMPLETED" if overall_confidence >= 0.70 else "PENDING_REVIEW",
+        status=submission_status,
         confidence_score=overall_confidence,
         evaluation_mode="ANSWER_KEY",
         concept_coverage=None,
@@ -424,6 +464,7 @@ def evaluate_autonomously(
     ocr_output: Dict[str, Any],
     segmented_answers: Dict[str, str],
     exam_context: Dict[str, Any],
+    teacher_overrides: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
     """Evaluate without an answer key using local autonomous scoring."""
     logger.info("EVALUATION_STAGE autonomous_start submission_id=%s", submission_id)
@@ -484,6 +525,7 @@ def evaluate_autonomously(
             max_marks=max_marks,
             question_number=q_number_clean,
             subject=subject,
+            teacher_overrides=teacher_overrides,
         )
         expected_concepts = [
             point.description.replace("Coverage of expected concept: ", "", 1)
@@ -512,20 +554,20 @@ def evaluate_autonomously(
         # Run Semantic Evaluation Engine (observational only)
         semantic_eval_res = None
         try:
-            ref_ans = question_info.get("answer_key") or question_info.get("reference_answer") or ""
-            if not ref_ans.strip() and curr_context and curr_context.reference_answer.strip():
-                # Only use curr_context.reference_answer if the subject aligns!
-                if not subject or subject.lower() in (curr_context.subject or "").lower():
-                    ref_ans = curr_context.reference_answer
+            rubric_criteria = question_info.get("rubric_criteria") or [
+                {"criterion": f"Demonstrates concept: {c}", "allocated_marks": max_marks / max(1, len(expected_concepts)), "expected_concept": c}
+                for c in expected_concepts
+            ]
+            if not rubric_criteria:
+                rubric_criteria = [{"criterion": "Answer accuracy", "allocated_marks": max_marks}]
             semantic_eval_res = _semantic_engine.evaluate(
                 question=q_text,
-                reference_answer=ref_ans,
                 student_answer=student_ans,
-                expected_concepts=expected_concepts,
-                topic_context=curr_context.topic if curr_context else "",
-                chapter_context=curr_context.chapter if curr_context else ""
+                rubric_criteria=rubric_criteria,
+                is_autonomous_rubric=True
             )
-        except Exception:
+        except Exception as sem_err:
+            logger.warning("Semantic evaluation error: %s", sem_err)
             logger.exception("Semantic Evaluation Engine failed for question %s", q_id)
 
         q_eval.semantic_evaluation = semantic_eval_res
@@ -589,6 +631,7 @@ def evaluate_autonomously(
                     gemini_confidence=q_eval.gemini_evaluation.confidence,
                     gm_missing_concepts=missing_concepts,
                     gemini_missing_concepts=q_eval.gemini_evaluation.missing_concepts,
+                    max_marks=q_eval.max_marks,
                 )
         except Exception:
             logger.exception("Verification Engine failed for question %s; skipping.", q_id)
@@ -653,11 +696,17 @@ def evaluate_autonomously(
         fairness_violations.extend(audit["violations"])
         fairness_score = min(fairness_score, audit["bias_score"])
 
+    has_verification_review_flag = any(
+        q.verification and q.verification.review_required for q in question_evaluations
+    )
+    from app.models.submission import SubmissionStatus
+    submission_status = SubmissionStatus.PENDING_REVIEW if (overall_confidence < 0.70 or has_verification_review_flag) else SubmissionStatus.COMPLETED
+
     submission_eval = SubmissionEvaluation(
         submission_id=submission_id,
         total_score=total_score,
         max_possible=max_possible,
-        status="COMPLETED" if overall_confidence >= 0.70 else "PENDING_REVIEW",
+        status=submission_status,
         confidence_score=overall_confidence,
         evaluation_mode="AI_AUTONOMOUS",
         concept_coverage=round(avg_concept_coverage, 2),

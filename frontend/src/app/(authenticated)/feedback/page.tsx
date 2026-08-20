@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import React, { useState, useEffect, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
@@ -139,15 +139,22 @@ function FeedbackContent() {
   const improvements = normalizeList(evalSummary.improvements);
   const recommendations = normalizeList(evalSummary.recommendations || evalSummary.study_recommendations);
 
-  const handleDownloadPDF = () => {
+  const handleDownloadPDF = async () => {
     if (selectedSubmissionId) {
-      const tokenCookie = document.cookie
-        .split('; ')
-        .find(row => row.startsWith('grademind_auth='));
-      const token = tokenCookie ? tokenCookie.split('=')[1] : '';
-      
-      const downloadUrl = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/submissions/${selectedSubmissionId}/pdf?token=${token}`;
-      window.open(downloadUrl, '_blank');
+      try {
+        const blob = await SubmissionService.getPdf(selectedSubmissionId);
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `Report_${metadata.student_roll_number || 'student'}.pdf`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        window.URL.revokeObjectURL(url);
+      } catch (err) {
+        console.error('Failed to download PDF:', err);
+        alert('Failed to download PDF report.');
+      }
     } else {
       alert('Submission ID is not available.');
     }

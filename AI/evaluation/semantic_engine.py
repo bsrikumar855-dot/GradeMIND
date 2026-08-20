@@ -1,174 +1,172 @@
 """
 Semantic Evaluation Engine for GradeMIND.
-Evaluates semantic similarity and concept matches using local embeddings.
+Extracts semantic evidence using an LLM and scores similarity using local embeddings.
 """
 
 import logging
-import re
 from typing import List, Optional, Dict, Any
+
 from AI.evaluation.embeddings import EmbeddingService
 from AI.evaluation.similarity import SimilarityEngine
-from AI.schemas.evaluation_schema import SemanticEvaluationResult
+from AI.schemas.evaluation_schema import SemanticEvaluationResult, SemanticEvidence
+from AI.evaluation.groq_evaluator import GroqEvaluator
 
 logger = logging.getLogger("GradeMIND.SemanticEvaluationEngine")
 
 class SemanticEvaluationEngine:
     """
-    Additive semantic assessment engine.
-    Compares student response against reference answer and expected concepts.
+    Evidence-based semantic assessment engine.
+    Extracts evidence spans for rubric criteria and calculates semantic confidence.
     """
 
     def __init__(
         self, 
         embedding_service: Optional[EmbeddingService] = None, 
         similarity_engine: Optional[SimilarityEngine] = None,
-        concept_matching_threshold: float = 0.70
     ):
         self.embedding_service = embedding_service or EmbeddingService()
         self.similarity_engine = similarity_engine or SimilarityEngine()
-        self.concept_matching_threshold = concept_matching_threshold
-
-    def _split_into_segments(self, text: str) -> List[str]:
-        """
-        Splits text into sentences/phrases for localized semantic matching.
-        """
-        if not text:
-            return []
-        
-        # Split on typical sentence boundaries and list indicators
-        raw_segments = re.split(r'[.!?;\n]+', text)
-        segments = []
-        for segment in raw_segments:
-            cleaned = segment.strip()
-            # Filter out very short segments (e.g. less than 3 chars or just numbers)
-            if len(cleaned) >= 3 and not cleaned.isdigit():
-                segments.append(cleaned)
-        
-        # If no segments were found but text exists, return original text as single segment
-        if not segments and text.strip():
-            segments.append(text.strip())
-
-        # Cap at top 100 longest segments to keep embedding inference fast on CPU
-        if len(segments) > 100:
-            segments = sorted(segments, key=len, reverse=True)[:100]
-            
-        return segments
+        self.llm_evaluator = GroqEvaluator()
 
     def evaluate(
         self, 
         question: str, 
-        reference_answer: str, 
         student_answer: str, 
-        expected_concepts: List[str],
-        topic_context: str = "",
-        chapter_context: str = ""
+        rubric_criteria: List[Dict[str, Any]],
+        is_autonomous_rubric: bool = False
     ) -> SemanticEvaluationResult:
         """
-        Performs semantic evaluation of student_answer against reference_answer.
-        Maps expected_concepts to student answer segments semantically.
+        Performs semantic evaluation using LLM evidence extraction and local embedding validation.
         """
         logger.info(
-            "Starting semantic evaluation. Concepts: %s, Student length: %d", 
-            expected_concepts, len(student_answer or "")
+            "Starting semantic evidence evaluation. Criteria count: %d", 
+            len(rubric_criteria)
         )
-        if topic_context or chapter_context:
-            logger.info("Curriculum details provided - Topic: %r, Chapter: %r", topic_context, chapter_context)
         
         clean_student = (student_answer or "").strip()
-        clean_reference = (reference_answer or "").strip()
+        
+        # Calculate max marks
+        max_score = sum(c.get("allocated_marks", 0.0) for c in rubric_criteria)
         
         # Handle empty/whitespace student answer
         if not clean_student:
+            empty_evidence = []
+            for c in rubric_criteria:
+                empty_evidence.append(SemanticEvidence(
+                    criterion=c["description"],
+                    evidence_span="",
+                    semantic_similarity=0.0,
+                    satisfied=False,
+                    confidence=1.0,
+                    reason="Student answer is empty."
+                ))
             return SemanticEvaluationResult(
-                semantic_similarity=0.0,
+                is_autonomous_rubric=is_autonomous_rubric,
+                evidence=empty_evidence,
+                overall_score=0.0,
+                max_score=max_score,
                 semantic_confidence=1.0,
-                matched_semantic_concepts=[],
-                missing_semantic_concepts=expected_concepts.copy() if expected_concepts else [],
-                explanation="Student answer is empty or missing. No semantic match found."
+                explanation="Student answer is empty. No evidence found."
             )
 
-        # Handle empty reference answer
-        if not clean_reference:
+        if not self.llm_evaluator.is_available():
+            logger.warning("GroqEvaluator is unavailable. Semantic evidence extraction cannot proceed.")
             return SemanticEvaluationResult(
-                semantic_similarity=0.0,
-                semantic_confidence=0.5,
-                matched_semantic_concepts=[],
-                missing_semantic_concepts=[],
-                explanation="Reference answer is empty. Semantic evaluation cannot be performed."
+                is_autonomous_rubric=is_autonomous_rubric,
+                evidence=[],
+                overall_score=0.0,
+                max_score=max_score,
+                semantic_confidence=0.0,
+                explanation="LLM unavailable for semantic extraction."
             )
 
         try:
-            # 1. Compute overall reference vs student similarity
-            ref_emb = self.embedding_service.generate_embedding(clean_reference)
-            stud_emb = self.embedding_service.generate_embedding(clean_student)
-            
-            overall_sim = self.similarity_engine.calculate_similarity(ref_emb, stud_emb)
-            
-            # 2. Evaluate individual concept matches
-            matched_concepts = []
-            missing_concepts = []
-            
-            if expected_concepts:
-                # Segment student answer to locate local matches
-                stud_segments = self._split_into_segments(clean_student)
-                
-                if not stud_segments:
-                    missing_concepts = expected_concepts.copy()
-                else:
-                    # Batch generate embeddings for concepts and student segments
-                    concept_embs = self.embedding_service.generate_batch_embeddings(expected_concepts)
-                    segment_embs = self.embedding_service.generate_batch_embeddings(stud_segments)
-                    
-                    for idx, concept in enumerate(expected_concepts):
-                        concept_emb = concept_embs[idx]
-                        max_sim = 0.0
-                        
-                        for seg_emb in segment_embs:
-                            sim = self.similarity_engine.calculate_similarity(concept_emb, seg_emb)
-                            if sim > max_sim:
-                                max_sim = sim
-                                
-                        if max_sim >= self.concept_matching_threshold:
-                            matched_concepts.append(concept)
-                            logger.debug("Concept '%s' matched semantically (max similarity: %.2f)", concept, max_sim)
-                        else:
-                            missing_concepts.append(concept)
-                            logger.debug("Concept '%s' not matched (max similarity: %.2f)", concept, max_sim)
-            
-            # 3. Determine semantic confidence
-            # Lower confidence slightly if answers are extremely short (potential OCR noise/insufficient info)
-            semantic_confidence = 0.95
-            if len(clean_student) < 10 or len(clean_reference) < 10:
-                semantic_confidence = 0.75
-                
-            # 4. Construct descriptive explanation
-            concept_summary = ""
-            if expected_concepts:
-                concept_summary = (
-                    f" Matched concepts: {', '.join(matched_concepts) if matched_concepts else 'None'}."
-                    f" Missing concepts: {', '.join(missing_concepts) if missing_concepts else 'None'}."
-                )
-                
-            explanation = (
-                f"Semantic similarity with the reference answer is {overall_sim:.2f}."
-                f"{concept_summary}"
+            criteria_strings = [c.get("description") or c.get("criterion", "") for c in rubric_criteria]
+            extracted_evidence = self.llm_evaluator.extract_evidence(
+                question=question,
+                student_answer=clean_student,
+                criteria=criteria_strings
             )
             
+            evidence_models = []
+            overall_score = 0.0
+            
+            # Map extracted items back to the rubric criteria
+            extracted_map = {item.get("criterion", ""): item for item in extracted_evidence}
+            
+            # Pre-compute criterion embeddings for similarity
+            try:
+                crit_embs = self.embedding_service.generate_batch_embeddings(criteria_strings)
+            except Exception as e:
+                logger.warning("Failed to generate criterion embeddings: %s", e)
+                crit_embs = [None] * len(criteria_strings)
+
+            for idx, c in enumerate(rubric_criteria):
+                desc = c.get("description") or c.get("criterion", "")
+                alloc_marks = c.get("allocated_marks", 0.0)
+                
+                item = extracted_map.get(desc, {})
+                evidence_span = item.get("evidence_span", "")
+                satisfied = item.get("satisfied", False)
+                confidence = item.get("confidence", 0.8)
+                reason = item.get("reason", "No reason provided.")
+                
+                sim_score = 0.0
+                if evidence_span and evidence_span.strip() and crit_embs[idx] is not None:
+                    try:
+                        ev_emb = self.embedding_service.generate_embedding(evidence_span)
+                        crit_emb = crit_embs[idx]
+                        sim_score = self.similarity_engine.calculate_similarity(crit_emb, ev_emb)
+                    except Exception:
+                        sim_score = 0.0
+                        
+                # Adjust satisfaction if the LLM hallucinated evidence
+                if satisfied and not evidence_span.strip():
+                    satisfied = False
+                    reason = "LLM marked satisfied but provided no textual evidence."
+                    
+                if satisfied:
+                    overall_score += alloc_marks
+                    
+                evidence_models.append(SemanticEvidence(
+                    criterion=desc,
+                    evidence_span=evidence_span,
+                    semantic_similarity=round(sim_score, 4),
+                    satisfied=satisfied,
+                    confidence=confidence,
+                    reason=reason
+                ))
+                
+            overall_score = min(max(overall_score, 0.0), max_score)
+            
+            # Calculate overall semantic confidence based on LLM confidence and local similarity
+            avg_conf = sum(e.confidence for e in evidence_models) / max(1, len(evidence_models))
+            avg_sim = sum(e.semantic_similarity for e in evidence_models if e.satisfied) / max(1, sum(1 for e in evidence_models if e.satisfied))
+            
+            # If nothing satisfied, similarity is technically 0, but confidence in that 0 could be high.
+            # We'll blend LLM confidence with similarity confidence.
+            semantic_confidence = round(0.7 * avg_conf + 0.3 * (avg_sim if overall_score > 0 else 1.0), 4)
+
+            # Construct explanation
+            satisfied_count = sum(1 for e in evidence_models if e.satisfied)
+            explanation = f"Semantically satisfied {satisfied_count}/{len(rubric_criteria)} criteria. Total score: {overall_score}/{max_score}."
+            
             return SemanticEvaluationResult(
-                semantic_similarity=round(overall_sim, 4),
+                is_autonomous_rubric=is_autonomous_rubric,
+                evidence=evidence_models,
+                overall_score=overall_score,
+                max_score=max_score,
                 semantic_confidence=semantic_confidence,
-                matched_semantic_concepts=matched_concepts,
-                missing_semantic_concepts=missing_concepts,
                 explanation=explanation
             )
             
         except Exception as e:
             logger.exception("Exception during semantic evaluation process")
-            # Return a safe fallback evaluation result
             return SemanticEvaluationResult(
-                semantic_similarity=0.0,
+                is_autonomous_rubric=is_autonomous_rubric,
+                evidence=[],
+                overall_score=0.0,
+                max_score=max_score,
                 semantic_confidence=0.0,
-                matched_semantic_concepts=[],
-                missing_semantic_concepts=expected_concepts.copy() if expected_concepts else [],
                 explanation=f"Error performing semantic evaluation: {str(e)}"
             )

@@ -6,11 +6,13 @@ Provides unified intelligence API to evaluate student topic masteries, gaps, and
 import logging
 from typing import List, Union, Dict, Any
 from AI.schemas.evaluation_schema import (
-    SubmissionEvaluation, QuestionEvaluation, LearningAnalyticsResult, TopicMastery, KnowledgeGap
+    SubmissionEvaluation, QuestionEvaluation, LearningAnalyticsResult, TopicMastery, KnowledgeGap,
+    ConceptMastery, Misconception, Recommendation
 )
 from AI.analytics.mastery_engine import MasteryEngine
 from AI.analytics.gap_detector import GapDetector
 from AI.analytics.recommendation_engine import RecommendationEngine
+from AI.analytics.misconception_engine import MisconceptionEngine
 
 logger = logging.getLogger("GradeMIND.LearningAnalyticsService")
 
@@ -23,6 +25,7 @@ class LearningAnalyticsService:
     def __init__(self):
         self.mastery_engine = MasteryEngine()
         self.gap_detector = GapDetector()
+        self.misconception_engine = MisconceptionEngine()
         self.recommendation_engine = RecommendationEngine()
 
     def _ensure_pydantic_questions(
@@ -61,25 +64,40 @@ class LearningAnalyticsService:
             return LearningAnalyticsResult(overall_mastery=0.0)
 
         # 1. Run Mastery Engine
-        mastery_results = self.mastery_engine.evaluate_mastery(questions)
+        topic_mastery_results = self.mastery_engine.evaluate_mastery(questions)
+        concept_mastery_results = self.mastery_engine.evaluate_concept_mastery(questions)
 
-        # 2. Run Gap Detector
+        # 2. Run Gap Detector & Misconception Engine
         gaps = self.gap_detector.detect_gaps(questions)
+        misconceptions = self.misconception_engine.detect_misconceptions(questions)
 
         # 3. Run Recommendation Engine
-        recommendations = self.recommendation_engine.generate_recommendations(mastery_results, gaps)
+        recommendations = self.recommendation_engine.generate_recommendations(
+            concept_mastery_results, misconceptions
+        )
 
-        # 4. Extract mastered vs weak topics
+        # 4. Extract mastered vs weak topics/concepts
         mastered_topics = []
         weak_topics = []
         mastery_scores = []
-
-        for topic, result in mastery_results.items():
+        
+        for topic, result in topic_mastery_results.items():
             mastery_scores.append(result.mastery_score)
             if result.status == "MASTERED":
                 mastered_topics.append(topic)
             elif result.status in ("WEAK", "CRITICAL"):
                 weak_topics.append(topic)
+                
+        strengths = []
+        weaknesses = []
+        concept_mastery_list = []
+        
+        for concept, result in concept_mastery_results.items():
+            concept_mastery_list.append(result)
+            if result.status == "MASTERED":
+                strengths.append(concept)
+            elif result.status in ("WEAK", "CRITICAL"):
+                weaknesses.append(concept)
 
         # 5. Compute overall mastery average
         overall_mastery = (sum(mastery_scores) / len(mastery_scores)) if mastery_scores else 0.0
@@ -89,6 +107,10 @@ class LearningAnalyticsService:
             mastered_topics=mastered_topics,
             weak_topics=weak_topics,
             knowledge_gaps=gaps,
+            concept_mastery=concept_mastery_list,
+            strengths=strengths,
+            weaknesses=weaknesses,
+            misconceptions=misconceptions,
             recommendations=recommendations,
             overall_mastery=overall_mastery
         )
@@ -115,20 +137,34 @@ class LearningAnalyticsService:
             return LearningAnalyticsResult(overall_mastery=0.0)
 
         # Perform the same analytics pipeline over aggregate questions dataset
-        mastery_results = self.mastery_engine.evaluate_mastery(all_questions)
+        topic_mastery_results = self.mastery_engine.evaluate_mastery(all_questions)
+        concept_mastery_results = self.mastery_engine.evaluate_concept_mastery(all_questions)
+        
         gaps = self.gap_detector.detect_gaps(all_questions)
-        recommendations = self.recommendation_engine.generate_recommendations(mastery_results, gaps)
+        misconceptions = self.misconception_engine.detect_misconceptions(all_questions)
+        recommendations = self.recommendation_engine.generate_recommendations(concept_mastery_results, misconceptions)
 
         mastered_topics = []
         weak_topics = []
         mastery_scores = []
-
-        for topic, result in mastery_results.items():
+        
+        for topic, result in topic_mastery_results.items():
             mastery_scores.append(result.mastery_score)
             if result.status == "MASTERED":
                 mastered_topics.append(topic)
             elif result.status in ("WEAK", "CRITICAL"):
                 weak_topics.append(topic)
+                
+        strengths = []
+        weaknesses = []
+        concept_mastery_list = []
+        
+        for concept, result in concept_mastery_results.items():
+            concept_mastery_list.append(result)
+            if result.status == "MASTERED":
+                strengths.append(concept)
+            elif result.status in ("WEAK", "CRITICAL"):
+                weaknesses.append(concept)
 
         overall_mastery = (sum(mastery_scores) / len(mastery_scores)) if mastery_scores else 0.0
         overall_mastery = round(overall_mastery, 4)
@@ -137,6 +173,10 @@ class LearningAnalyticsService:
             mastered_topics=mastered_topics,
             weak_topics=weak_topics,
             knowledge_gaps=gaps,
+            concept_mastery=concept_mastery_list,
+            strengths=strengths,
+            weaknesses=weaknesses,
+            misconceptions=misconceptions,
             recommendations=recommendations,
             overall_mastery=overall_mastery
         )

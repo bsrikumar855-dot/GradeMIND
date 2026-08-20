@@ -4,26 +4,32 @@
 
 @layer base {
   :root {
-    --background: 220 14% 96%;
-    --foreground: 222.2 84% 4.9%;
+    --background: 210 20% 98%;
+    --foreground: 222.2 47.4% 11.2%;
     --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
+    --card-foreground: 222.2 47.4% 11.2%;
     --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
+    --popover-foreground: 222.2 47.4% 11.2%;
     --primary: 221.2 83.2% 53.3%;
     --primary-foreground: 210 40% 98%;
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
+    --secondary: 215 16% 47%;
+    --secondary-foreground: 210 40% 98%;
     --muted: 210 40% 96.1%;
     --muted-foreground: 215.4 16.3% 46.9%;
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
-    --destructive: 346.8 77.2% 49.8%;
-    --destructive-foreground: 210 40% 98%;
+    --accent: 173 80% 40%;
+    --accent-foreground: 210 40% 98%;
+    --success: 158 64% 42%;
+    --success-foreground: 0 0% 100%;
+    --warning: 38 92% 45%;
+    --warning-foreground: 0 0% 100%;
+    --danger: 0 84% 60%;
+    --danger-foreground: 0 0% 100%;
+    --info: 217 91% 60%;
+    --info-foreground: 0 0% 100%;
     --border: 214.3 31.8% 91.4%;
     --input: 214.3 31.8% 91.4%;
     --ring: 221.2 83.2% 53.3%;
-    --radius: 0.6rem;
+    --radius: 0.5rem;
   }
 }
 
@@ -36,7 +42,23 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* Custom Scrollbar */
+/* Accessible focus ring */
+*:focus-visible {
+  outline: 2px solid hsl(var(--ring));
+  outline-offset: 2px;
+}
+
+/* Reduced motion preference override */
+@media (prefers-reduced-motion: reduce) {
+  *, ::before, ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Custom Academic Scrollbar */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
@@ -52,62 +74,68 @@ body {
   background: #94a3b8;
 }
 
-/* GradeMIND Design Tokens & Utilities */
+/* GradeMIND Typography & Surface Tokens */
 @layer components {
-  /* Calm Surface Container */
+  /* Typography Tokens */
+  .text-display {
+    @apply text-3xl font-extrabold tracking-tight text-slate-900 sm:text-4xl;
+  }
+  .text-heading {
+    @apply text-lg font-bold tracking-tight text-slate-900;
+  }
+  .text-body {
+    @apply text-sm font-normal text-slate-700 leading-relaxed;
+  }
+  .text-caption {
+    @apply text-xs font-medium text-slate-500;
+  }
+  .text-metadata {
+    @apply font-mono text-[11px] uppercase tracking-wider text-slate-500 font-semibold;
+  }
+
+  /* Calm Academic Card Surface */
   .calm-card {
     background: #ffffff;
     border: 1px solid #e2e8f0;
-    border-radius: 0.75rem;
-    box-shadow: 0 1px 3px 0 rgba(15, 23, 42, 0.03), 0 1px 2px -1px rgba(15, 23, 42, 0.02);
-    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    border-radius: 0.5rem;
+    box-shadow: 0 1px 3px 0 rgba(15, 23, 42, 0.04), 0 1px 2px -1px rgba(15, 23, 42, 0.02);
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
   }
 
   .calm-card-interactive {
-    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: all 0.15s ease-in-out;
   }
   .calm-card-interactive:hover {
     border-color: #cbd5e1;
-    box-shadow: 0 10px 25px -5px rgba(15, 23, 42, 0.06), 0 8px 10px -6px rgba(15, 23, 42, 0.03);
-    transform: translateY(-1px);
+    box-shadow: 0 4px 12px -2px rgba(15, 23, 42, 0.06);
   }
 
-  /* Academic Badge Pill */
+  /* Academic Pill Badges */
   .badge-academic {
     background: #f1f5f9;
     color: #334155;
     border: 1px solid #e2e8f0;
-    font-weight: 500;
+    font-weight: 600;
     border-radius: 9999px;
   }
-
   .badge-success {
     background: #ecfdf5;
     color: #047857;
     border: 1px solid #a7f3d0;
   }
-
   .badge-warning {
     background: #fffbeb;
     color: #b45309;
     border: 1px solid #fde68a;
   }
-
+  .badge-danger {
+    background: #fef2f2;
+    color: #b91c1c;
+    border: 1px solid #fecaca;
+  }
   .badge-primary {
     background: #eff6ff;
     color: #1d4ed8;
     border: 1px solid #bfdbfe;
-  }
-
-  /* Shimmer Skeleton */
-  .shimmer-bg {
-    background: linear-gradient(90deg, #f1f5f9 0%, #e2e8f0 50%, #f1f5f9 100%);
-    background-size: 200% 100%;
-    animation: shimmer 1.8s infinite ease-in-out;
-  }
-
-  @keyframes shimmer {
-    0% { background-position: 200% 0; }
-    100% { background-position: -200% 0; }
   }
 }

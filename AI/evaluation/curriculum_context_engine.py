@@ -4,7 +4,7 @@ Retrieves and constructs curriculum-aware grading context.
 """
 
 import logging
-from typing import Optional, List
+from typing import Optional, List, Dict, Any
 from AI.schemas.evaluation_schema import CurriculumContext
 from AI.rag.rag_service import RAGService
 from AI.knowledge_base.knowledge_service import KnowledgeBaseService
@@ -40,9 +40,23 @@ class CurriculumContextEngine:
             return CurriculumContext(retrieval_score=0.0)
 
         try:
-            # Retrieve documents (top_k=20 ensures all categories across subjects are captured)
-            docs = self.rag_service.retriever.retrieve(question_text, top_k=20)
+            # Prepare metadata filters based on the subject hint
+            metadata_filters: Optional[Dict[str, Any]] = None
+            if subject_hint and subject_hint.lower() != "general":
+                metadata_filters = {"subject_name": subject_hint}
             
+            # Retrieve documents
+            docs = self.rag_service.retriever.retrieve(
+                question_text, 
+                top_k=20,
+                metadata_filters=metadata_filters
+            )
+            
+            # If no docs found with filter, try without filter (graceful degradation)
+            if not docs and metadata_filters:
+                logger.warning("No docs found for subject %r. Retrying globally.", subject_hint)
+                docs = self.rag_service.retriever.retrieve(question_text, top_k=20)
+                
             if not docs:
                 if subject_hint:
                     return CurriculumContext(
@@ -61,18 +75,8 @@ class CurriculumContextEngine:
             ref_answer_str = ""
             rubric_title_str = ""
             rubric_criteria_list: List[str] = []
-
-            q_low = question_text.lower()
-            
-            # Filter docs by query intent if multiple subjects are indexed
-            if "photo" in q_low or "science" in q_low or "plant" in q_low:
-                target_docs = [d for d in docs if any(w in d.get("content", "").lower() for w in ["photo", "science", "plant", "nutrition"])]
-                if target_docs:
-                    docs = target_docs
-            elif any(w in q_low for w in ["array", "linked", "stack", "queue", "tree", "graph", "dsa"]):
-                target_docs = [d for d in docs if any(w in d.get("content", "").lower() for w in ["dsa", "structure", "array", "linked", "algorithm"])]
-                if target_docs:
-                    docs = target_docs
+            learning_objectives_list: List[str] = []
+            expected_concepts_list: List[str] = []
 
             for doc in docs:
                 doc_type = doc.get("document_type", "").lower()
@@ -85,6 +89,7 @@ class CurriculumContextEngine:
                     chapter_str = content.replace("Chapter: ", "", 1)
                 elif doc_type == "topic" and not topic_str:
                     topic_str = content.replace("Topic: ", "", 1)
+                    learning_objectives_list = metadata.get("learning_objectives", [])
                 elif doc_type == "referenceanswer" and not ref_answer_str:
                     ref_answer_str = content.replace("Reference Answer: ", "", 1)
                 elif doc_type == "rubric" and not rubric_title_str:
@@ -95,36 +100,22 @@ class CurriculumContextEngine:
                         marks = crit.get("allocated_marks", 0.0)
                         if desc:
                             rubric_criteria_list.append(f"{desc} ({marks} marks)")
+                            
+            # Derive expected concepts from learning objectives if none are explicitly mapped
+            # (In a real system, concepts would be parsed. Here we map objectives to concepts)
+            if learning_objectives_list:
+                expected_concepts_list = [obj.strip() for obj in learning_objectives_list]
 
-            # Check if retrieved subject aligns with subject_hint or question_text
-            q_low = question_text.lower()
-            is_dsa_q = any(k in q_low for k in ["array", "linked list", "stack", "queue", "tree", "graph", "pointer", "node", "dsa", "algorithm"])
-            is_mismatched = False
-
-            if subject_hint:
-                sh_lower = subject_hint.lower()
-                sub_lower = subject_str.lower()
-                if ("dsa" in sh_lower or "structure" in sh_lower or "algo" in sh_lower or "computer" in sh_lower) and "science" in sub_lower:
-                    is_mismatched = True
-            elif is_dsa_q and "science" in subject_str.lower():
-                is_mismatched = True
-
-            if is_mismatched:
-                clean_subject = subject_hint if subject_hint and subject_hint.lower() != "general" else "Data Structures & Algorithms"
-                return CurriculumContext(
-                    subject=clean_subject,
-                    chapter="Linear & Non-Linear Data Structures",
-                    topic="Data Structures & Algorithms",
-                    reference_answer="",
-                    rubric="",
-                    rubric_criteria=[],
-                    retrieval_score=highest_score
-                )
+            # If subject string is empty, fall back to the subject hint
+            if not subject_str and subject_hint:
+                subject_str = subject_hint
 
             return CurriculumContext(
                 subject=subject_str,
                 chapter=chapter_str,
                 topic=topic_str,
+                learning_objectives=learning_objectives_list,
+                expected_concepts=expected_concepts_list,
                 reference_answer=ref_answer_str,
                 rubric=rubric_title_str,
                 rubric_criteria=rubric_criteria_list,
@@ -133,9 +124,4 @@ class CurriculumContextEngine:
 
         except Exception as e:
             logger.exception("Error building curriculum context")
-            return CurriculumContext(retrieval_score=0.0)
-
-        except Exception as e:
-            logger.exception("Error building curriculum context")
-            # Graceful fallback on exception
             return CurriculumContext(retrieval_score=0.0)

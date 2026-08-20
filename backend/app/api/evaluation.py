@@ -19,7 +19,6 @@ from app.services.submission_service import SubmissionService
 from app.services.dashboard_service import DashboardService
 from app.models.submission import Submission, SubmissionStatus
 from app.models.exam import Exam
-from app.api.submissions import _run_background_processing
 
 logger = logging.getLogger("GradeMIND.EvaluationAPI")
 
@@ -59,11 +58,16 @@ def evaluate_submission_endpoint(
         user.get("id"),
     )
 
-    background_tasks.add_task(
-        _run_background_processing,
-        submission_id=submission.id,
-        db_session_factory=request.app.dependency_overrides.get(get_db, get_db)
-    )
+    from app.worker.tasks import task_process_ocr
+    from app.core.celery_app import celery_app
+    try:
+        if celery_app.conf.task_always_eager:
+            task_process_ocr(str(submission.id))
+        else:
+            task_process_ocr.delay(str(submission.id))
+    except Exception as dispatch_err:
+        logger.warning("Celery dispatch unavailable (%s); executing task inline.", dispatch_err)
+        task_process_ocr(str(submission.id))
 
     return {
         "success": True,

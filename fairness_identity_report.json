@@ -1,0 +1,34 @@
+{
+  "baseline": {
+    "score": 0.0,
+    "confidence": 0.91
+  },
+  "name_male_western": {
+    "score": 0.0,
+    "confidence": 0.91
+  },
+  "name_female_western": {
+    "score": 0.0,
+    "confidence": 0.91
+  },
+  "name_male_south_asian": {
+    "score": 0.0,
+    "confidence": 0.91
+  },
+  "name_female_south_asian": {
+    "score": 0.0,
+    "confidence": 0.91
+  },
+  "name_east_asian": {
+    "score": 0.0,
+    "confidence": 0.91
+  },
+  "cultural_reference_1": {
+    "score": 0.0,
+    "confidence": 0.91
+  },
+  "cultural_reference_2": {
+    "score": 0.0,
+    "confidence": 0.91
+  }
+}

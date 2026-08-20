@@ -198,41 +198,41 @@ function EvaluationContent() {
     <div className="max-w-5xl mx-auto space-y-8 pb-16">
       
       {/* Top Banner */}
-      <div className="glass-card rounded-3xl p-8 bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 text-white shadow-2xl border border-slate-700/50 flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+      <div className="calm-card p-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
         <div>
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-400 text-xs font-bold uppercase tracking-wider mb-2">
-            <Zap className="w-3.5 h-3.5 fill-emerald-400" /> Real-time AI Agent Pipeline
+          <div className="inline-flex items-center gap-2 px-2.5 py-0.5 rounded-full bg-slate-100 border border-slate-200 text-slate-700 text-xs font-semibold uppercase tracking-wider mb-2">
+            Pipeline Processing
           </div>
-          <h1 className="text-3xl font-black text-white tracking-tight">
-            AI Evaluation in Progress
+          <h1 className="text-2xl font-bold text-slate-900 tracking-tight">
+            Evaluation Pipeline Active
           </h1>
-          <p className="text-slate-300 text-sm mt-1">
-            Processing candidate submissions through 6 autonomous agent verification stages.
+          <p className="text-slate-600 text-sm mt-1">
+            Processing candidate submissions through multi-stage OCR, criteria evaluation, and verification.
           </p>
         </div>
 
         {/* Countdown ETA Badge */}
-        <div className="px-5 py-3 rounded-2xl bg-white/10 border border-white/15 backdrop-blur-md text-right">
-          <span className="text-[10px] font-bold uppercase text-slate-300 block tracking-wider">Est. Completion</span>
-          <span className="text-xl font-black text-emerald-400">
-            {isComplete ? 'Done!' : estimatedSeconds !== null ? `~${estimatedSeconds}s` : 'Calculating...'}
+        <div className="px-4 py-2 rounded-lg bg-slate-50 border border-slate-200 text-right">
+          <span className="text-[10px] font-bold uppercase text-slate-500 block tracking-wider">Est. Remaining</span>
+          <span className="text-lg font-bold text-slate-900">
+            {isComplete ? 'Complete' : estimatedSeconds !== null ? `~${estimatedSeconds}s` : 'Calculating...'}
           </span>
         </div>
       </div>
 
       {/* Progress Bar Card */}
-      <div className="glass-card rounded-3xl p-8 space-y-4">
-        <div className="flex justify-between items-center text-sm font-bold text-slate-900">
+      <div className="calm-card p-6 space-y-4">
+        <div className="flex justify-between items-center text-sm font-semibold text-slate-900">
           <span className="flex items-center gap-2">
-            <Activity className="w-4 h-4 text-emerald-500 animate-pulse" /> Overall Pipeline Progress
+            Overall Pipeline Progress
           </span>
-          <span className="text-emerald-600 font-black text-base">{Math.round(progress)}%</span>
+          <span className="text-slate-900 font-bold text-base">{Math.round(progress)}%</span>
         </div>
 
-        {/* Glow Progress Track */}
-        <div className="w-full h-4 bg-slate-100 rounded-full overflow-hidden p-0.5 border border-slate-200/60 shadow-inner">
+        {/* Progress Track */}
+        <div className="w-full h-3 bg-slate-100 rounded-full overflow-hidden border border-slate-200">
           <div 
-            className="h-full rounded-full bg-gradient-to-r from-emerald-500 via-teal-400 to-blue-500 transition-all duration-500 shadow-glow-emerald"
+            className="h-full rounded-full bg-slate-900 transition-all duration-500"
             style={{ width: `${Math.max(progress, 3)}%` }}
           />
         </div>

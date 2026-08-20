@@ -193,7 +193,7 @@ function AnalyticsContent() {
                     <Target className="w-5 h-5 text-brand-primary" /> Topic Mastery Scorecard
                   </h3>
                   
-                  {/* Mock/Retrieved Topics list from Analytics Service */}
+                  {/* Retrieved Topics list from Analytics Service */}
                   <div className="space-y-6">
                     {/* If mastered_topics and weak_topics lists exist, render a clean combined list */}
                     {analytics.weak_topics?.length === 0 && analytics.mastered_topics?.length === 0 ? (

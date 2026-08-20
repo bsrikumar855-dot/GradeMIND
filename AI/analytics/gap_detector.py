@@ -42,9 +42,10 @@ class GapDetector:
 
             # Read from semantic engine if available (prioritized)
             if q.semantic_evaluation:
-                missing.update(q.semantic_evaluation.missing_semantic_concepts)
-                expected.update(q.semantic_evaluation.matched_semantic_concepts)
-                expected.update(q.semantic_evaluation.missing_semantic_concepts)
+                for ev in q.semantic_evaluation.evidence:
+                    if not ev.satisfied:
+                        missing.add(ev.criterion)
+                    expected.add(ev.criterion)
             else:
                 missing.update(q.missing_concepts)
                 # Fallback to matched + missing keywords

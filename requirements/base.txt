@@ -24,3 +24,7 @@ email-validator==2.2.0
 python-multipart==0.0.20
 httpx==0.28.1
 PyYAML==6.0.2
+
+# Async Task Queue
+celery==5.4.0
+redis==5.2.1

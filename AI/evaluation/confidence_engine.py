@@ -31,11 +31,13 @@ logger = logging.getLogger("GradeMIND.ConfidenceEngine")
 
 # ---------------------------------------------------------------------------
 # Weights — must sum to 1.0
+# Per C5 constraint (CLAUDE.md), concept_coverage is DISPLAY-ONLY and must
+# NOT feed confidence score or lane assignment until empirically calibrated.
 # ---------------------------------------------------------------------------
-_W_CONCEPT    = 0.30   # Concept coverage  — most reliable academic signal
-_W_SEMANTIC   = 0.25   # Semantic alignment — token-level meaning overlap
-_W_EXPL       = 0.20   # Explainability   — evidence-backed verification
-_W_OCR        = 0.15   # OCR confidence   — source quality
+_W_CONCEPT    = 0.00   # Concept coverage  — DISPLAY-ONLY per C5 constraint
+_W_EXPL       = 0.40   # Explainability   — evidence-backed match quality
+_W_SEMANTIC   = 0.30   # Semantic alignment — token-level meaning overlap
+_W_OCR        = 0.20   # OCR confidence   — source quality
 _W_FAIRNESS   = 0.10   # Fairness score   — bias-neutrality
 
 _DISCREPANCY_PENALTY = 0.05  # Per discrepancy, max cap at 0.25 total

@@ -123,9 +123,10 @@ def test_exception_fallback():
         gm_confidence=0.9, gemini_confidence=0.9,
         gm_missing_concepts=[], gemini_missing_concepts=[]
     )
-    # Should safely return a PASS with 0 difference instead of crashing the pipeline
-    assert result.status == VerificationStatus.PASS
-    assert result.root_cause == "UNKNOWN"
+    # Should safely return LOW_CONFIDENCE with review_required=True instead of fake PASS
+    assert result.status == VerificationStatus.LOW_CONFIDENCE
+    assert result.review_required is True
+    assert result.root_cause == "VERIFICATION_ERROR"
 
 # 10. Integration-like scenario (Simulating actual output)
 def test_integration_scenario(engine):

@@ -76,3 +76,50 @@ class MasteryEngine:
             )
             
         return mastery_results
+
+    def evaluate_concept_mastery(self, questions: List[QuestionEvaluation]) -> Dict[str, "ConceptMastery"]:
+        """
+        Calculates mastery scores at the granular concept level using semantic evidence.
+        """
+        from AI.schemas.evaluation_schema import ConceptMastery
+        
+        # Concept -> [1.0 (satisfied), 0.0 (unsatisfied)]
+        concept_scores: Dict[str, List[float]] = {}
+        
+        for q in questions:
+            if q.semantic_evaluation and q.semantic_evaluation.evidence:
+                for ev in q.semantic_evaluation.evidence:
+                    concept = ev.criterion
+                    if concept not in concept_scores:
+                        concept_scores[concept] = []
+                    concept_scores[concept].append(1.0 if ev.satisfied else 0.0)
+            else:
+                # Fallback to matched/missing keywords if no semantic engine available
+                for kw in (q.matched_keywords or []):
+                    if kw not in concept_scores: concept_scores[kw] = []
+                    concept_scores[kw].append(1.0)
+                for kw in (q.missing_concepts or []):
+                    if kw not in concept_scores: concept_scores[kw] = []
+                    concept_scores[kw].append(0.0)
+
+        results = {}
+        for concept, scores in concept_scores.items():
+            mastery_score = sum(scores) / len(scores) if scores else 0.0
+            
+            if mastery_score >= 0.80:
+                status = "MASTERED"
+            elif mastery_score >= 0.50:
+                status = "DEVELOPING"
+            elif mastery_score >= 0.30:
+                status = "WEAK"
+            else:
+                status = "CRITICAL"
+                
+            results[concept] = ConceptMastery(
+                concept=concept,
+                mastery_score=round(mastery_score, 4),
+                occurrences=len(scores),
+                status=status
+            )
+            
+        return results

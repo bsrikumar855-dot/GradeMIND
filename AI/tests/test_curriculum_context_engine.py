@@ -148,14 +148,11 @@ def test_semantic_integration(mock_embedding_service):
     # Perform evaluate passing topic/chapter context
     res = semantic_engine.evaluate(
         question="What is photosynthesis?",
-        reference_answer=context.reference_answer,
         student_answer="Plants make food from sun.",
-        expected_concepts=["convert sunlight"],
-        topic_context=context.topic,
-        chapter_context=context.chapter
+        rubric_criteria=[{"criterion_id": "c1", "description": "convert sunlight", "allocated_marks": 2.0}]
     )
     assert res is not None
-    assert res.semantic_similarity >= 0.0
+    assert res.overall_score >= 0.0
 
 
 def test_multi_topic_retrieval(mock_embedding_service):

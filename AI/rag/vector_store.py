@@ -55,9 +55,15 @@ class VectorStore:
         for doc in documents:
             self._records[doc.document_id] = doc
 
-    def search(self, query_embedding: List[float], top_k: int = 5) -> List[Tuple[VectorRecord, float]]:
+    def search(
+        self, 
+        query_embedding: List[float], 
+        top_k: int = 5,
+        metadata_filters: Optional[Dict[str, Any]] = None
+    ) -> List[Tuple[VectorRecord, float]]:
         """
         Computes cosine similarity between query_embedding and all stored vectors.
+        Filters by metadata before computing similarity if filters are provided.
         Returns a list of Tuple[VectorRecord, score] sorted in descending order.
         """
         if not self._records or not query_embedding:
@@ -70,6 +76,20 @@ class VectorStore:
 
         results = []
         for record in self._records.values():
+            if metadata_filters:
+                match = True
+                for k, v in metadata_filters.items():
+                    if k == "document_type":
+                        # special handling for document type to allow case-insensitive
+                        if record.document_type.lower() != str(v).lower():
+                            match = False
+                            break
+                    elif str(record.metadata.get(k, "")).lower() != str(v).lower():
+                        match = False
+                        break
+                if not match:
+                    continue
+                    
             r_vec = np.asarray(record.embedding, dtype=np.float32)
             r_norm = np.linalg.norm(r_vec)
             if r_norm == 0.0:

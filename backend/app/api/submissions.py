@@ -199,12 +199,17 @@ async def upload_submission(
             detail=str(e)
         )
 
-    # Trigger background processing (non-blocking)
-    background_tasks.add_task(
-        _run_background_processing,
-        submission_id=submission.id,
-        db_session_factory=request.app.dependency_overrides.get(get_db, get_db)
-    )
+    # Trigger background processing via Celery (with fallback for test/single-node environments)
+    from app.worker.tasks import task_process_ocr
+    from app.core.celery_app import celery_app
+    try:
+        if celery_app.conf.task_always_eager:
+            background_tasks.add_task(task_process_ocr.delay, str(submission.id))
+        else:
+            task_process_ocr.delay(str(submission.id))
+    except Exception as dispatch_err:
+        logger.warning("Celery dispatch unavailable (%s); executing task in background.", dispatch_err)
+        background_tasks.add_task(task_process_ocr.delay, str(submission.id))
 
     logger.info(
         "UPLOAD_STAGE completed submission_id=%s user_id=%s background_queued=True",
@@ -567,26 +572,3 @@ def delete_submission(
     )
 
 
-# ────────────────────────────────────────────
-# Background task runner
-# ────────────────────────────────────────────
-
-def _run_background_processing(submission_id: UUID, db_session_factory):
-    """
-    Background task that creates its own database session and runs
-    the full processing pipeline. This runs outside the request lifecycle.
-    """
-    generator = db_session_factory()
-    db = next(generator)
-    try:
-        service = SubmissionService(db)
-        logger.info("BACKGROUND_STAGE start submission_id=%s", submission_id)
-        service.process_submission(submission_id)
-        logger.info("BACKGROUND_STAGE completed submission_id=%s", submission_id)
-    except Exception as e:
-        logger.exception("BACKGROUND_STAGE failed submission_id=%s error=%s", submission_id, e)
-    finally:
-        try:
-            next(generator)
-        except StopIteration:
-            pass

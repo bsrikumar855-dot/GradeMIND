@@ -238,15 +238,15 @@ export default function UploadCenter() {
     <div className="max-w-5xl mx-auto space-y-8 pb-16">
       
       {/* Header Banner */}
-      <div className="glass-card rounded-3xl p-8 bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 text-white shadow-2xl border border-slate-700/50">
-        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-400 text-xs font-bold uppercase tracking-wider mb-2">
-          <Sparkles className="w-3.5 h-3.5" /> Exam Setup Workflow
+      <div className="calm-card p-6">
+        <div className="inline-flex items-center gap-2 px-2.5 py-0.5 rounded-full bg-slate-100 border border-slate-200 text-slate-700 text-xs font-semibold uppercase tracking-wider mb-2">
+          Assessment Intake Workflow
         </div>
-        <h1 className="text-3xl font-black text-white tracking-tight">
+        <h1 className="text-2xl font-bold text-slate-900 tracking-tight">
           Upload & Configure Evaluation
         </h1>
-        <p className="text-slate-300 text-sm mt-1">
-          Follow the 3-step setup to run Groq 120B AI grading on student answer scripts.
+        <p className="text-slate-600 text-sm mt-1">
+          Follow the 3-step setup to upload, process, and evaluate student answer scripts.
         </p>
       </div>
 
