@@ -242,71 +242,79 @@ Results Summary : 3 scored, 4 routed with reasons, 9 no-scheme
 
 ## LIMITATIONS — say all of this, quickly, before anyone asks
 
-State it as a list. It takes ninety seconds and it is the most credible part of
-the presentation.
+State it as a list. It takes under two minutes and it is the most credible
+part of the presentation. Every item is a measurement, not a worry.
 
-1. **Two scripts, one of them synthetic, and no ground truth for either. No
-   accuracy claim is possible and we make none.** Nobody has marked either by
-   hand to compare against.
-2. **9 of 15 questions have no marking scheme at all.**
-3. **Q14 and Q15's value points do not match the printed paper.** The paper
-   asks candidates to *interpret the impact of attention mechanisms*. Our key
-   credits CNN, LSTM and the forget gate. The word "attention" appears nowhere
-   in the scheme. We found this by reading the question paper — which nobody
-   had done until yesterday. **Any score we previously reported for Q14 and
-   Q15 is void.**
-4. **The paper says "answer any two" of Q13–15. Our scheme models three
-   mandatory questions.** A student answering exactly two has answered
-   correctly and our scheme would under-credit them.
-5. **The scheme was authored by an AI agent against one student's answer, not
-   blind-authored by a teacher from the paper.** That is how (3) happened.
-6. **12 of 36 adversarial probes still fail.** Keyword salad and negated
-   answers score full marks on every question. "This process does not involve
-   X, Y, Z" credits X, Y and Z. Containment detects presence, not assertion.
-7. **Semantic thresholds are uncalibrated** — documented defaults, never
-   derived from a labelled set, and flagged as such in every result.
-8. **Transcription is non-deterministic. We measured it twice**, on two
-   different pages, a day apart, identical inputs. Neither run was uniformly
-   better: one lost the student's insertion caret, the other picked up the
-   examiner's margin mark and fed it downstream as a question number.
-9. **We transcribe the examiner's margin marks as if they were student
-   writing.** This is the same defect as the stray "3", not a second one, and
-   we had it recorded as two until we opened the scan. Nothing in the pipeline
-   distinguishes the margin from the answer body, and every marked script has
-   examiner ink in the margin.
-10. **Page 3 was never transcribed** — the API returned 504 three times and we
-    stopped rather than retrying into the quota.
-11. **Identity masking removes page headers**, so section markers like
-    "Part - A" are absent from page 1. Any future segmentation depending on
-    section headers must account for the masked band.
-12. **The system is assist-only.** `AUTO` is disabled at config level. It
-    suggests marks with derivations; a human awards them.
-13. **Our own line-joining code corrupts the evidence text.** It guesses
-    whether a line break is a word break, and on the DSA page it guessed wrong
-    twice out of three: `"to solve" + "a smaller"` became `solvea`, and
-    `"a hash function" + "to map"` became `functionto`. Words that are not on
-    the page, sitting in the text a mark points at. **Deterministic: it fires
-    the same way every run.** No mark changed, by luck. Not fixed.
-14. **The DSA scheme was not authored blind, and we do not claim it was.** The
-    question paper and the answer sheet arrived together, so the answer was in
-    front of the author. The scheme was committed to git before anything was
-    transcribed, which proves the *order* of events. Ordering is not ignorance.
-    **No marking scheme in this project has yet been written by anyone who had
-    not seen the script.**
-15. **Our contamination check fired on our own scheme, 8 times against 3, and
-    the count is backwards.** The scheme we know is contaminated scored 3; the
-    new one scored 8. The check cannot tell canonical phrasing from a lift —
-    `"push and pop"` is what every author writes, `"details are more
-    preserved"` is nobody's textbook. Section A is definitions, so it is almost
-    all canonical, which is where the check is weakest. **We are not treating
-    our own explanation as an acquittal**; it is the contaminated party arguing
-    its own case, and it is recorded rather than resolved.
-16. **`page_confidence` came back 1.0 on all 57 lines of the synthetic page.**
-    That is a model self-report on a rendered font, and it is exactly the
-    uncalibrated-confidence problem we flag everywhere else, showing up as a
-    saturated signal that distinguishes nothing.
+1. **One student script, one exam. No human-marked ground truth. No accuracy
+   claim is possible and we make none.** Nobody has marked this script by hand
+   to compare against.
+2. **9 of the 15 questions on the demo script have no marking scheme at all.**
+   They are not scored and they are not counted as anything.
+3. **Q14 and Q15 value points do not match the question paper.** The paper asks
+   candidates to interpret attention mechanisms. Our scheme credits CNN and
+   LSTM. The word "attention" appears nowhere in it. **Those 3/3 results are
+   VOID.**
+4. **The paper says "answer any two" of Q13-15. Our scheme models three as
+   mandatory.** A student answering exactly two followed the instruction and
+   our scheme would under-credit them.
+5. **Neither marking scheme was authored blind.** The DL scheme was AI-authored
+   against the student's answer. The DSA scheme was committed before
+   transcription, which git orders verifiably, but both images were in context
+   when it was written. **Ordering is proven by commit time, not ignorance.**
+6. **12 of 36 adversarial probes fail.** Keyword salad and negated answers
+   still score full marks. "This process does not involve X, Y, Z" credits X, Y
+   and Z. Containment detects presence, not assertion.
+7. **Semantic thresholds are uncalibrated.** Documented defaults, never derived
+   from a labelled set, because no labelled set exists.
+8. **Transcription is non-deterministic.** Same page, same pinned model, same
+   prompt version, different output on two runs, a day apart. Measured twice.
+9. **Our segmenter read the examiner's own margin mark as a question number.**
+   That "3" is real ink on the page, not a hallucination: bbox x 0.01 to 0.08,
+   hard against the left edge, in the examiner's hand. **This is systematic,
+   not random. Every marked script has examiner ink in the margin.**
+10. **`rejoin_line_texts` joins lines with no space** when the next line starts
+    with a short lowercase token: `"solvea smaller"`, `"functionto map"`. Wrong
+    2 of 3 times on that page. **Deterministic, and ours.** Not fixed.
+11. **The DSA answer sheet is a rendered font, not real handwriting.** No HTR
+    claim comes from it. `page_confidence` returned 1.0 on all 57 lines, which
+    is what a self-reported legibility score does on synthetic input.
+12. **Identity masking removes page headers**, so the section markers on page 1
+    are gone. Any segmentation that depends on them must account for the band.
+13. **`p3_evaluation_report.json` is lossy.** It carries character spans but not
+    line bboxes, so a PDF regenerated from it alone has no highlights.
+14. **Our own lift-detection check finds 8 lifts in the DSA scheme and 3 in the
+    DL scheme, which is backwards** from what contamination would predict. It
+    cannot separate canonical phrasing ("push and pop") from copied phrasing
+    ("details are more preserved").
 
----
+### Found on 2026-08-20, during the final stabilization pass
+
+These are on `main`, were found by verifying claims rather than trusting them,
+and are **disabled rather than fixed**. Say them if the code comes up.
+
+15. **A Groq LLM evaluator on `main` took the mark straight from the model's
+    JSON reply.** The prompt said "Assign a fair score_awarded" and the code
+    read `parsed.get("score_awarded", 0.0)`. No criterion, no evidence span, no
+    arithmetic, no replay. It also **defaulted a missing score to 0.0** and a
+    missing confidence to 0.95. Now raises on construction unless an env var is
+    set. The demo path never touched it.
+16. **An OCR engine wired as primary #1 tokenized the file PATH, not the
+    image.** `_tokenizer(image_path)` on a string; nothing in the module ever
+    opened an image. It also hardcoded `confidence=0.92` on every line and
+    returned empty bounding boxes, so it could produce no evidence spans at
+    all. Now disabled. **Be precise: this is verified by reading, not by
+    running** — the model never loaded here, so that line has never executed.
+17. **Asking that engine "are you available?" performed a network call to
+    huggingface.co.** As primary #1 it made the router's first action on every
+    page an internet round-trip: a hang risk on an offline machine and a direct
+    contradiction of our own "zero network egress at inference" rule. Measured
+    after disabling: 0 outbound connections.
+18. **`docker-compose.yml` has duplicate environment keys** in the in-flight
+    work parked on `wip/inflight-2026-08-20`: `DATABASE_URL`, `GEMINI_API_KEY`,
+    `ENVIRONMENT` and four others appear twice. YAML does not error on this,
+    the last one silently wins. Caught by our own pre-commit gate, which
+    refused the commit.
+
 
 ## Questions you will be asked
 
