@@ -220,6 +220,52 @@ def phase_fixture(h: Harness):
         else:
             print(f"  page {p.page_number} matches its cache entry ({len(cache_text)} lines)")
 
+    # ---- the pin, compared against the records rather than read off them ----
+    #
+    # Everything above this point checks the fixture against the cache: two sets
+    # of RECORDS, both written by the same past run. That is a closed loop. It
+    # cannot see a change to the constant the next run would actually use.
+    #
+    # It did not see one. f5d7e7c reverted DEFAULT_MODEL_ID from
+    # gemini-3.5-flash to gemini-1.5-flash and left the comment explaining the
+    # 3.5 pin in place. 1.5-flash returns 404 on this key and every cache entry
+    # is keyed on 3.5, so every lookup missed and fell through to that 404. The
+    # replay path was dead for four days across multiple 7/7 runs, because this
+    # phase read model_id off the records instead of comparing it to the pin.
+    #
+    # Read the EFFECTIVE default a caller would get, not the module constant:
+    # that catches a changed constant and a changed default argument alike.
+    from AI.ocr.providers.gemini_vision import GeminiVisionHTRProvider
+
+    pin = GeminiVisionHTRProvider(offline=True).model_id
+    print(f"  pinned model_id   : {pin}  (effective default of GeminiVisionHTRProvider)")
+
+    recorded = {}
+    for p in REAL_SCRIPT_PAGES:
+        recorded.setdefault(p.model_id, []).append(f"fixture page {p.page_number}")
+    for f in cached:
+        rec = json.loads(f.read_text(encoding="utf-8"))["page"]
+        recorded.setdefault(rec.get("model_id", "<absent>"), []).append(f"cache {f.name[:16]}")
+
+    diverged = {m: where for m, where in recorded.items() if m != pin}
+    if diverged:
+        print()
+        print("  PIN DIVERGENCE - the constant and the records disagree")
+        print(f"    pinned constant : {pin}")
+        for model, where in sorted(diverged.items()):
+            print(f"    recorded as     : {model}")
+            for w in where:
+                print(f"                      {w}")
+        print("    Every cache lookup will miss, and a live call will use a model")
+        print("    that produced none of these records. Fix the pin or rebuild")
+        print("    the cache; do not adjust this assertion.")
+        mismatches.append(
+            f"pinned model_id {pin!r} does not match recorded {sorted(diverged)!r}"
+        )
+    else:
+        n = sum(len(v) for v in recorded.values())
+        print(f"  pin matches       : all {n} record(s) carry model_id={pin}")
+
     # Masking is inferred, and the harness says so rather than asserting it.
     print("  masked            : inferred from key provenance, not re-derived here")
     print("                      (masking recomputes page_sha256; a matching key implies")
