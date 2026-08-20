@@ -141,6 +141,11 @@ Two things disabled because they contradict the architecture the demo claims:
 - **`GroqEvaluator`** took the mark from an LLM's JSON reply, with no
   criterion, span, or arithmetic, and defaulted a missing score to `0.0`. Now
   raises on construction unless `GROQ_ALLOW_LLM_MARKING=true`.
+- **The pinned transcription model** had been reverted to `gemini-1.5-flash`
+  while the comment above it still explained why it was `gemini-3.5-flash`.
+  1.5-flash 404s on this key and every cache entry is keyed on 3.5, so every
+  lookup missed. The demo never touched it (`--from-fixture` constructs no
+  provider), but any live transcription was broken. Restored; gate re-run 7/7.
 - **`BaiduUnlimitedOCREngine`** tokenized the file path instead of the image,
   hardcoded `confidence=0.92`, returned empty bounding boxes, and called
   huggingface.co just to answer `is_available()`. Now returns False with a

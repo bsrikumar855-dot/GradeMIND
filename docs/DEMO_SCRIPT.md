@@ -315,6 +315,17 @@ and are **disabled rather than fixed**. Say them if the code comes up.
     the last one silently wins. Caught by our own pre-commit gate, which
     refused the commit.
 
+19. **`f5d7e7c` silently reverted the pinned transcription model and left the
+    comment explaining the old pin in place.** The file documented
+    `gemini-3.5-flash`, with three paragraphs of evidence for why, and
+    executed `gemini-1.5-flash`. Measured: 1.5-flash returns **404** on this
+    key, and all three cache entries are keyed on 3.5-flash, so every lookup
+    missed and fell through to that 404. **The demo was never affected** - it
+    runs `--from-fixture` and never constructs a provider - but any live
+    transcription on `main` was broken. Restored 2026-08-20, gate re-run 7/7.
+    A comment that disagrees with the constant beneath it is worse than no
+    comment, because it gets trusted.
+
 
 ## Questions you will be asked
 

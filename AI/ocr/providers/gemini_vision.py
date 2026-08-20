@@ -74,7 +74,15 @@ logger = logging.getLogger("GradeMIND.GeminiVisionHTR")
 # This is NOT a diagnosis of the 504. If 3.5-flash also fails, the cause lies
 # elsewhere: most likely the end-of-life `google-generativeai` client, or the
 # response_schema + vision combination.
-DEFAULT_MODEL_ID = "gemini-1.5-flash"
+#
+# 2026-08-20: RESTORED to gemini-3.5-flash. f5d7e7c silently reverted this line
+# to gemini-1.5-flash and left the paragraphs above untouched, so the file
+# documented one pin and executed another. Two consequences, both measured:
+# gemini-1.5-flash returns 404 (not available to this key), and every cache
+# entry is keyed on gemini-3.5-flash, so every lookup missed and fell through
+# to that 404. A comment that disagrees with the constant beneath it is worse
+# than no comment, because it is trusted.
+DEFAULT_MODEL_ID = "gemini-3.5-flash"
 
 DEFAULT_TIMEOUT_SECONDS = 60.0
 DEFAULT_MAX_ATTEMPTS = 3
