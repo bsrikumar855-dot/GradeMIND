@@ -46,6 +46,34 @@ summary table, say which phase failed and what it checks, move to path 2. The
 harness failing is an honest thing to show. A presenter fixing Python on a
 projector is not.
 
+### Path 1b. The whole thing as one command. Optional, and the best beat.
+
+```bash
+python -m scripts.grade --paper backend/storage/question_papers/a73e49ab-c18b-499d-85cd-6cc82a186ee8/S_571ac7e774c5067a.pdf --answers backend/storage/answer_sheets/a73e49ab-c18b-499d-85cd-6cc82a186ee8/S_ebaff77e80f0eb33.pdf --scheme schemes/dl-2026-s1.json --out tmp/grade_dl --mask 0,0,1,0.15 --max-pages 3 --offline
+```
+
+Expected, and this is the line to point at:
+
+```
+  SCHEME FLAG Q15: overlap=0.33 missing=['interpret', 'impact', 'attention',
+                                         'mechanism', 'improving', 'performance']
+  transcribed 2/3 page(s)
+    page 3 FAILED: HTRExtractionError: Offline mode enabled: cache miss
+  3 scored, 4 routed, 9 no-scheme, 1 scheme flag(s)
+```
+
+Then open `tmp/grade_dl/report.md` and read the COVERAGE section aloud before
+the marks. **Say that the check found this automatically and it took us a week
+by hand.** Say also that it did NOT catch Q14, and why: limitation 20.
+
+The DSA equivalent, where the cross-check honestly reports it could not run:
+
+```bash
+python -m scripts.grade --paper "$HOME/Downloads/WhatsApp Image 2026-08-14 at 2.42.46 PM.jpeg" --answers "$HOME/Downloads/WhatsApp Image 2026-08-14 at 2.42.46 PM (1).jpeg" --scheme schemes/dsa-2026-cse201.json --out tmp/grade_dsa --mask 0,0,1,0.03 --offline
+```
+
+**If it fails:** it is not on the critical path. Fall back to path 1.
+
 ### Path 2. The page. Zero install.
 
 Open `demo/index.html`. No server, no build, no network. All three images are

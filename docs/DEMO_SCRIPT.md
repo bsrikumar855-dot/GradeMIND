@@ -326,6 +326,23 @@ and are **disabled rather than fixed**. Say them if the code comes up.
     A comment that disagrees with the constant beneath it is worse than no
     comment, because it gets trusted.
 
+20. **The new paper/scheme cross-check is lexical, and it catches Q15 but NOT
+    Q14.** It compares content words, so it fires hard on Q15 (overlap 0.33,
+    `attention` absent from the entire scheme entry) and stays quiet on Q14
+    (overlap 0.64). Q14's mismatch is not lexical: the paper asks candidates to
+    *determine the suitability* of GANs for real-world applications, the scheme
+    credits *how a GAN works*. Same words, different demand, and word overlap
+    cannot see that. There is an irony worth stating: Q14 escapes the check
+    partly **because its acceptable_variants were lifted from the paper's own
+    wording** (`image enhancement and generation`), which is the contamination
+    limitation 15 is about. The two checks disagree and both are right about
+    different things. The report prints the missing-word lists for every
+    question whether or not the flag fires, so a human reading Q14 still sees
+    `determine`, `suitability`, `real-world`, `application` absent from the
+    scheme and `explain`, `working` credited but never asked. **The threshold
+    was not tuned to catch Q14.** Moving it until a known defect trips is
+    fitting to the answer, which is the failure this project exists to avoid.
+
 
 ## Questions you will be asked
 
