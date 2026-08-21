@@ -708,4 +708,6 @@ def main(argv: List[str]) -> int:
 
 
 if __name__ == "__main__":
+    import warnings
+    warnings.filterwarnings("ignore", category=FutureWarning)
     raise SystemExit(main(sys.argv))
