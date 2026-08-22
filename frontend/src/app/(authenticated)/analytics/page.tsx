@@ -111,24 +111,24 @@ function AnalyticsContent() {
   };
 
   return (
-    <div className="p-8 max-w-7xl mx-auto space-y-8">
+    <div className="flex-1 flex flex-col space-y-5 text-left w-full">
       {/* Header */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 border-b border-forest-200 pb-5">
         <div className="flex items-center gap-4">
           <button 
             onClick={() => router.push('/dashboard')}
-            className="p-2 hover:bg-gray-100 rounded-full transition-colors text-brand-dark"
+            className="p-2 hover:bg-forest-100 rounded-full transition-colors text-forest-900"
           >
-            <ArrowLeft className="w-6 h-6" />
+            <ArrowLeft className="w-5 h-5" />
           </button>
           <div>
-            <h1 className="text-3xl font-bold text-brand-dark flex items-center gap-3">
-              <div className="p-2 bg-brand-primary/10 rounded-xl">
-                <Brain className="w-6 h-6 text-brand-primary" />
+            <h1 className="text-2xl font-serif font-extrabold text-forest-900 flex items-center gap-3">
+              <div className="p-2 bg-forest-100 rounded-xl">
+                <Brain className="w-5 h-5 text-forest-700" />
               </div>
               Student Learning Analytics
             </h1>
-            <p className="text-gray-500 mt-2 font-medium">Observational analytics and topic-level mastery gaps.</p>
+            <p className="text-xs text-forest-600 font-medium">Observational analytics and topic-level mastery gaps.</p>
           </div>
         </div>
 

@@ -36,16 +36,31 @@ export const SubmissionService = {
   },
 
   getEvaluatedSubmissions: async () => {
-    const response = await apiClient.get('/submissions', {
-      params: { status: 'COMPLETED', limit: 100 }
-    });
-    const submissions = Array.isArray(response.data?.submissions)
-      ? response.data.submissions
-      : (Array.isArray(response.data) ? response.data : []);
+    let v1List = [];
+    try {
+      const response = await apiClient.get('/submissions', {
+        params: { status: 'COMPLETED', limit: 100 }
+      });
+      v1List = Array.isArray(response.data?.submissions)
+        ? response.data.submissions
+        : (Array.isArray(response.data) ? response.data : []);
+    } catch (e) {
+      console.warn("Failed to fetch V1 submissions", e);
+    }
+
+    let v2List = [];
+    try {
+      const v2Res = await apiClient.get('/api/v2/jobs');
+      if (Array.isArray(v2Res.data)) {
+         v2List = v2Res.data;
+      }
+    } catch (e) {
+      console.warn("Failed to fetch V2 jobs", e);
+    }
 
     return {
       success: true,
-      data: submissions
+      data: [...v2List, ...v1List]
     };
   },
 
@@ -66,11 +81,33 @@ export const SubmissionService = {
   },
 
   getReport: async (submissionId: string) => {
-    const response = await apiClient.get(`/submissions/${submissionId}/report`);
-    return {
-      success: true,
-      data: response.data
-    };
+    try {
+      const response = await apiClient.get(`/submissions/${submissionId}/report`);
+      return {
+        success: true,
+        data: response.data
+      };
+    } catch (e: any) {
+      if (e.response?.status === 404 || e.response?.status === 400 || e.message?.includes('404')) {
+        try {
+          const v2Res = await apiClient.get(`/api/v2/grade/${submissionId}`);
+          if (v2Res.data && v2Res.data.report) {
+             return {
+               success: true,
+               data: {
+                  evaluation_summary: v2Res.data.report.evaluation_summary,
+                  student_dashboard: { subject: "Demo Subject", recent_exams: [] },
+                  teacher_dashboard: {},
+                  metadata: { version: "v2" }
+               }
+             };
+          }
+        } catch (v2e) {
+          console.warn("Failed to fallback to V2 job for report", v2e);
+        }
+      }
+      return { success: false, data: null };
+    }
   },
 
   getPdf: async (submissionId: string) => {

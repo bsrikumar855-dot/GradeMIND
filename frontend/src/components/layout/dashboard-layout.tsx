@@ -35,7 +35,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) =>
 
   return (
     <div className="min-h-screen bg-slate-50 flex">
-      {/* Sidebar - Desktop fixed w-72 */}
+      {/* Sidebar - Desktop fixed w-60 (240px) */}
       <Sidebar
         isOpen={isSidebarOpen}
         onClose={closeSidebar}
@@ -49,7 +49,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) =>
       />
 
       {/* Main Content Area */}
-      <div className="flex-1 flex flex-col md:pl-72 min-h-screen">
+      <div className="flex-1 flex flex-col md:pl-60 min-h-screen min-w-0">
         {/* Navbar */}
         <Navbar
           onMenuClick={toggleSidebar}
@@ -59,7 +59,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) =>
           userRole={currentUser.role}
         />
         {/* Page Content Body */}
-        <main className="flex-1 p-6 md:p-10 overflow-y-auto">
+        <main className="flex-1 flex flex-col px-6 md:px-8 py-6 md:py-6 overflow-y-auto">
           {children}
         </main>
       </div>

@@ -97,16 +97,16 @@ export default function ReviewQueuePage() {
   });
 
   return (
-    <div className="max-w-7xl mx-auto space-y-8 pb-16">
+    <div className="flex-1 flex flex-col space-y-5 text-left w-full">
       
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 pb-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-forest-200 pb-5">
         <div>
-          <div className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">
+          <div className="inline-flex items-center gap-1.5 text-xs font-bold text-forest-600 uppercase tracking-wider mb-1">
             Human-in-the-Loop Oversight
           </div>
-          <h1 className="text-2xl font-black text-slate-900 tracking-tight">Review Queue</h1>
-          <p className="text-xs text-slate-500 mt-0.5">
+          <h1 className="text-2xl font-serif font-extrabold text-forest-900 tracking-tight">Review Queue</h1>
+          <p className="text-xs text-forest-600 mt-0.5">
             Audit AI evaluation scores, verify student answers, and approve final marks.
           </p>
         </div>
@@ -114,7 +114,7 @@ export default function ReviewQueuePage() {
         <div className="flex items-center gap-3">
           <Link
             href="/dashboard"
-            className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl border border-slate-200 transition-colors"
+            className="px-4 py-2 bg-white hover:bg-forest-50 text-forest-900 font-bold text-xs rounded-xl border border-forest-200 transition-colors shadow-2xs"
           >
             ← Examination Workspace
           </Link>

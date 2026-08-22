@@ -97,3 +97,4 @@ next-env.d.ts
 # See docs/eval/ and the harness precondition in scripts/eval_metrics.py.
 /eval_data/
 /eval_results/
+node_modules

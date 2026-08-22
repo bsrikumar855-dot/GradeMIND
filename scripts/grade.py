@@ -54,9 +54,10 @@ from AI.evaluation.scheme_loader import load_marking_scheme
 from AI.evaluation.score_computer import compute
 from AI.evaluation.value_point import ENGINE_VERSION, SchemeQuestion
 from AI.evaluation.value_point_matcher import match
+from AI.job_state import JobState, PageState, QuestionState, EventItem, utc_now_iso
 from AI.ocr.content_classifier import ContentClassifier
 from AI.ocr.identity_mask import MaskRegion, mask_identity_region
-from AI.ocr.providers.cache import FilesystemExtractionCache
+from AI.ocr.providers.cache import FilesystemExtractionCache, cache_key
 from AI.ocr.providers.gemini_vision import GeminiVisionHTRProvider
 from AI.ocr.providers.prompts import TRANSCRIPTION_PROMPT_VERSION
 from AI.ocr.rasterize import PageImage, rasterize_pdf, sha256_bytes
@@ -338,10 +339,13 @@ class PageOutcome:
     reason: str = ""
     page_confidence: Optional[float] = None
     line_count: int = 0
+    from_cache: bool = False
 
 
 def transcribe(pages: Sequence[PageImage], region: Optional[MaskRegion],
-               offline: bool, cache_root: Path) -> Tuple[List[Any], List[PageOutcome]]:
+               offline: bool, cache_root: Path,
+               job_state: Optional[JobState] = None,
+               out_dir: Optional[Path] = None) -> Tuple[List[Any], List[PageOutcome]]:
     """Mask then transcribe. A page that fails is recorded, never faked.
 
     A failure does not abort the run. It is recorded, reported in COVERAGE, and
@@ -354,16 +358,46 @@ def transcribe(pages: Sequence[PageImage], region: Optional[MaskRegion],
     out, outcomes = [], []
     for page in pages:
         masked = mask_identity_region(page, region, require_region=region is not None)
+        key = cache_key(masked.page_sha256, provider.model_id, TRANSCRIPTION_PROMPT_VERSION)
+        is_cached = (cache.get(key) is not None)
+
+        p_state = None
+        if job_state:
+            p_state = next((p for p in job_state.pages if p.page_number == page.page_number), None)
+            if not p_state:
+                p_state = PageState(page_number=page.page_number, page_sha256=masked.page_sha256, status="PENDING")
+                job_state.pages.append(p_state)
+
         try:
             tp = provider.extract(masked)
         except Exception as exc:
-            outcomes.append(PageOutcome(page.page_number, False, masked.page_sha256,
-                                        reason=f"{type(exc).__name__}: {exc}"))
+            reason_msg = f"{type(exc).__name__}: {exc}"
+            outcomes.append(PageOutcome(page.page_number, False, masked.page_sha256, reason=reason_msg))
+            if job_state and out_dir:
+                p_state.status = "FAILED"
+                p_state.page_sha256 = masked.page_sha256
+                p_state.error = reason_msg
+                p_state.completed_at = utc_now_iso()
+                job_state.add_event("PAGE_FAILED", f"Page {page.page_number} failed: {reason_msg}")
+                job_state.save(out_dir)
             continue
+
         out.append(tp)
         outcomes.append(PageOutcome(page.page_number, True, masked.page_sha256,
                                     page_confidence=tp.page_confidence,
-                                    line_count=len(tp.lines)))
+                                    line_count=len(tp.lines),
+                                    from_cache=is_cached))
+
+        if job_state and out_dir:
+            p_state.status = "CACHED" if is_cached else "TRANSCRIBED"
+            p_state.page_sha256 = masked.page_sha256
+            p_state.error = None
+            p_state.completed_at = utc_now_iso()
+            evt_name = "PAGE_CACHED" if is_cached else "PAGE_TRANSCRIBED"
+            evt_detail = f"Page {page.page_number} loaded from cache (sha256: {masked.page_sha256[:12]})" if is_cached else f"Page {page.page_number} transcribed via HTR"
+            job_state.add_event(evt_name, evt_detail)
+            job_state.save(out_dir)
+
     return out, outcomes
 
 
@@ -558,11 +592,24 @@ def run_grading_pipeline(
     cache_root: Path,
     expect_questions: int,
     out_dir: Optional[Path] = None,
+    job_id: Optional[str] = None,
 ) -> Dict[str, Any]:
     print(f"{GRADE_VERSION}  offline={offline}")
     print(f"  paper   : {paper_path}")
     print(f"  answers : {answers_path}")
     print(f"  scheme  : {scheme_path}")
+
+    target_dir = out_dir if out_dir is not None else Path("tmp/jobs/default_job")
+    jid = job_id or target_dir.name
+    state = JobState.load(target_dir)
+    if state is None:
+        state = JobState(job_id=jid, status="RUNNING")
+        state.add_event("JOB_STARTED", f"Grading pipeline started for {answers_path.name}")
+        state.save(target_dir)
+    else:
+        state.status = "RUNNING"
+        state.add_event("JOB_RUNNING", f"Running job {jid}")
+        state.save(target_dir)
 
     scheme_qs = {sq.question_number: sq for sq in load_marking_scheme(scheme_path)}
     print(f"  scheme has {len(scheme_qs)} question(s): "
@@ -583,7 +630,12 @@ def run_grading_pipeline(
     pages = load_pages(answers_path, dpi, max_pages)
     print(f"  rasterized {len(pages)} page(s)")
 
-    transcribed, outcomes = transcribe(pages, region, offline, cache_root)
+    for p in pages:
+        if not any(ps.page_number == p.page_number for ps in state.pages):
+            state.pages.append(PageState(page_number=p.page_number, page_sha256=p.page_sha256, status="PENDING"))
+    state.save(target_dir)
+
+    transcribed, outcomes = transcribe(pages, region, offline, cache_root, job_state=state, out_dir=target_dir)
     print(f"  transcribed {len(transcribed)}/{len(pages)} page(s)")
     for o in outcomes:
         if not o.ok:
@@ -621,6 +673,7 @@ def run_grading_pipeline(
     nonscheme_notes: List[str] = []
     nontext_notes: List[str] = []
 
+    existing_q_nums = set()
     for r in regions:
         flags = classifier.check_transcription_struck_out(r)
         scorable = r.can_be_auto() and not flags.has_flags
@@ -640,6 +693,13 @@ def run_grading_pipeline(
             if flags.has_flags:
                 nontext_notes.append(f"Q{r.question_number}: {flags.flagged_reasons()}")
             results.append({**base, "can_be_auto": False, "score": None})
+
+            q_state = QuestionState(question_number=r.question_number, status="ROUTED", mark=None, max_marks=sq.max_marks if sq else None)
+            state.questions = [q for q in state.questions if q.question_number != r.question_number]
+            state.questions.append(q_state)
+            existing_q_nums.add(r.question_number)
+            state.add_event("QUESTION_ROUTED", f"Question {r.question_number} routed: {reason}")
+            state.save(target_dir)
             continue
 
         if sq is None:
@@ -647,6 +707,13 @@ def run_grading_pipeline(
             per_question.append({"kind": "no_scheme", "question_number": r.question_number})
             nonscheme_notes.append(f"Q{r.question_number}")
             results.append({**base, "can_be_auto": True, "score": None})
+
+            q_state = QuestionState(question_number=r.question_number, status="NO_SCHEME", mark=None)
+            state.questions = [q for q in state.questions if q.question_number != r.question_number]
+            state.questions.append(q_state)
+            existing_q_nums.add(r.question_number)
+            state.add_event("QUESTION_NO_SCHEME", f"Question {r.question_number} has no scheme entry")
+            state.save(target_dir)
             continue
 
         matches = [match(r.text, vp) for vp in sq.value_points]
@@ -658,6 +725,70 @@ def run_grading_pipeline(
                              "question_text": sq.question_text, "score": score,
                              "text": r.text, "flagged": r.question_number in flagged})
         results.append({**base, "can_be_auto": True, "score": score.as_dict()})
+
+        existing_q = next((q for q in state.questions if q.question_number == r.question_number), None)
+        if existing_q and existing_q.human_reviewed:
+            final_mark = existing_q.human_mark if existing_q.human_mark is not None else score.total
+            q_state = QuestionState(
+                question_number=r.question_number,
+                status="SCORED",
+                mark=final_mark,
+                max_marks=sq.max_marks,
+                blocked_by_page=None,
+                human_reviewed=True,
+                human_mark=existing_q.human_mark,
+                reason_code=existing_q.reason_code,
+                reviewed_at=existing_q.reviewed_at
+            )
+            state.add_event(
+                "MACHINE_RECALL",
+                f"Question {r.question_number} re-evaluated by engine ({score.total}), human mark {existing_q.human_mark} remains authoritative"
+            )
+        else:
+            q_state = QuestionState(question_number=r.question_number, status="SCORED", mark=score.total, max_marks=sq.max_marks)
+            state.add_event("QUESTION_SCORED", f"Question {r.question_number} scored {score.total}/{sq.max_marks}")
+
+        state.questions = [q for q in state.questions if q.question_number != r.question_number]
+        state.questions.append(q_state)
+        existing_q_nums.add(r.question_number)
+        state.save(target_dir)
+
+    failed_pages = [p for p in state.pages if p.status == "FAILED"]
+    for q_num, sq in scheme_qs.items():
+        if q_num not in existing_q_nums and not any(q.question_number == q_num for q in state.questions):
+            blocked_page = failed_pages[0].page_number if failed_pages else 1
+            q_state = QuestionState(
+                question_number=q_num,
+                status="PENDING_TRANSCRIPTION",
+                mark=None,
+                max_marks=sq.max_marks,
+                blocked_by_page=blocked_page
+            )
+            state.questions.append(q_state)
+            state.add_event("QUESTION_BLOCKED", f"Question {q_num} blocked by unread page {blocked_page}")
+            state.save(target_dir)
+
+    def _q_key(q: QuestionState) -> int:
+        try:
+            return int(q.question_number)
+        except ValueError:
+            return 999
+    state.questions.sort(key=_q_key)
+
+    has_failed_pages = any(p.status == "FAILED" for p in state.pages)
+    has_pending_qs = any(q.status == "PENDING_TRANSCRIPTION" for q in state.questions)
+
+    if not has_failed_pages and not has_pending_qs and all(p.status in ["CACHED", "TRANSCRIBED"] for p in state.pages):
+        state.status = "COMPLETE"
+        state.add_event("JOB_COMPLETED", "All pages transcribed and all questions marked")
+    elif any(p.status in ["CACHED", "TRANSCRIBED"] for p in state.pages) or any(q.status in ["SCORED", "ROUTED", "NO_SCHEME"] for q in state.questions):
+        state.status = "PARTIAL"
+        state.add_event("JOB_PARTIAL", f"Job completed in PARTIAL state ({len(failed_pages)} failed page(s))")
+    else:
+        state.status = "FAILED"
+        state.add_event("JOB_FAILED", "Job failed completely")
+
+    state.save(target_dir)
 
     if routed_notes:
         coverage.append((f"{len(routed_notes)} region(s) were routed to a human and not marked.",
@@ -699,11 +830,11 @@ def run_grading_pipeline(
         "generated_utc": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
     }
 
-    if out_dir:
+    if target_dir:
         if not is_image and results:
             try:
                 from AI.reports.annotate_pdf import generate_annotated_pdf
-                annotated = generate_annotated_pdf(answers_path, out_dir / "annotated.pdf",
+                annotated = generate_annotated_pdf(answers_path, target_dir / "annotated.pdf",
                                                    results, provenance)
                 print(f"  annotated PDF -> {annotated}")
             except Exception as exc:
@@ -721,12 +852,13 @@ def run_grading_pipeline(
         "n_no_scheme": n_no_scheme, "n_flagged": len(flagged),
         "total_awarded": total_awarded, "total_possible": total_possible,
         "results": results,
+        "job_state": state,
     }
 
-    if out_dir:
-        report = out_dir / "report.md"
+    if target_dir:
+        report = target_dir / "report.md"
         write_report(report, ctx)
-        (out_dir / "results.json").write_text(
+        (target_dir / "results.json").write_text(
             json.dumps({"provenance": provenance,
                         "results": [{k: v for k, v in r.items() if k != "lines"} for r in results]},
                        indent=2), encoding="utf-8")

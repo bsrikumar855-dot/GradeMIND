@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useState, useEffect, Suspense } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { 
   CheckCircle2, 
@@ -14,9 +13,11 @@ import {
   Zap,
   ArrowRight,
   ShieldCheck,
-  FileCheck2
+  FileCheck2,
+  AlertCircle
 } from 'lucide-react';
 import { SubmissionService } from '@/services/submission.service';
+import { MagicBentoCard, ShimmerBadge, AnimatedList, AnimatedListItem } from '@/components/ui';
 
 const agents = [
   { id: 1, name: 'OCR Agent', desc: 'Rasterizing document & extracting text/handwriting' },
@@ -39,7 +40,6 @@ function EvaluationContent() {
   const [estimatedSeconds, setEstimatedSeconds] = useState<number | null>(null);
   const [currentAgentIndex, setCurrentAgentIndex] = useState(0);
   const [isComplete, setIsComplete] = useState(false);
-  const [loadError, setLoadError] = useState('');
 
   const submissionsRef = React.useRef(submissions);
   useEffect(() => {
@@ -177,13 +177,17 @@ function EvaluationContent() {
 
   if (!idsStr) {
     return (
-      <div className="max-w-2xl mx-auto mt-16 p-8 glass-card rounded-3xl text-center space-y-4">
-        <XCircle className="w-12 h-12 text-rose-500 mx-auto" />
-        <h2 className="text-xl font-bold text-slate-900">No Submissions Selected</h2>
-        <p className="text-slate-500 text-sm">Please upload an exam answer sheet to launch the evaluation pipeline.</p>
+      <div className="w-full max-w-xl text-left space-y-4 p-6 bg-white rounded-xl border border-forest-200 shadow-xs">
+        <div className="w-10 h-10 bg-amber-50 text-amber-600 rounded-lg flex items-center justify-center">
+          <AlertCircle className="w-5 h-5" />
+        </div>
+        <div>
+          <h2 className="text-sm font-bold text-forest-950">No Submissions Selected</h2>
+          <p className="text-forest-600 text-xs mt-1">Please upload an exam answer sheet to launch the evaluation pipeline.</p>
+        </div>
         <button 
           onClick={() => router.push('/upload')} 
-          className="px-6 py-2.5 bg-slate-900 text-white font-bold text-sm rounded-xl"
+          className="px-4 py-2 bg-forest-900 text-white font-bold text-xs rounded-lg hover:bg-forest-800 transition-colors"
         >
           Go to Upload Center
         </button>
@@ -191,60 +195,57 @@ function EvaluationContent() {
     );
   }
 
-  const subList = Object.values(submissions);
-  const isFailed = subList.some((s: any) => s.status === 'FAILED');
-
   return (
-    <div className="max-w-5xl mx-auto space-y-8 pb-16">
+    <div className="flex-1 flex flex-col justify-between space-y-5 text-left w-full">
       
-      {/* Top Banner */}
-      <div className="glass-card rounded-3xl p-8 bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 text-white shadow-2xl border border-slate-700/50 flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+      {/* Top Header */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-forest-200/80 pb-5">
         <div>
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-400 text-xs font-bold uppercase tracking-wider mb-2">
-            <Zap className="w-3.5 h-3.5 fill-emerald-400" /> Real-time AI Agent Pipeline
+          <div className="flex items-center gap-2">
+            <ShimmerBadge variant="emerald">Evaluation Engine</ShimmerBadge>
+            <span className="text-forest-300">•</span>
+            <span className="text-xs font-bold text-forest-700">Autonomous Workflow</span>
           </div>
-          <h1 className="text-3xl font-black text-white tracking-tight">
-            AI Evaluation in Progress
+          <h1 className="text-2xl font-serif font-extrabold text-forest-900 tracking-tight mt-1">
+            AI Evaluation Execution
           </h1>
-          <p className="text-slate-300 text-sm mt-1">
+          <p className="text-xs font-medium text-forest-600">
             Processing candidate submissions through 6 autonomous agent verification stages.
           </p>
         </div>
 
-        {/* Countdown ETA Badge */}
-        <div className="px-5 py-3 rounded-2xl bg-white/10 border border-white/15 backdrop-blur-md text-right">
-          <span className="text-[10px] font-bold uppercase text-slate-300 block tracking-wider">Est. Completion</span>
-          <span className="text-xl font-black text-emerald-400">
-            {isComplete ? 'Done!' : estimatedSeconds !== null ? `~${estimatedSeconds}s` : 'Calculating...'}
+        <div className="px-4 py-2 rounded-lg bg-forest-900 text-white text-right shrink-0">
+          <span className="text-[10px] font-bold uppercase text-forest-300 block tracking-wider">Est. Completion</span>
+          <span className="text-sm font-extrabold text-forest-400">
+            {isComplete ? 'Execution Complete' : estimatedSeconds !== null ? `~${estimatedSeconds}s remaining` : 'Calculating...'}
           </span>
         </div>
       </div>
 
-      {/* Progress Bar Card */}
-      <div className="glass-card rounded-3xl p-8 space-y-4">
-        <div className="flex justify-between items-center text-sm font-bold text-slate-900">
+      {/* Progress Track Card */}
+      <MagicBentoCard showBeam={!isComplete} className="p-6 space-y-3">
+        <div className="flex justify-between items-center text-xs font-bold text-forest-950">
           <span className="flex items-center gap-2">
-            <Activity className="w-4 h-4 text-emerald-500 animate-pulse" /> Overall Pipeline Progress
+            <Activity className="w-4 h-4 text-forest-600 animate-pulse" /> Overall Pipeline Progress
           </span>
-          <span className="text-emerald-600 font-black text-base">{Math.round(progress)}%</span>
+          <span className="text-forest-700 font-extrabold text-sm">{Math.round(progress)}%</span>
         </div>
 
-        {/* Glow Progress Track */}
-        <div className="w-full h-4 bg-slate-100 rounded-full overflow-hidden p-0.5 border border-slate-200/60 shadow-inner">
+        <div className="w-full h-3 bg-forest-50 rounded-full overflow-hidden border border-forest-200/60">
           <div 
-            className="h-full rounded-full bg-gradient-to-r from-emerald-500 via-teal-400 to-blue-500 transition-all duration-500 shadow-glow-emerald"
+            className="h-full rounded-full bg-forest-500 transition-all duration-500"
             style={{ width: `${Math.max(progress, 3)}%` }}
           />
         </div>
-      </div>
+      </MagicBentoCard>
 
-      {/* 6 AI Agent Timeline */}
-      <div className="glass-card rounded-3xl p-8 space-y-6">
-        <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
-          <Brain className="w-5 h-5 text-emerald-600" /> Multi-Agent Workflow Sequence
+      {/* 6 AI Agent Timeline using AnimatedList inside MagicBentoCard */}
+      <MagicBentoCard className="p-6 space-y-5">
+        <h2 className="text-sm font-serif font-extrabold text-forest-950 flex items-center gap-2">
+          <Brain className="w-4 h-4 text-forest-700" /> Multi-Agent Workflow Sequence
         </h2>
 
-        <div className="space-y-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {agents.map((agent, index) => {
             const isFinished = isComplete || index < currentAgentIndex;
             const isActive = !isComplete && index === currentAgentIndex;
@@ -252,47 +253,39 @@ function EvaluationContent() {
             return (
               <div 
                 key={agent.id}
-                className={`p-5 rounded-2xl border transition-all duration-300 flex items-center justify-between gap-4 ${
+                className={`p-4 rounded-xl border transition-all flex flex-col justify-between space-y-3 ${
                   isFinished 
-                    ? 'bg-emerald-50/60 border-emerald-200/80 text-slate-900' 
+                    ? 'bg-forest-50 border-forest-200 text-forest-950' 
                     : isActive 
-                    ? 'bg-slate-900 text-white border-slate-900 shadow-xl shadow-slate-900/10 scale-[1.01]' 
-                    : 'bg-slate-50/50 text-slate-400 border-slate-200/50'
+                    ? 'bg-forest-900 text-white border-forest-950 shadow-md' 
+                    : 'bg-white border-forest-200/60 text-forest-500'
                 }`}
               >
-                <div className="flex items-center gap-4">
-                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold text-sm ${
+                <div className="flex items-start justify-between">
+                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center font-extrabold text-xs ${
                     isFinished 
-                      ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/20' 
+                      ? 'bg-forest-700 text-white' 
                       : isActive 
-                      ? 'bg-emerald-500 text-slate-950 shadow-md shadow-emerald-500/30 animate-pulse' 
-                      : 'bg-slate-200 text-slate-500'
+                      ? 'bg-forest-400 text-forest-950' 
+                      : 'bg-forest-100 text-forest-600'
                   }`}>
-                    {isFinished ? <CheckCircle2 className="w-5 h-5" /> : agent.id}
+                    {isFinished ? <CheckCircle2 className="w-4 h-4" /> : agent.id}
                   </div>
 
-                  <div>
-                    <h3 className={`text-sm font-bold ${isActive ? 'text-white' : 'text-slate-900'}`}>{agent.name}</h3>
-                    <p className={`text-xs mt-0.5 ${isActive ? 'text-slate-300' : 'text-slate-500'}`}>{agent.desc}</p>
-                  </div>
+                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${
+                    isFinished 
+                      ? 'bg-forest-100 text-forest-900' 
+                      : isActive 
+                      ? 'bg-forest-500/20 text-forest-300' 
+                      : 'bg-forest-50 text-forest-500'
+                  }`}>
+                    {isFinished ? 'Completed' : isActive ? 'Executing...' : 'Queued'}
+                  </span>
                 </div>
 
                 <div>
-                  {isFinished && (
-                    <span className="px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-600 text-xs font-bold border border-emerald-500/20">
-                      Completed
-                    </span>
-                  )}
-                  {isActive && (
-                    <span className="px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-400 text-xs font-bold border border-emerald-500/30 animate-pulse">
-                      Executing...
-                    </span>
-                  )}
-                  {!isFinished && !isActive && (
-                    <span className="px-3 py-1 rounded-full bg-slate-200/60 text-slate-400 text-xs font-semibold">
-                      Queued
-                    </span>
-                  )}
+                  <h3 className={`text-xs font-bold ${isActive ? 'text-white' : 'text-forest-950'}`}>{agent.name}</h3>
+                  <p className={`text-[11px] mt-0.5 leading-snug ${isActive ? 'text-forest-200' : 'text-forest-600'}`}>{agent.desc}</p>
                 </div>
               </div>
             );
@@ -301,26 +294,27 @@ function EvaluationContent() {
 
         {/* Completion CTA */}
         {isComplete && (
-          <div className="pt-6 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div className="pt-5 border-t border-forest-100 flex flex-col sm:flex-row items-center justify-between gap-4">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-600 flex items-center justify-center">
-                <ShieldCheck className="w-6 h-6" />
+              <div className="w-9 h-9 rounded-lg bg-forest-100 text-forest-700 flex items-center justify-center shrink-0">
+                <ShieldCheck className="w-5 h-5" />
               </div>
               <div>
-                <h4 className="text-sm font-bold text-slate-900">Evaluation Finished!</h4>
-                <p className="text-xs text-slate-500">Scorecard reports and annotated answer sheet are compiled.</p>
+                <h4 className="text-xs font-bold text-forest-950">Evaluation Finished!</h4>
+                <p className="text-[11px] text-forest-600">Scorecard reports and annotated answer script are compiled.</p>
               </div>
             </div>
 
             <button
               onClick={() => router.push(`/results?submissionId=${submissionIds[0]}`)}
-              className="w-full sm:w-auto px-8 py-3.5 bg-slate-900 hover:bg-slate-800 text-white font-black text-sm rounded-xl transition-all shadow-xl shadow-slate-900/20 flex items-center justify-center gap-2"
+              className="w-full sm:w-auto px-6 py-2.5 bg-forest-900 hover:bg-forest-800 text-white font-bold text-xs rounded-lg transition-colors flex items-center justify-center gap-2 shadow-xs"
             >
-              View Results Breakdown <ArrowRight className="w-4 h-4" />
+              <span>View Results Breakdown</span>
+              <ArrowRight className="w-3.5 h-3.5" />
             </button>
           </div>
         )}
-      </div>
+      </MagicBentoCard>
 
     </div>
   );
@@ -330,7 +324,7 @@ export default function EvaluationPage() {
   return (
     <Suspense fallback={
       <div className="flex justify-center items-center min-h-[50vh]">
-        <div className="w-10 h-10 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin" />
+        <div className="w-8 h-8 border-3 border-forest-600 border-t-transparent rounded-full animate-spin" />
       </div>
     }>
       <EvaluationContent />

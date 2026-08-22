@@ -27,25 +27,25 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     ref
   ) => {
     const baseStyles =
-      "inline-flex items-center justify-center font-medium rounded-lg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 select-none";
+      "inline-flex items-center justify-center font-bold rounded-xl transition-all duration-200 ease-out hover:-translate-y-0.5 hover:shadow-xs active:translate-y-0 active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 select-none cursor-pointer";
 
     const variants = {
       primary:
-        "bg-blue-600 text-white hover:bg-blue-700 active:bg-blue-800 focus-visible:ring-blue-500",
+        "bg-[#183B25] text-white hover:bg-[#112B1B] active:bg-[#0F2618] focus-visible:ring-[#4A8B40] border border-emerald-800/40",
       secondary:
-        "bg-gray-100 text-gray-950 hover:bg-gray-200 active:bg-gray-300 focus-visible:ring-gray-400 dark:bg-gray-800 dark:text-gray-100 dark:hover:bg-gray-700",
+        "bg-emerald-100 text-black hover:bg-emerald-200 active:bg-emerald-300 focus-visible:ring-emerald-400 border border-emerald-300",
       outline:
-        "border border-gray-300 bg-transparent text-gray-700 hover:bg-gray-50 active:bg-gray-100 focus-visible:ring-gray-400 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800",
+        "border-2 border-emerald-800/30 bg-transparent text-black hover:bg-emerald-50 active:bg-emerald-100 focus-visible:ring-emerald-400",
       ghost:
-        "bg-transparent text-gray-700 hover:bg-gray-100 active:bg-gray-200 dark:text-gray-300 dark:hover:bg-gray-800",
+        "bg-transparent text-black hover:bg-emerald-100/70 active:bg-emerald-200",
       danger:
-        "bg-red-600 text-white hover:bg-red-700 active:bg-red-800 focus-visible:ring-red-500",
+        "bg-rose-700 text-white hover:bg-rose-800 active:bg-rose-900 focus-visible:ring-rose-500",
     };
 
     const sizes = {
-      sm: "h-8 px-3 text-xs gap-1.5",
-      md: "h-10 px-4 text-sm gap-2",
-      lg: "h-12 px-6 text-base gap-2.5",
+      sm: "h-8 px-3.5 text-xs gap-1.5",
+      md: "h-10 px-4 text-xs gap-2",
+      lg: "h-12 px-6 text-sm gap-2.5",
     };
 
     return (

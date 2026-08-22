@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Sparkles, Lock, Mail, User, ShieldCheck, ArrowRight } from 'lucide-react';
+import { Lock, Mail, User, ShieldCheck, ArrowRight, Sparkles } from 'lucide-react';
 import { AuthService } from '@/services/auth.service';
 
 export default function LoginPage() {
@@ -42,36 +42,75 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 flex items-center justify-center p-6 relative overflow-hidden">
-      {/* Background Animated Glowing Orbs */}
-      <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-emerald-500/15 rounded-full blur-[120px] pointer-events-none animate-pulse-glow" />
-      <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-blue-500/15 rounded-full blur-[120px] pointer-events-none animate-pulse-glow" />
-
-      <div className="w-full max-w-md relative z-10 space-y-8">
+    <div className="min-h-screen w-full grid grid-cols-1 lg:grid-cols-2 bg-[#EBF3E8] text-left overflow-hidden">
+      
+      {/* Left Pane - Soft Sage Branding (Matching Image 1 with prominent greens & double color logo text) */}
+      <div className="p-8 md:p-16 flex flex-col justify-between bg-[#EBF3E8] relative overflow-hidden">
         
-        {/* Logo Header */}
-        <div className="text-center space-y-2">
-          <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-gradient-to-tr from-emerald-500 to-teal-400 text-slate-950 shadow-xl shadow-emerald-500/25 mb-2">
-            <Sparkles className="w-7 h-7" />
+        {/* Top Header Logo - Double-Color Logo Text */}
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-[#183B25] flex items-center justify-center shadow-md overflow-hidden border-2 border-[#183B25]">
+            <img src="/images/logo.png" alt="GradeMIND Logo" className="w-full h-full object-cover" />
           </div>
-          <h1 className="text-3xl font-black tracking-tight text-white">
-            Grade<span className="text-emerald-400">MIND</span>
-          </h1>
-          <p className="text-xs font-semibold text-slate-400 uppercase tracking-widest">
-            Autonomous Academic Grading System
-          </p>
+          <span className="text-2xl font-black font-serif tracking-tight flex items-center">
+            <span className="text-[#183B25]">Grade</span>
+            <span className="text-[#4A8B40]">MIND</span>
+          </span>
         </div>
 
-        {/* Glassmorphic Form Card */}
-        <div className="glass-card rounded-3xl p-8 bg-slate-900/80 backdrop-blur-xl border border-slate-800 shadow-2xl space-y-6">
+        {/* Hero Title & Illustration */}
+        <div className="my-auto py-12 max-w-lg space-y-6">
+          <h1 className="text-4xl md:text-5xl font-serif font-extrabold text-black leading-[1.15] tracking-tight">
+            Empower your grading with <span className="text-[#4A8B40] font-normal italic">AI Assistance.</span>
+          </h1>
+          <p className="text-sm font-bold text-black leading-relaxed max-w-md">
+            Upload answer sheets, let the AI analyze, and generate comprehensive reports in seconds.
+          </p>
+
+          {/* Central Hero Illustration Card */}
+          <div className="relative mt-8 bg-white rounded-2xl p-6 shadow-md border-2 border-emerald-800/30 max-w-md flex flex-col items-center">
+            <img 
+              src="/images/login-illustration.png" 
+              alt="Grading Illustration" 
+              className="w-full h-56 object-contain"
+              onError={(e) => {
+                (e.target as HTMLElement).style.display = 'none';
+              }}
+            />
+            <div className="flex items-center gap-2 mt-4 px-4 py-1.5 rounded-full bg-emerald-100 border border-emerald-400 text-black text-xs font-black">
+              <Sparkles className="w-4 h-4 text-[#183B25]" /> Autonomous OCR & Value Point Scorer
+            </div>
+          </div>
+        </div>
+
+        {/* Footer info */}
+        <div className="text-xs text-black font-bold">
+          © 2026 GradeMIND Inc. All rights reserved.
+        </div>
+      </div>
+
+      {/* Right Pane - Dark Forest Green with White Form Card & Black Text */}
+      <div className="bg-[#183B25] p-6 md:p-12 flex items-center justify-center relative">
+        
+        {/* Centered White Card */}
+        <div className="w-full max-w-md bg-white rounded-3xl p-8 md:p-10 shadow-2xl space-y-6 text-left border-2 border-emerald-700/40">
           
+          <div className="space-y-1">
+            <h2 className="text-2xl font-serif font-black text-black tracking-tight">
+              {mode === 'login' ? 'Welcome Back' : 'Create Account'}
+            </h2>
+            <p className="text-xs text-black font-bold">
+              {mode === 'login' ? 'Please enter your details to sign in.' : 'Enter your academic information to register.'}
+            </p>
+          </div>
+
           {/* Mode Switcher */}
-          <div className="grid grid-cols-2 gap-1 p-1 bg-slate-800/80 rounded-2xl border border-slate-700/50">
+          <div className="grid grid-cols-2 gap-1 p-1 bg-emerald-100 rounded-xl border border-emerald-300">
             <button
               type="button"
               onClick={() => setMode('login')}
-              className={`py-2 text-xs font-bold rounded-xl transition-all ${
-                mode === 'login' ? 'bg-emerald-500 text-slate-950 shadow-md' : 'text-slate-400 hover:text-white'
+              className={`py-1.5 text-xs font-black rounded-lg transition-all ${
+                mode === 'login' ? 'bg-[#183B25] text-white shadow-xs' : 'text-black hover:text-[#183B25]'
               }`}
             >
               Sign In
@@ -79,8 +118,8 @@ export default function LoginPage() {
             <button
               type="button"
               onClick={() => setMode('register')}
-              className={`py-2 text-xs font-bold rounded-xl transition-all ${
-                mode === 'register' ? 'bg-emerald-500 text-slate-950 shadow-md' : 'text-slate-400 hover:text-white'
+              className={`py-1.5 text-xs font-black rounded-lg transition-all ${
+                mode === 'register' ? 'bg-[#183B25] text-white shadow-xs' : 'text-black hover:text-[#183B25]'
               }`}
             >
               Register
@@ -88,71 +127,71 @@ export default function LoginPage() {
           </div>
 
           {error && (
-            <div className="p-3.5 bg-rose-500/10 border border-rose-500/30 text-rose-400 rounded-xl text-xs font-bold">
+            <div className="p-3 bg-rose-50 border border-rose-300 text-rose-800 rounded-xl text-xs font-black">
               {error}
             </div>
           )}
           {info && (
-            <div className="p-3.5 bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 rounded-xl text-xs font-bold">
+            <div className="p-3 bg-emerald-50 border border-emerald-300 text-black rounded-xl text-xs font-black">
               {info}
             </div>
           )}
 
           <form onSubmit={handleSubmit} className="space-y-4">
             {mode === 'register' && (
-              <div className="space-y-1.5">
-                <label className="text-xs font-bold text-slate-300 uppercase tracking-wider">Full Name</label>
+              <div className="space-y-1">
+                <label className="text-xs font-black text-black uppercase tracking-wider block">Full Name</label>
                 <div className="relative">
-                  <User className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                  <User className="w-4 h-4 text-slate-500 absolute left-3.5 top-1/2 -translate-y-1/2" />
                   <input
                     type="text"
                     required
                     value={name}
                     onChange={(e) => setName(e.target.value)}
                     placeholder="Prof. Jane Doe"
-                    className="w-full pl-10 pr-4 py-3 bg-slate-800/60 border border-slate-700 rounded-xl text-xs font-medium text-white placeholder:text-slate-500 focus:outline-none focus:border-emerald-500"
+                    className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-bold text-black placeholder:text-slate-500 focus:outline-none focus:border-[#4A8B40] focus:ring-1 focus:ring-[#4A8B40]"
                   />
                 </div>
               </div>
             )}
 
-            <div className="space-y-1.5">
-              <label className="text-xs font-bold text-slate-300 uppercase tracking-wider">Academic Email</label>
+            <div className="space-y-1">
+              <label className="text-xs font-black text-black uppercase tracking-wider block">Email</label>
               <div className="relative">
-                <Mail className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                <Mail className="w-4 h-4 text-slate-500 absolute left-3.5 top-1/2 -translate-y-1/2" />
                 <input
                   type="email"
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="faculty@university.edu"
-                  className="w-full pl-10 pr-4 py-3 bg-slate-800/60 border border-slate-700 rounded-xl text-xs font-medium text-white placeholder:text-slate-500 focus:outline-none focus:border-emerald-500"
+                  placeholder="teacher@school.edu"
+                  className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-bold text-black placeholder:text-slate-500 focus:outline-none focus:border-[#4A8B40] focus:ring-1 focus:ring-[#4A8B40]"
                 />
               </div>
             </div>
 
-            <div className="space-y-1.5">
-              <label className="text-xs font-bold text-slate-300 uppercase tracking-wider">Password</label>
+            <div className="space-y-1">
+              <label className="text-xs font-black text-black uppercase tracking-wider block">Password</label>
               <div className="relative">
-                <Lock className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                <Lock className="w-4 h-4 text-slate-500 absolute left-3.5 top-1/2 -translate-y-1/2" />
                 <input
                   type="password"
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••••••"
-                  className="w-full pl-10 pr-4 py-3 bg-slate-800/60 border border-slate-700 rounded-xl text-xs font-medium text-white placeholder:text-slate-500 focus:outline-none focus:border-emerald-500"
+                  className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-bold text-black placeholder:text-slate-500 focus:outline-none focus:border-[#4A8B40] focus:ring-1 focus:ring-[#4A8B40]"
                 />
               </div>
             </div>
 
             {mode === 'register' && (
-              <div className="space-y-1.5">
-                <label className="text-xs font-bold text-slate-300 uppercase tracking-wider">Role</label>
+              <div className="space-y-1">
+                <label className="text-xs font-black text-black uppercase tracking-wider block">Role</label>
                 <select
                   value={role}
                   onChange={(e) => setRole(e.target.value)}
-                  className="w-full px-4 py-3 bg-slate-800/60 border border-slate-700 rounded-xl text-xs font-medium text-white focus:outline-none focus:border-emerald-500"
+                  className="w-full px-4 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-bold text-black focus:outline-none focus:border-[#4A8B40]"
                 >
                   <option value="teacher">Faculty Member / Professor</option>
                   <option value="admin">Exam Administrator</option>
@@ -161,24 +200,41 @@ export default function LoginPage() {
               </div>
             )}
 
+            {mode === 'login' && (
+              <div className="flex items-center justify-between text-xs pt-1">
+                <label className="flex items-center gap-2 cursor-pointer text-black font-bold">
+                  <input type="checkbox" className="rounded border-slate-300 text-[#4A8B40] focus:ring-[#4A8B40]" />
+                  Remember me
+                </label>
+                <a href="#" className="text-[#183B25] hover:text-[#4A8B40] font-black">
+                  Forgot password?
+                </a>
+              </div>
+            )}
+
             <button
               type="submit"
               disabled={isSubmitting}
-              className="w-full py-3.5 bg-gradient-to-r from-emerald-500 to-teal-400 hover:from-emerald-400 hover:to-teal-300 text-slate-950 font-black text-sm rounded-xl transition-all shadow-xl shadow-emerald-500/25 flex items-center justify-center gap-2 mt-2"
+              className="w-full py-3 bg-[#4A8B40] hover:bg-[#3B7233] text-white font-black text-sm rounded-xl transition-all shadow-md flex items-center justify-center gap-2 mt-4"
             >
               {isSubmitting ? (
-                <div className="w-4 h-4 border-2 border-slate-950 border-t-transparent rounded-full animate-spin" />
+                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
               ) : (
                 <>
-                  {mode === 'login' ? 'Sign In to GradeMIND' : 'Create Account'} <ArrowRight className="w-4 h-4" />
+                  {mode === 'login' ? 'Sign In' : 'Create Account'} <ArrowRight className="w-4 h-4" />
                 </>
               )}
             </button>
           </form>
 
+          <div className="text-center text-xs text-black font-bold pt-2 border-t border-slate-200">
+            Don&apos;t have an account? <button onClick={() => setMode('register')} className="text-[#183B25] font-black hover:underline">Request access</button>
+          </div>
+
         </div>
 
       </div>
+
     </div>
   );
 }

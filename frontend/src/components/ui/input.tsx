@@ -28,7 +28,7 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
             type={type}
             id={inputId}
             className={cn(
-              "flex w-full rounded-lg border border-gray-300 bg-white px-3.5 py-2.5 text-sm text-gray-950 placeholder-gray-400 outline-none transition-shadow focus:border-blue-500 focus:ring-2 focus:ring-blue-100 disabled:cursor-not-allowed disabled:bg-gray-50 disabled:opacity-50 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 dark:placeholder-gray-500 dark:focus:border-blue-500 dark:focus:ring-blue-950/30",
+              "flex w-full rounded-lg border border-gray-300 bg-white px-3.5 py-2.5 text-sm text-gray-950 placeholder-gray-400 outline-none transition-shadow focus:border-[#4A8B40] focus:ring-2 focus:ring-emerald-200 disabled:cursor-not-allowed disabled:bg-gray-50 disabled:opacity-50 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 dark:placeholder-gray-500 dark:focus:border-[#4A8B40] dark:focus:ring-emerald-950/30",
               error && "border-red-500 focus:border-red-500 focus:ring-red-100 dark:border-red-500 dark:focus:border-red-500 dark:focus:ring-red-950/30",
               className
             )}
