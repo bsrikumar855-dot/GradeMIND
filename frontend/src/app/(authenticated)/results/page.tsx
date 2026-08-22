@@ -3,393 +3,254 @@
 import React, { useState, useEffect, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { 
-  Award, 
-  Target, 
-  Brain, 
-  AlertTriangle, 
-  Lightbulb, 
-  ArrowLeft, 
-  Download, 
-  FileText,
   CheckCircle2,
-  XCircle,
+  AlertTriangle,
+  ArrowLeft,
   Sparkles,
-  HelpCircle,
   FileCheck2,
-  ChevronRight,
-  UserCheck,
-  Edit3,
-  Check,
-  X
+  XCircle,
+  HelpCircle,
+  Hash
 } from 'lucide-react';
 import { SubmissionService } from '@/services/submission.service';
-
-const normalizeList = (value: any): string[] => {
-  if (Array.isArray(value)) return value.map(item => String(item).trim()).filter(Boolean);
-  if (!value) return [];
-  return String(value).split('.').map(item => item.trim()).filter(Boolean);
-};
 
 function ResultsContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const submissionId = searchParams.get('submissionId') || searchParams.get('id');
+  const jobId = searchParams.get('job_id');
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [report, setReport] = useState<any>(null);
-  const [submission, setSubmission] = useState<any>(null);
-  const [selectedSubmissionId, setSelectedSubmissionId] = useState<string | null>(submissionId);
-  const [activeQuestionIndex, setActiveQuestionIndex] = useState(0);
-  const [humanApproved, setHumanApproved] = useState(false);
+  const [jobData, setJobData] = useState<any>(null);
 
   useEffect(() => {
-    async function loadData() {
-      try {
-        setLoading(true);
-        setError('');
+    let interval: any = null;
 
-        let activeSubmissionId = submissionId;
-
-        if (!activeSubmissionId) {
-          const submissionsRes = await SubmissionService.getEvaluatedSubmissions();
-          const submissions = submissionsRes.data || [];
-
-          if (!submissions.length) {
-            setError('No evaluated submissions are available yet.');
-            setLoading(false);
-            return;
-          }
-
-          activeSubmissionId = submissions[0].id;
-          setSelectedSubmissionId(activeSubmissionId);
-          router.replace(`/results?submissionId=${activeSubmissionId}`);
-        } else {
-          setSelectedSubmissionId(activeSubmissionId);
-        }
-
-        const resolvedSubmissionId = activeSubmissionId as string;
-        const [subRes, repRes] = await Promise.all([
-          SubmissionService.getSubmissionById(resolvedSubmissionId),
-          SubmissionService.getReport(resolvedSubmissionId)
-        ]);
-
-        if (subRes.success) setSubmission(subRes.data);
-        if (repRes.success) setReport(repRes.data);
-        else setError('Failed to retrieve evaluation report.');
-      } catch (err: any) {
-        console.error('Failed to load evaluation results:', err);
-        setError(err.response?.data?.detail || 'Evaluation report is generating or not found.');
-      } finally {
+    async function checkJob() {
+      if (!jobId) {
+        setError('No job_id provided.');
         setLoading(false);
+        return;
+      }
+
+      try {
+        const res = await SubmissionService.pollGradeJob(jobId);
+        
+        if (res.status === 'completed') {
+          setJobData(res.report);
+          setLoading(false);
+          if (interval) clearInterval(interval);
+        } else if (res.status === 'failed') {
+          setError(res.error || 'Evaluation failed.');
+          setLoading(false);
+          if (interval) clearInterval(interval);
+        }
+      } catch (err: any) {
+        console.error('Polling failed:', err);
+        setError('Failed to retrieve evaluation job status.');
+        setLoading(false);
+        if (interval) clearInterval(interval);
       }
     }
 
-    loadData();
-  }, [submissionId, router]);
+    if (jobId) {
+      checkJob();
+      interval = setInterval(checkJob, 2000);
+    } else {
+      setLoading(false);
+    }
+
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [jobId]);
 
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[65vh] space-y-4">
         <div className="w-10 h-10 border-4 border-slate-900 border-t-emerald-500 rounded-full animate-spin"></div>
-        <p className="text-slate-500 font-bold text-xs">Loading Evaluation Workspace & Answer Script...</p>
+        <p className="text-slate-500 font-bold text-xs">Waiting for AI Pipeline to complete...</p>
       </div>
     );
   }
 
-  if (error || !report) {
+  if (error || !jobData) {
     return (
-      <div className="p-8 max-w-xl mx-auto space-y-6 text-center">
-        <div className="bg-white p-8 rounded-2xl border border-slate-200 shadow-xs flex flex-col items-center gap-4">
-          <div className="w-12 h-12 bg-rose-50 text-rose-500 rounded-full flex items-center justify-center">
-            <AlertTriangle className="w-6 h-6" />
-          </div>
-          <div>
-            <h1 className="text-base font-bold text-slate-900 mb-1">No Evaluated Submission Found</h1>
-            <p className="text-slate-500 text-xs">{error || 'Unable to display evaluation metrics.'}</p>
-          </div>
-          <div className="flex gap-3">
-            <button 
-              onClick={() => router.push('/upload')}
-              className="px-4 py-2 bg-slate-900 text-white font-bold text-xs rounded-xl shadow-xs"
-            >
-              Upload New Sheet
-            </button>
-            <button 
-              onClick={() => router.push('/dashboard')}
-              className="px-4 py-2 bg-slate-100 text-slate-700 font-bold text-xs rounded-xl border border-slate-200"
-            >
-              Dashboard
-            </button>
-          </div>
-        </div>
+      <div className="flex flex-col items-center justify-center min-h-[50vh]">
+        <AlertTriangle className="w-12 h-12 text-rose-500 mb-4" />
+        <h2 className="text-lg font-bold text-slate-900">Oops! Something went wrong</h2>
+        <p className="text-slate-500 text-sm mt-2">{error || 'Job data not found.'}</p>
+        <button 
+          onClick={() => router.push('/upload')} 
+          className="mt-6 px-6 py-2.5 bg-slate-900 text-white rounded-xl text-sm font-bold flex items-center gap-2"
+        >
+          <ArrowLeft className="w-4 h-4" /> Back to Upload
+        </button>
       </div>
     );
   }
 
-  const evalSummary = report.evaluation_summary || {};
-  const questions = evalSummary.questions || [];
-  const metadata = report.metadata || {};
-
-  const totalScore = evalSummary.total_score ?? submission?.obtained_marks ?? 0;
-  const maxScore = evalSummary.max_possible ?? submission?.total_marks ?? 100;
-  const percentage = Math.round((totalScore / (maxScore || 1)) * 100);
-  const confidencePct = Math.round((submission?.evaluation_confidence ?? 0.942) * 100);
-
-  const activeQuestion = questions[activeQuestionIndex] || {
-    question_number: 1,
-    max_marks: 10,
-    score_awarded: 8,
-    student_answer_extracted: "Force is equal to mass times acceleration (F = m * a). As force increases, acceleration increases proportionally when mass remains constant.",
-    matched_keywords: ["Force", "Acceleration"],
-    missing_concepts: ["Explicit mass-acceleration relation"],
-    criteria_feedback: "Correct mathematical definition of force and acceleration, but the relationship with mass could be more explicitly stated."
-  };
-
-  const handleDownloadPDF = async () => {
-    if (selectedSubmissionId) {
-      try {
-        const blob = await SubmissionService.getPdf(selectedSubmissionId);
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `Report_${metadata.student_roll_number || 'student'}.pdf`;
-        document.body.appendChild(a);
-        a.click();
-        a.remove();
-        window.URL.revokeObjectURL(url);
-      } catch (err) {
-        console.error('Failed to download PDF:', err);
-        alert('Failed to download PDF report.');
-      }
-    }
-  };
-
-  const getInlinePdfUrl = () => {
-    if (!selectedSubmissionId) return '';
-    const tokenCookie = document.cookie.split('; ').find(row => row.startsWith('grademind_auth='));
-    const token = tokenCookie ? tokenCookie.split('=')[1] : '';
-    return `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/submissions/${selectedSubmissionId}/pdf?inline=true&token=${token}`;
-  };
+  const { questions, coverage, totals, provenance } = jobData;
 
   return (
-    <div className="max-w-7xl mx-auto space-y-6 pb-16">
+    <div className="max-w-6xl mx-auto space-y-8 pb-20">
       
-      {/* Header Bar */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 pb-4">
-        <div className="flex items-center gap-3">
-          <button 
-            onClick={() => router.back()}
-            className="p-2 bg-white hover:bg-slate-100 border border-slate-200 rounded-xl transition-colors text-slate-700 shadow-xs"
-          >
-            <ArrowLeft className="w-4 h-4" />
-          </button>
-          <div>
-            <h1 className="text-xl font-black text-slate-900 tracking-tight flex items-center gap-2">
-              Evaluation Workspace
-              <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-700">
-                {metadata.student_name || submission?.student_name} ({metadata.student_roll_number || submission?.student_roll_number})
-              </span>
-            </h1>
-            <p className="text-xs text-slate-500">
-              Annotated student answer script & question-by-question AI evaluation
-            </p>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-4 px-4 py-2 bg-white rounded-xl border border-slate-200/80 text-xs font-bold shadow-xs">
-            <div>
-              <span className="text-slate-400 block text-[9px] uppercase">Final Score</span>
-              <span className="text-slate-900 font-black">{totalScore} / {maxScore} ({percentage}%)</span>
-            </div>
-            <div className="border-l border-slate-200 pl-4">
-              <span className="text-slate-400 block text-[9px] uppercase">AI Confidence</span>
-              <span className="text-emerald-600 font-black">{confidencePct}%</span>
-            </div>
-          </div>
-
-          <button 
-            onClick={handleDownloadPDF}
-            className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs rounded-xl shadow-xs flex items-center gap-1.5 transition-colors"
-          >
-            <Download className="w-3.5 h-3.5" /> Download PDF
-          </button>
+      {/* Header */}
+      <div className="flex items-center gap-4">
+        <button 
+          onClick={() => router.push('/upload')}
+          className="p-2.5 rounded-xl bg-white border border-slate-200 text-slate-500 hover:bg-slate-50 hover:text-slate-900 transition-colors"
+        >
+          <ArrowLeft className="w-5 h-5" />
+        </button>
+        <div>
+          <h1 className="text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2">
+            <Sparkles className="w-5 h-5 text-emerald-500" /> Evaluation Report
+          </h1>
+          <p className="text-slate-500 text-sm font-medium mt-1">
+            Job ID: {jobId}
+          </p>
         </div>
       </div>
 
-      {/* 3-Panel Evaluation Workspace */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 h-[780px]">
-        
-        {/* PANEL 1: LEFT - Answer Sheet PDF Scan (5 Cols) */}
-        <div className="lg:col-span-5 bg-white rounded-2xl border border-slate-200/80 overflow-hidden shadow-xs flex flex-col h-full">
-          <div className="px-4 py-3 bg-slate-900 text-white flex items-center justify-between text-xs font-bold">
-            <span className="flex items-center gap-2">
-              <FileText className="w-4 h-4 text-emerald-400" /> Answer Sheet Scan
-            </span>
-            <span className="text-[10px] text-slate-400">PDF Viewer</span>
-          </div>
-          <iframe 
-            src={getInlinePdfUrl()} 
-            className="w-full flex-1 border-0 bg-slate-100" 
-            title="Annotated Report PDF"
-          />
+      {/* Totals Summary */}
+      <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
+        <div className="p-4 rounded-3xl bg-slate-900 text-white flex flex-col justify-center">
+          <p className="text-slate-400 text-xs font-bold uppercase tracking-wider mb-1">Total Mark</p>
+          <p className="text-3xl font-black">{totals?.total_awarded} <span className="text-lg text-slate-500 font-bold">/ {totals?.total_possible}</span></p>
         </div>
+        <div className="p-4 rounded-3xl bg-white border border-slate-200">
+          <p className="text-slate-500 text-[11px] font-bold uppercase tracking-wider mb-1">Scored</p>
+          <p className="text-2xl font-black text-slate-900">{totals?.scored}</p>
+        </div>
+        <div className="p-4 rounded-3xl bg-white border border-slate-200">
+          <p className="text-slate-500 text-[11px] font-bold uppercase tracking-wider mb-1">Routed</p>
+          <p className="text-2xl font-black text-amber-600">{totals?.routed}</p>
+        </div>
+        <div className="p-4 rounded-3xl bg-white border border-slate-200">
+          <p className="text-slate-500 text-[11px] font-bold uppercase tracking-wider mb-1">No Scheme</p>
+          <p className="text-2xl font-black text-slate-900">{totals?.no_scheme}</p>
+        </div>
+        <div className="p-4 rounded-3xl bg-white border border-slate-200">
+          <p className="text-slate-500 text-[11px] font-bold uppercase tracking-wider mb-1">Flagged</p>
+          <p className="text-2xl font-black text-rose-600">{totals?.flagged}</p>
+        </div>
+      </div>
 
-        {/* PANEL 2: CENTER - Question Navigation & Extracted Answer (4 Cols) */}
-        <div className="lg:col-span-4 bg-white rounded-2xl border border-slate-200/80 p-5 shadow-xs flex flex-col justify-between h-full space-y-4">
-          <div className="space-y-4 overflow-y-auto">
-            
-            {/* Question Tabs */}
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-              <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Questions</span>
-              <div className="flex gap-1.5 overflow-x-auto">
-                {questions.map((q: any, idx: number) => (
-                  <button
-                    key={idx}
-                    onClick={() => setActiveQuestionIndex(idx)}
-                    className={`px-3 py-1 rounded-lg text-xs font-bold transition-all ${
-                      activeQuestionIndex === idx
-                        ? 'bg-slate-900 text-white shadow-xs'
-                        : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                    }`}
-                  >
-                    Q{q.question_number}
-                  </button>
-                ))}
+      {/* Coverage Section */}
+      {coverage && coverage.length > 0 && (
+        <div className="bg-amber-50 border border-amber-200 rounded-3xl p-6">
+          <h3 className="text-sm font-black text-amber-900 uppercase tracking-widest flex items-center gap-2 mb-4">
+            <AlertTriangle className="w-4 h-4" /> Coverage Notes
+          </h3>
+          <div className="space-y-4">
+            {coverage.map((cov: any, idx: number) => (
+              <div key={idx} className="bg-white/60 p-4 rounded-xl border border-amber-200/50">
+                <p className="font-bold text-amber-900 text-sm mb-2">{cov[0]}</p>
+                <ul className="list-disc list-inside space-y-1">
+                  {cov[1].map((item: string, i: number) => (
+                    <li key={i} className="text-xs text-amber-800">{item}</li>
+                  ))}
+                </ul>
               </div>
-            </div>
-
-            {/* Selected Question Header */}
-            <div>
-              <div className="flex items-center justify-between mb-1">
-                <h3 className="text-base font-black text-slate-900">QUESTION {activeQuestion.question_number}</h3>
-                <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-slate-100 text-slate-800">
-                  Max Marks: {activeQuestion.max_marks || 10}
-                </span>
-              </div>
-            </div>
-
-            {/* Extracted Answer Box */}
-            <div className="space-y-2">
-              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Student Extracted Answer</span>
-              <div className="p-4 rounded-xl bg-slate-50 border border-slate-200/80 text-xs font-mono text-slate-800 leading-relaxed min-h-[160px]">
-                {activeQuestion.student_answer_extracted || "No answer text extracted for this question."}
-              </div>
-            </div>
-          </div>
-
-          <div className="pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
-            <span>Question {activeQuestionIndex + 1} of {questions.length || 1}</span>
-            <div className="flex gap-2">
-              <button 
-                disabled={activeQuestionIndex === 0}
-                onClick={() => setActiveQuestionIndex(prev => prev - 1)}
-                className="px-3 py-1 bg-slate-100 hover:bg-slate-200 disabled:opacity-40 font-bold rounded-lg text-slate-700 transition-colors"
-              >
-                ← Prev
-              </button>
-              <button 
-                disabled={activeQuestionIndex === questions.length - 1}
-                onClick={() => setActiveQuestionIndex(prev => prev + 1)}
-                className="px-3 py-1 bg-slate-100 hover:bg-slate-200 disabled:opacity-40 font-bold rounded-lg text-slate-700 transition-colors"
-              >
-                Next →
-              </button>
-            </div>
+            ))}
           </div>
         </div>
+      )}
 
-        {/* PANEL 3: RIGHT - AI Evaluation & Human Action (3 Cols) */}
-        <div className="lg:col-span-3 bg-white rounded-2xl border border-slate-200/80 p-5 shadow-xs flex flex-col justify-between h-full space-y-4">
-          <div className="space-y-5 overflow-y-auto">
-            
-            {/* Header */}
-            <div className="border-b border-slate-100 pb-3 flex items-center justify-between">
-              <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider">AI Evaluation</h3>
-              <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                Confidence {confidencePct}%
-              </span>
-            </div>
-
-            {/* Score Awarded Box */}
-            <div className="p-4 rounded-xl bg-slate-900 text-white flex items-center justify-between">
-              <div>
-                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Awarded Score</span>
-                <span className="text-3xl font-black text-white">
-                  {activeQuestion.score_awarded ?? 8} <span className="text-xs text-slate-400 font-medium">/ {activeQuestion.max_marks ?? 10}</span>
-                </span>
+      {/* Questions List */}
+      <div className="space-y-6">
+        <h3 className="text-lg font-black text-slate-900">Per-Question Breakdown</h3>
+        {questions?.map((q: any, i: number) => (
+          <div key={i} className="bg-white rounded-3xl border border-slate-200 overflow-hidden shadow-sm">
+            <div className="p-5 border-b border-slate-100 bg-slate-50/50 flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <div className="w-10 h-10 rounded-xl bg-slate-200 text-slate-700 flex items-center justify-center font-black">
+                  Q{q.question_number}
+                </div>
+                <div>
+                  <h4 className="font-bold text-slate-900 text-sm flex items-center gap-2">
+                    {q.status === 'scored' && <CheckCircle2 className="w-4 h-4 text-emerald-500" />}
+                    {q.status === 'routed' && <AlertTriangle className="w-4 h-4 text-amber-500" />}
+                    {q.status.includes('no scheme') && <HelpCircle className="w-4 h-4 text-slate-400" />}
+                    {q.status.toUpperCase()}
+                  </h4>
+                  {q.routing_reason && (
+                    <p className="text-xs font-bold text-amber-600 mt-0.5">Reason: {q.routing_reason}</p>
+                  )}
+                  {q.flagged && (
+                    <p className="text-xs font-bold text-rose-600 mt-0.5">FLAGGED by safety boundaries</p>
+                  )}
+                </div>
               </div>
-              <Award className="w-8 h-8 text-emerald-400" />
+              {q.status === 'scored' && (
+                <div className="text-right">
+                  <p className="text-xl font-black text-slate-900">{q.mark} <span className="text-sm text-slate-400">/ {q.max_marks}</span></p>
+                </div>
+              )}
             </div>
 
-            {/* Concept Coverage Checklist */}
-            <div className="space-y-2">
-              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Concept Coverage Checklist</span>
-              <div className="space-y-1.5 text-xs font-semibold">
-                {(activeQuestion.matched_keywords || ["Force", "Acceleration"]).map((kw: string, i: number) => (
-                  <div key={i} className="flex items-center gap-2 text-emerald-700 bg-emerald-50 px-3 py-1.5 rounded-lg border border-emerald-200/60">
-                    <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                    <span>{kw}</span>
+            {q.value_points && q.value_points.length > 0 && (
+              <div className="p-5 space-y-4">
+                {q.value_points.map((vp: any, vpIdx: number) => (
+                  <div key={vpIdx} className={`p-4 rounded-2xl border ${vp.awarded > 0 ? 'bg-emerald-50/50 border-emerald-200' : 'bg-slate-50 border-slate-200'}`}>
+                    <div className="flex gap-4">
+                      <div className="mt-1">
+                        {vp.awarded > 0 ? (
+                          <CheckCircle2 className="w-5 h-5 text-emerald-500" />
+                        ) : (
+                          <XCircle className="w-5 h-5 text-slate-300" />
+                        )}
+                      </div>
+                      <div className="flex-1">
+                        <div className="flex items-start justify-between">
+                          <div>
+                            <p className="font-bold text-slate-900 text-sm">Criterion {vp.id}</p>
+                            <p className="text-xs text-slate-700 mt-1">{vp.text}</p>
+                          </div>
+                          <div className="font-black text-sm whitespace-nowrap ml-4">
+                            {vp.awarded} mark
+                          </div>
+                        </div>
+
+                        {vp.awarded > 0 && vp.evidence_text ? (
+                          <div className="mt-3 p-3 bg-white border border-emerald-100 rounded-xl">
+                            <p className="text-[10px] font-bold text-emerald-600 uppercase tracking-widest mb-1 flex items-center gap-1">
+                              <Hash className="w-3 h-3" /> Extracted Evidence 
+                              <span className="text-emerald-400 font-medium ml-2">[{vp.evidence_span?.start} - {vp.evidence_span?.end}]</span>
+                            </p>
+                            <p className="text-xs font-medium text-slate-800 italic">"{vp.evidence_text}"</p>
+                          </div>
+                        ) : (
+                          <div className="mt-3 p-3 bg-white border border-slate-100 rounded-xl">
+                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1 flex items-center gap-1">
+                              <AlertTriangle className="w-3 h-3" /> Not Awarded
+                            </p>
+                            <p className="text-xs font-medium text-slate-500">{vp.reason}</p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
                   </div>
                 ))}
-                {(activeQuestion.missing_concepts || ["Mass relationship"]).map((mc: string, i: number) => (
-                  <div key={i} className="flex items-center gap-2 text-rose-700 bg-rose-50 px-3 py-1.5 rounded-lg border border-rose-200/60">
-                    <X className="w-3.5 h-3.5 text-rose-600 shrink-0" />
-                    <span>{mc}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* AI Rubric Feedback */}
-            <div className="space-y-1.5">
-              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">AI Rubric Feedback</span>
-              <p className="text-xs text-slate-600 font-medium leading-relaxed p-3 bg-slate-50 rounded-xl border border-slate-100">
-                {activeQuestion.criteria_feedback || "Graded accurately against answer scheme criteria."}
-              </p>
-            </div>
-
-          </div>
-
-          {/* Human Action Buttons */}
-          <div className="pt-3 border-t border-slate-100 space-y-2">
-            {humanApproved ? (
-              <div className="p-3 rounded-xl bg-blue-50 text-blue-800 text-xs font-bold flex items-center justify-center gap-2 border border-blue-200">
-                <UserCheck className="w-4 h-4 text-blue-600" /> Teacher Approved
-              </div>
-            ) : (
-              <div className="grid grid-cols-2 gap-2">
-                <button 
-                  onClick={() => setHumanApproved(true)}
-                  className="py-2.5 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs rounded-xl shadow-xs transition-colors flex items-center justify-center gap-1"
-                >
-                  <Check className="w-3.5 h-3.5" /> Accept AI
-                </button>
-                <button 
-                  onClick={() => alert('Score adjustment interface opened.')}
-                  className="py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl border border-slate-200 transition-colors flex items-center justify-center gap-1"
-                >
-                  <Edit3 className="w-3.5 h-3.5" /> Adjust
-                </button>
               </div>
             )}
           </div>
-        </div>
-
+        ))}
+      </div>
+      
+      {/* Provenance footer */}
+      <div className="text-center text-xs font-medium text-slate-400 pt-8 pb-4">
+        <p>Engine: {provenance?.scorer} • Matcher: {provenance?.matcher} • Model: {provenance?.model_id}</p>
       </div>
 
     </div>
   );
 }
 
-export default function ResultsPage() {
+export default function ResultsView() {
   return (
-    <Suspense fallback={
-      <div className="flex justify-center items-center min-h-[50vh]">
-        <div className="w-8 h-8 border-4 border-slate-900 border-t-emerald-500 rounded-full animate-spin" />
-      </div>
-    }>
+    <Suspense fallback={<div className="p-8 text-center text-slate-500">Loading results...</div>}>
       <ResultsContent />
     </Suspense>
   );

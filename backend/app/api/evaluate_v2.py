@@ -30,6 +30,105 @@ from AI.evaluation.score_computer import compute
 from AI.evaluation.value_point import DISCLAIMER
 from AI.evaluation.value_point_matcher import match_all
 from AI.fixtures.demo_scheme import QUESTIONS
+from AI.ocr.identity_mask import MaskRegion
+from scripts.grade import run_grading_pipeline
+
+import uuid
+import shutil
+from pathlib import Path
+from fastapi import UploadFile, File, Form, BackgroundTasks
+from typing import Dict, Any, Optional
+
+jobs: Dict[str, Dict[str, Any]] = {}
+
+def background_grade_job(
+    job_id: str,
+    paper_path: Path,
+    answers_path: Path,
+    scheme_path: Path,
+    mask_str: str,
+    max_pages: Optional[int],
+):
+    jobs[job_id]["status"] = "running"
+    try:
+        x0, y0, x1, y1 = (float(v) for v in mask_str.split(","))
+        region = MaskRegion(x0, y0, x1, y1, label="demo endpoint mask")
+        
+        ctx = run_grading_pipeline(
+            paper_path=paper_path,
+            answers_path=answers_path,
+            scheme_path=scheme_path,
+            region=region,
+            dpi=150,
+            max_pages=max_pages,
+            offline=True,
+            cache_root=Path("..") / "tmp" / "htr_cache",
+            expect_questions=15,
+            out_dir=None
+        )
+
+        per_q_out = []
+        for pq in ctx["per_question"]:
+            if pq["kind"] == "routed":
+                per_q_out.append({
+                    "question_number": pq["question_number"],
+                    "status": "routed",
+                    "routing_reason": pq["reason"]
+                })
+            elif pq["kind"] == "no_scheme":
+                per_q_out.append({
+                    "question_number": pq["question_number"],
+                    "status": "NOT SCORED - no scheme"
+                })
+            elif pq["kind"] == "scored":
+                score = pq["score"]
+                vps = []
+                for aw in list(score.awarded) + list(score.not_awarded):
+                    vp_dict = {
+                        "id": aw.value_point_id,
+                        "text": aw.text,
+                        "awarded": aw.awarded,
+                        "reason": aw.reason,
+                    }
+                    if aw.matched and aw.evidence_span:
+                        vp_dict["evidence_span"] = {"start": aw.evidence_span[0], "end": aw.evidence_span[1]}
+                        vp_dict["evidence_text"] = " ".join(pq["text"][aw.evidence_span[0]:aw.evidence_span[1]].split())
+                    vps.append(vp_dict)
+                
+                per_q_out.append({
+                    "question_number": pq["question_number"],
+                    "status": "scored",
+                    "mark": score.total,
+                    "max_marks": score.max_marks,
+                    "value_points": vps,
+                    "flagged": pq["flagged"]
+                })
+
+        report = {
+            "questions": per_q_out,
+            "coverage": ctx["coverage"],
+            "provenance": {
+                "scheme": ctx["provenance"].get("scheme", ""),
+                "matcher": ctx["provenance"].get("matcher", ""),
+                "scorer": ctx["provenance"].get("scorer", ""),
+                "model_id": ctx["provenance"].get("model_id", ""),
+                "prompt_version": ctx["provenance"].get("prompt_version", "")
+            },
+            "totals": {
+                "scored": ctx["n_scored"],
+                "routed": ctx["n_routed"],
+                "no_scheme": ctx["n_no_scheme"],
+                "flagged": ctx["n_flagged"],
+                "total_awarded": ctx["total_awarded"],
+                "total_possible": ctx["total_possible"],
+            }
+        }
+        
+        jobs[job_id]["status"] = "completed"
+        jobs[job_id]["report"] = report
+    except Exception as e:
+        jobs[job_id]["status"] = "failed"
+        jobs[job_id]["error"] = str(e)
 
 logger = logging.getLogger("GradeMIND.EvaluateV2")
 
@@ -119,3 +218,57 @@ def evaluate(request: EvaluateRequest) -> dict:
     }
     payload["answer_text"] = request.answer_text
     return payload
+
+
+@router.post(
+    "/grade",
+    summary="Grade a full answer script using the verified pipeline",
+    status_code=status.HTTP_202_ACCEPTED
+)
+def submit_grading_job(
+    background_tasks: BackgroundTasks,
+    paper: UploadFile = File(...),
+    answers: UploadFile = File(...),
+    scheme: UploadFile = File(...),
+    mask: str = Form("0,0,1,0.15"),
+    max_pages: Optional[int] = Form(None)
+):
+    job_id = str(uuid.uuid4())
+    
+    # Save files to a temporary directory
+    # Using relative path from backend directory
+    work_dir = Path("..") / "tmp" / "jobs" / job_id
+    work_dir.mkdir(parents=True, exist_ok=True)
+    
+    paper_path = work_dir / (paper.filename or "paper.pdf")
+    answers_path = work_dir / (answers.filename or "answers.pdf")
+    scheme_path = work_dir / (scheme.filename or "scheme.json")
+    
+    with open(paper_path, "wb") as f:
+        shutil.copyfileobj(paper.file, f)
+    with open(answers_path, "wb") as f:
+        shutil.copyfileobj(answers.file, f)
+    with open(scheme_path, "wb") as f:
+        shutil.copyfileobj(scheme.file, f)
+        
+    jobs[job_id] = {"status": "pending"}
+    
+    background_tasks.add_task(
+        background_grade_job,
+        job_id=job_id,
+        paper_path=paper_path,
+        answers_path=answers_path,
+        scheme_path=scheme_path,
+        mask_str=mask,
+        max_pages=max_pages
+    )
+    
+    return {"job_id": job_id, "status": "accepted"}
+
+
+@router.get("/grade/{job_id}")
+def get_grading_job(job_id: str):
+    job = jobs.get(job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+    return job

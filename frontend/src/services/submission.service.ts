@@ -87,5 +87,24 @@ export const SubmissionService = {
       data: response.data,
       ...response.data
     };
+  },
+
+  gradeV2: async (paper: File, answers: File, scheme: File) => {
+    const formData = new FormData();
+    formData.append('paper', paper);
+    formData.append('answers', answers);
+    formData.append('scheme', scheme);
+
+    const response = await apiClient.post('/api/v2/grade', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data'
+      }
+    });
+    return response.data; // { job_id: '...', status: 'accepted' }
+  },
+
+  pollGradeJob: async (jobId: string) => {
+    const response = await apiClient.get(`/api/v2/grade/${jobId}`);
+    return response.data; // { status: 'running' | 'completed' | 'failed', report: ... }
   }
 };

@@ -547,57 +547,28 @@ def write_report(path: Path, ctx: Dict[str, Any]) -> None:
 # ---------------------------------------------------------------------------
 
 
-def main(argv: Optional[List[str]] = None) -> int:
-    ap = argparse.ArgumentParser(prog="python -m scripts.grade",
-                                 description="Grade one answer script against one marking scheme.")
-    ap.add_argument("--paper", type=Path, default=None,
-                    help="question paper PDF, read for question text and mark allocation")
-    ap.add_argument("--answers", type=Path, required=True, help="answer script PDF or image")
-    ap.add_argument("--scheme", type=Path, required=True, help="marking scheme JSON")
-    ap.add_argument("--out", type=Path, required=True, help="output directory")
-    ap.add_argument("--offline", action="store_true",
-                    help="cache only; any cache miss fails loudly and no network call is made")
-    ap.add_argument("--mask", type=str, default=None,
-                    help="identity region as x0,y0,x1,y1 fractions, e.g. 0,0,1,0.15")
-    ap.add_argument("--no-mask", action="store_true",
-                    help="explicitly send unmasked pages. Recorded in the report.")
-    ap.add_argument("--dpi", type=int, default=150, help="rasterization DPI for a PDF")
-    ap.add_argument("--max-pages", type=int, default=None)
-    ap.add_argument("--cache", type=Path, default=Path("tmp/htr_cache"))
-    ap.add_argument("--expect-questions", type=int, default=15,
-                    help="highest question number the segmenter should expect")
-    args = ap.parse_args(argv)
+def run_grading_pipeline(
+    paper_path: Optional[Path],
+    answers_path: Path,
+    scheme_path: Path,
+    region: Optional[MaskRegion],
+    dpi: int,
+    max_pages: Optional[int],
+    offline: bool,
+    cache_root: Path,
+    expect_questions: int,
+    out_dir: Optional[Path] = None,
+) -> Dict[str, Any]:
+    print(f"{GRADE_VERSION}  offline={offline}")
+    print(f"  paper   : {paper_path}")
+    print(f"  answers : {answers_path}")
+    print(f"  scheme  : {scheme_path}")
 
-    if not args.mask and not args.no_mask:
-        print("FATAL: --mask is required (or --no-mask to opt out explicitly).\n"
-              "There is deliberately no default identity region: answer-book layouts\n"
-              "differ, and a default that fits one exam silently misses the header on\n"
-              "another. Verify the region against a real page of THIS exam first.",
-              file=sys.stderr)
-        return 2
-
-    region = None
-    if args.mask:
-        try:
-            x0, y0, x1, y1 = (float(v) for v in args.mask.split(","))
-        except ValueError:
-            print(f"FATAL: --mask must be four comma-separated fractions, got {args.mask!r}",
-                  file=sys.stderr)
-            return 2
-        region = MaskRegion(x0, y0, x1, y1, label=f"identity region for {args.answers.name}")
-
-    args.out.mkdir(parents=True, exist_ok=True)
-
-    print(f"{GRADE_VERSION}  offline={args.offline}")
-    print(f"  paper   : {args.paper}")
-    print(f"  answers : {args.answers}")
-    print(f"  scheme  : {args.scheme}")
-
-    scheme_qs = {sq.question_number: sq for sq in load_marking_scheme(args.scheme)}
+    scheme_qs = {sq.question_number: sq for sq in load_marking_scheme(scheme_path)}
     print(f"  scheme has {len(scheme_qs)} question(s): "
           f"{', '.join(sorted(scheme_qs, key=lambda s: int(s)))}")
 
-    paper = read_paper(args.paper)
+    paper = read_paper(paper_path)
     print("  paper   : " + (f"read, {len(paper.questions)} questions parsed"
                             if paper.read else f"NOT READ ({paper.reason[:70]})"))
 
@@ -609,10 +580,10 @@ def main(argv: Optional[List[str]] = None) -> int:
             print(f"  SCHEME FLAG Q{c.question_number}: overlap={c.overlap:.2f} "
                   f"missing={c.missing_from_scheme}")
 
-    pages = load_pages(args.answers, args.dpi, args.max_pages)
+    pages = load_pages(answers_path, dpi, max_pages)
     print(f"  rasterized {len(pages)} page(s)")
 
-    transcribed, outcomes = transcribe(pages, region, args.offline, args.cache)
+    transcribed, outcomes = transcribe(pages, region, offline, cache_root)
     print(f"  transcribed {len(transcribed)}/{len(pages)} page(s)")
     for o in outcomes:
         if not o.ok:
@@ -626,8 +597,8 @@ def main(argv: Optional[List[str]] = None) -> int:
             f"{len(failed)} page(s) could not be transcribed. Nothing on them was marked.",
             [f"page {o.page_number} (`{o.page_sha256[:16]}`): {o.reason}" for o in failed]))
 
-    if args.max_pages is not None:
-        coverage.append((f"Only the first {args.max_pages} page(s) were processed (`--max-pages`).",
+    if max_pages is not None:
+        coverage.append((f"Only the first {max_pages} page(s) were processed (`--max-pages`).",
                          ["Any content beyond that page was not read and not marked."]))
 
     if region is None:
@@ -638,7 +609,7 @@ def main(argv: Optional[List[str]] = None) -> int:
     if transcribed:
         regions = segment_script(
             list(transcribed),
-            expected_questions=[str(i) for i in range(1, args.expect_questions + 1)])
+            expected_questions=[str(i) for i in range(1, expect_questions + 1)])
     print(f"  segmented {len(regions)} region(s)")
 
     classifier = ContentClassifier(offline=True)
@@ -716,49 +687,110 @@ def main(argv: Optional[List[str]] = None) -> int:
 
     model_id = transcribed[0].model_id if transcribed else "n/a"
     prompt_version = transcribed[0].prompt_version if transcribed else TRANSCRIPTION_PROMPT_VERSION
-    is_image = args.answers.suffix.lower() in IMAGE_SUFFIXES
+    is_image = answers_path.suffix.lower() in IMAGE_SUFFIXES
+    mask_str = f"{region.x0},{region.y0},{region.x1},{region.y1}" if region else None
     provenance = {
-        "grade_cli": GRADE_VERSION, "scheme": args.scheme.name,
+        "grade_cli": GRADE_VERSION, "scheme": scheme_path.name,
         "matcher": MATCHER_VERSION, "scorer": ENGINE_VERSION,
         "model_id": model_id, "prompt_version": prompt_version,
-        "rasterize_dpi": "n/a (image input)" if is_image else str(args.dpi),
-        "identity_mask": args.mask if args.mask else "DISABLED (--no-mask)",
-        "offline": str(args.offline),
+        "rasterize_dpi": "n/a (image input)" if is_image else str(dpi),
+        "identity_mask": mask_str if mask_str else "DISABLED (--no-mask)",
+        "offline": str(offline),
         "generated_utc": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
     }
 
-    if not is_image and results:
-        try:
-            from AI.reports.annotate_pdf import generate_annotated_pdf
-            annotated = generate_annotated_pdf(args.answers, args.out / "annotated.pdf",
-                                               results, provenance)
-            print(f"  annotated PDF -> {annotated}")
-        except Exception as exc:
-            coverage.append(("The annotated PDF could not be produced.",
-                             [f"{type(exc).__name__}: {exc}"]))
-            print(f"  annotated PDF FAILED: {exc}")
-    else:
-        coverage.append(("No annotated PDF was produced.",
-                         ["The annotator draws on PDF pages; this input is a single image."]))
+    if out_dir:
+        if not is_image and results:
+            try:
+                from AI.reports.annotate_pdf import generate_annotated_pdf
+                annotated = generate_annotated_pdf(answers_path, out_dir / "annotated.pdf",
+                                                   results, provenance)
+                print(f"  annotated PDF -> {annotated}")
+            except Exception as exc:
+                coverage.append(("The annotated PDF could not be produced.",
+                                 [f"{type(exc).__name__}: {exc}"]))
+                print(f"  annotated PDF FAILED: {exc}")
+        else:
+            coverage.append(("No annotated PDF was produced.",
+                             ["The annotator draws on PDF pages; this input is a single image."]))
 
-    report = args.out / "report.md"
-    write_report(report, {
-        "answers_name": args.answers.name, "paper": paper, "checks": checks,
+    ctx = {
+        "answers_name": answers_path.name, "paper": paper, "checks": checks,
         "per_question": per_question, "coverage": coverage, "provenance": provenance,
         "page_outcomes": outcomes, "n_scored": n_scored, "n_routed": n_routed,
         "n_no_scheme": n_no_scheme, "n_flagged": len(flagged),
         "total_awarded": total_awarded, "total_possible": total_possible,
-    })
+        "results": results,
+    }
 
-    (args.out / "results.json").write_text(
-        json.dumps({"provenance": provenance,
-                    "results": [{k: v for k, v in r.items() if k != "lines"} for r in results]},
-                   indent=2), encoding="utf-8")
+    if out_dir:
+        report = out_dir / "report.md"
+        write_report(report, ctx)
+        (out_dir / "results.json").write_text(
+            json.dumps({"provenance": provenance,
+                        "results": [{k: v for k, v in r.items() if k != "lines"} for r in results]},
+                       indent=2), encoding="utf-8")
+        print(f"\n  {n_scored} scored, {n_routed} routed, {n_no_scheme} no-scheme, "
+              f"{len(flagged)} scheme flag(s)")
+        print(f"  report -> {report}")
+        print(f"  {BANNER}")
 
-    print(f"\n  {n_scored} scored, {n_routed} routed, {n_no_scheme} no-scheme, "
-          f"{len(flagged)} scheme flag(s)")
-    print(f"  report -> {report}")
-    print(f"  {BANNER}")
+    return ctx
+
+
+def main(argv: Optional[List[str]] = None) -> int:
+    ap = argparse.ArgumentParser(prog="python -m scripts.grade",
+                                 description="Grade one answer script against one marking scheme.")
+    ap.add_argument("--paper", type=Path, default=None,
+                    help="question paper PDF, read for question text and mark allocation")
+    ap.add_argument("--answers", type=Path, required=True, help="answer script PDF or image")
+    ap.add_argument("--scheme", type=Path, required=True, help="marking scheme JSON")
+    ap.add_argument("--out", type=Path, required=True, help="output directory")
+    ap.add_argument("--offline", action="store_true",
+                    help="cache only; any cache miss fails loudly and no network call is made")
+    ap.add_argument("--mask", type=str, default=None,
+                    help="identity region as x0,y0,x1,y1 fractions, e.g. 0,0,1,0.15")
+    ap.add_argument("--no-mask", action="store_true",
+                    help="explicitly send unmasked pages. Recorded in the report.")
+    ap.add_argument("--dpi", type=int, default=150, help="rasterization DPI for a PDF")
+    ap.add_argument("--max-pages", type=int, default=None)
+    ap.add_argument("--cache", type=Path, default=Path("tmp/htr_cache"))
+    ap.add_argument("--expect-questions", type=int, default=15,
+                    help="highest question number the segmenter should expect")
+    args = ap.parse_args(argv)
+
+    if not args.mask and not args.no_mask:
+        print("FATAL: --mask is required (or --no-mask to opt out explicitly).\n"
+              "There is deliberately no default identity region: answer-book layouts\n"
+              "differ, and a default that fits one exam silently misses the header on\n"
+              "another. Verify the region against a real page of THIS exam first.",
+              file=sys.stderr)
+        return 2
+
+    region = None
+    if args.mask:
+        try:
+            x0, y0, x1, y1 = (float(v) for v in args.mask.split(","))
+        except ValueError:
+            print(f"FATAL: --mask must be four comma-separated fractions, got {args.mask!r}",
+                  file=sys.stderr)
+            return 2
+        region = MaskRegion(x0, y0, x1, y1, label=f"identity region for {args.answers.name}")
+
+    args.out.mkdir(parents=True, exist_ok=True)
+
+    run_grading_pipeline(
+        paper_path=args.paper,
+        answers_path=args.answers,
+        scheme_path=args.scheme,
+        region=region,
+        dpi=args.dpi,
+        max_pages=args.max_pages,
+        offline=args.offline,
+        cache_root=args.cache,
+        expect_questions=args.expect_questions,
+        out_dir=args.out,
+    )
     return 0
 
 
