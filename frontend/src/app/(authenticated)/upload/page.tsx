@@ -20,6 +20,7 @@ export default function UploadCenter() {
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState('');
+  const [isOffline, setIsOffline] = useState(false);
 
   const handleStartEvaluation = async () => {
     setSubmitError('');
@@ -30,7 +31,7 @@ export default function UploadCenter() {
 
     setIsSubmitting(true);
     try {
-      const res = await SubmissionService.gradeV2(paper, answers, scheme);
+      const res = await SubmissionService.gradeV2(paper, answers, scheme, undefined, undefined, isOffline);
       if (res.job_id) {
         router.push(`/results?job_id=${res.job_id}`);
       } else {
@@ -135,6 +136,19 @@ export default function UploadCenter() {
             <span>{submitError}</span>
           </div>
         )}
+
+        <div className="flex items-center gap-2 pt-2">
+          <input 
+            type="checkbox" 
+            id="offline-mode" 
+            checked={isOffline} 
+            onChange={(e) => setIsOffline(e.target.checked)}
+            className="w-4 h-4 text-emerald-600 bg-slate-50 border-slate-300 rounded focus:ring-emerald-500"
+          />
+          <label htmlFor="offline-mode" className="text-sm font-medium text-slate-700">
+            Run in Offline Mode (No Live API calls, Cache only)
+          </label>
+        </div>
 
         <div className="flex justify-end pt-4 border-t border-slate-100">
           <button

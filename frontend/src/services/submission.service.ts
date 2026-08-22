@@ -89,11 +89,14 @@ export const SubmissionService = {
     };
   },
 
-  gradeV2: async (paper: File, answers: File, scheme: File) => {
+  gradeV2: async (paper: File, answers: File, scheme: File, mask?: string, maxPages?: number, offline?: boolean) => {
     const formData = new FormData();
     formData.append('paper', paper);
     formData.append('answers', answers);
     formData.append('scheme', scheme);
+    if (mask) formData.append('mask', mask);
+    if (maxPages) formData.append('max_pages', maxPages.toString());
+    if (offline !== undefined) formData.append('offline', offline ? 'true' : 'false');
 
     const response = await apiClient.post('/api/v2/grade', formData, {
       headers: {

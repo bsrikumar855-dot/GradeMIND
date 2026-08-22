@@ -48,6 +48,7 @@ def background_grade_job(
     scheme_path: Path,
     mask_str: str,
     max_pages: Optional[int],
+    offline: bool = False,
 ):
     jobs[job_id]["status"] = "running"
     try:
@@ -61,7 +62,7 @@ def background_grade_job(
             region=region,
             dpi=150,
             max_pages=max_pages,
-            offline=True,
+            offline=offline,
             cache_root=Path("..") / "tmp" / "htr_cache",
             expect_questions=15,
             out_dir=None
@@ -231,7 +232,8 @@ def submit_grading_job(
     answers: UploadFile = File(...),
     scheme: UploadFile = File(...),
     mask: str = Form("0,0,1,0.15"),
-    max_pages: Optional[int] = Form(None)
+    max_pages: Optional[int] = Form(None),
+    offline: bool = Form(False)
 ):
     job_id = str(uuid.uuid4())
     
@@ -260,7 +262,8 @@ def submit_grading_job(
         answers_path=answers_path,
         scheme_path=scheme_path,
         mask_str=mask,
-        max_pages=max_pages
+        max_pages=max_pages,
+        offline=offline
     )
     
     return {"job_id": job_id, "status": "accepted"}
