@@ -92,67 +92,14 @@ SessionLocal = sessionmaker(
 )
 
 def is_sqlite_database() -> bool:
-    """True when running against the SQLite test/dev database."""
+    """True when running against an SQLite database (e.g. unit test suite)."""
     return DATABASE_URL.startswith("sqlite")
 
 
 def init_db() -> None:
-    """
-    Create all tables via SQLAlchemy metadata (create_all).
-
-    This is ONLY the schema path for the SQLite test/dev database (see
-    is_sqlite_database() and main.py's lifespan, which does not call this
-    for any other database). Alembic migrations (alembic/versions/) are the
-    single source of truth for real (Postgres) deployments — run
-    `alembic upgrade head` before starting the app against Postgres.
-    Running both create_all and Alembic against the same database is what
-    caused the duplicate-schema-creation bug this split fixes.
-    """
+    """Create database tables from SQLAlchemy metadata."""
     import app.models  # noqa: F401
     Base.metadata.create_all(bind=engine)
-    ensure_compatible_schema()
-
-
-def ensure_compatible_schema() -> None:
-    """
-    Add route-critical columns when a deployed database was created before
-    the latest models. This keeps GET endpoints from failing on schema drift.
-
-    Only invoked from init_db() (SQLite path). Real deployments manage
-    schema drift via new Alembic migrations, not this function.
-    """
-    inspector = inspect(engine)
-    table_names = set(inspector.get_table_names())
-    if "exams" not in table_names:
-        return
-
-    existing_exam_columns = {column["name"] for column in inspector.get_columns("exams")}
-    required_exam_columns = {
-        "evaluation_mode": {
-            "postgresql": "ALTER TABLE exams ADD COLUMN evaluation_mode VARCHAR(20) NOT NULL DEFAULT 'AI_AUTONOMOUS'",
-            "sqlite": "ALTER TABLE exams ADD COLUMN evaluation_mode VARCHAR(20) NOT NULL DEFAULT 'AI_AUTONOMOUS'",
-        },
-        "results_published": {
-            "postgresql": "ALTER TABLE exams ADD COLUMN results_published BOOLEAN NOT NULL DEFAULT false",
-            "sqlite": "ALTER TABLE exams ADD COLUMN results_published BOOLEAN NOT NULL DEFAULT 0",
-        },
-        "published_at": {
-            "postgresql": "ALTER TABLE exams ADD COLUMN published_at TIMESTAMP NULL",
-            "sqlite": "ALTER TABLE exams ADD COLUMN published_at DATETIME",
-        },
-    }
-
-    dialect_name = engine.dialect.name
-    with engine.begin() as connection:
-        for column_name, ddl_by_dialect in required_exam_columns.items():
-            if column_name in existing_exam_columns:
-                continue
-            ddl = ddl_by_dialect.get(dialect_name)
-            if not ddl:
-                logger.warning("No schema compatibility DDL for dialect=%s column=%s", dialect_name, column_name)
-                continue
-            logger.warning("Adding missing database column: exams.%s", column_name)
-            connection.execute(text(ddl))
 
 
 def check_database_connection() -> None:
@@ -160,3 +107,4 @@ def check_database_connection() -> None:
     with engine.connect() as connection:
         connection.execute(text("SELECT 1"))
     logger.info("Database connection check passed.")
+
