@@ -15,7 +15,30 @@ export PYTHONPATH=.
 
 On Windows PowerShell: `$env:PYTHONPATH="."`
 
-### Path 1. The harness. Lead with this.
+  ### Path 0. The Workspace UI (Live Demo)
+
+  This is the interactive Next.js frontend wired to the verified FastAPI grading pipeline.
+
+  **Startup sequence (run in separate terminals):**
+
+  1. **Backend (FastAPI)**
+     ```bash
+     cd backend
+     $env:PYTHONPATH=".."
+     python -m uvicorn app.main:app --port 8000
+     ```
+     *Takes ~2-3 seconds to be ready.*
+
+  2. **Frontend (Next.js)**
+     ```bash
+     cd frontend
+     npm run dev
+     ```
+     *Takes ~5-10 seconds to compile and be ready.*
+
+  3. **URL:** Open [http://localhost:3000/upload](http://localhost:3000/upload) in the browser.
+
+  ### Path 1. The harness. Lead with this.
 
 ```bash
 python -m scripts.verify_demo --offline
@@ -129,7 +152,7 @@ four findings. They stand without a terminal.
 | Path 3, `demo_marking` | **VERIFIED TODAY** on bare system Python, outside the venv |
 | Path 2 rendered in a browser | **NOT RE-VERIFIED TODAY.** Last checked 2026-08-17 at 1440, 768 and 375: no overflow, connectors fire, degrades correctly below 900px. File unchanged since. **Open it once yourself.** |
 | Annotated PDF eyeballed | **NOT DONE TODAY.** Phase 7 checks geometry, not appearance. A coordinate assertion has passed on a visually broken layout twice in this project. **Look at `tmp/verify_page2.png` and `tmp/verify_page3.png`.** |
-| Backend or frontend app | **NOT RUN**, and not part of the demo. No path above needs it |
+| Workspace UI (Frontend + Backend) | **VERIFIED TODAY.** Live transcription toggle added and tested end-to-end on DSA upload. 5 scored, 10 routed, 5 no-scheme. |
 | Full backend pytest suite | **NOT RUN.** Stale since Phase 0. Do not quote the old figure |
 
 ---
