@@ -219,7 +219,7 @@ function ResultsContent() {
                               <Hash className="w-3 h-3" /> Extracted Evidence 
                               <span className="text-emerald-400 font-medium ml-2">[{vp.evidence_span?.start} - {vp.evidence_span?.end}]</span>
                             </p>
-                            <p className="text-xs font-medium text-slate-800 italic">"{vp.evidence_text}"</p>
+                            <p className="text-xs font-medium text-slate-800 italic">&quot;{vp.evidence_text}&quot;</p>
                           </div>
                         ) : (
                           <div className="mt-3 p-3 bg-white border border-slate-100 rounded-xl">

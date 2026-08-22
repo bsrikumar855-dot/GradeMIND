@@ -102,7 +102,7 @@ export default function UploadCenter() {
           Upload Answer Script
         </h1>
         <p className="text-slate-300 text-sm mt-1">
-          Upload a Question Paper, an Answer Sheet, and a Marking Scheme (JSON) to evaluate a student's submission using the verified pipeline.
+          Upload a Question Paper, an Answer Sheet, and a Marking Scheme (JSON) to evaluate a student&apos;s submission using the verified pipeline.
         </p>
       </div>
 
