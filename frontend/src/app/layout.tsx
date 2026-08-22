@@ -12,9 +12,9 @@ export const metadata: Metadata = {
   title: "GradeMIND - AI-Powered Exam Grading & Evaluation Analytics",
   description: "Scaling classroom assessment using advanced AI analytics, student response sheets grading and detailed reports generation.",
   icons: {
-    icon: "/images/grademind-logo-official.jpeg",
-    shortcut: "/images/grademind-logo-official.jpeg",
-    apple: "/images/grademind-logo-official.jpeg",
+    icon: "/images/grademind-logo.png",
+    shortcut: "/images/grademind-logo.png",
+    apple: "/images/grademind-logo.png",
   },
 };
 
