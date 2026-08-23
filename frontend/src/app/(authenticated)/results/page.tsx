@@ -11,42 +11,68 @@ import {
   XCircle,
   HelpCircle,
   Hash,
-  Download
+  Download,
+  FileText
 } from 'lucide-react';
 import { SubmissionService } from '@/services/submission.service';
 
 function ResultsContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const jobId = searchParams.get('job_id');
+  const urlJobId = searchParams.get('job_id');
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [jobData, setJobData] = useState<any>(null);
   const [annotatedPdfUrl, setAnnotatedPdfUrl] = useState<string | null>(null);
+  const [submissions, setSubmissions] = useState<any[]>([]);
+  const [activeJobId, setActiveJobId] = useState<string>(urlJobId || '');
 
+  // 1. Fetch available evaluated submissions list
   useEffect(() => {
+    async function loadSubmissionsList() {
+      try {
+        const res = await SubmissionService.getEvaluatedSubmissions();
+        const list = res.data || [];
+        setSubmissions(list);
+        if (!urlJobId && list.length > 0) {
+          setActiveJobId(list[0].id);
+        }
+      } catch (err) {
+        console.warn('Failed to fetch submissions list:', err);
+      }
+    }
+    loadSubmissionsList();
+  }, [urlJobId]);
+
+  // 2. Poll & fetch active job data
+  useEffect(() => {
+    const currentId = urlJobId || activeJobId;
+    if (!currentId) {
+      setLoading(false);
+      return;
+    }
+
     let interval: any = null;
 
     async function checkJob() {
-      if (!jobId) {
-        setError('No job_id provided.');
-        setLoading(false);
-        return;
-      }
-
       try {
-        const res = await SubmissionService.pollGradeJob(jobId);
-        
-        if (res.status === 'completed') {
-          setJobData(res.report);
+        const res = await SubmissionService.pollGradeJob(currentId);
+        const reportObj = res.report || (res.questions || res.totals ? res : null);
+        const isDone = res.status === 'completed' || res.status === 'COMPLETE' || (res.state && res.state.status === 'COMPLETE') || !!reportObj;
+
+        if (isDone) {
+          if (reportObj) {
+            setJobData(reportObj);
+            setError('');
+          }
           if (res.annotated_pdf_url) {
             const base = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
             setAnnotatedPdfUrl(`${base}${res.annotated_pdf_url}`);
           }
           setLoading(false);
           if (interval) clearInterval(interval);
-        } else if (res.status === 'failed') {
+        } else if (res.status === 'failed' || res.status === 'FAILED') {
           setError(res.error || 'Evaluation failed.');
           setLoading(false);
           if (interval) clearInterval(interval);
@@ -59,19 +85,16 @@ function ResultsContent() {
       }
     }
 
-    if (jobId) {
-      checkJob();
-      interval = setInterval(checkJob, 2000);
-    } else {
-      setLoading(false);
-    }
+    setLoading(true);
+    checkJob();
+    interval = setInterval(checkJob, 2000);
 
     return () => {
       if (interval) clearInterval(interval);
     };
-  }, [jobId]);
+  }, [urlJobId, activeJobId]);
 
-  if (loading) {
+  if (loading && !jobData) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[65vh] space-y-4">
         <div className="w-10 h-10 border-4 border-slate-900 border-t-emerald-500 rounded-full animate-spin"></div>
@@ -82,10 +105,32 @@ function ResultsContent() {
 
   if (error || !jobData) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[50vh]">
-        <AlertTriangle className="w-12 h-12 text-rose-500 mb-4" />
+      <div className="flex flex-col items-center justify-center min-h-[50vh] space-y-4">
+        <AlertTriangle className="w-12 h-12 text-rose-500 mb-2" />
         <h2 className="text-lg font-bold text-slate-900">Oops! Something went wrong</h2>
-        <p className="text-slate-500 text-sm mt-2">{error || 'Job data not found.'}</p>
+        <p className="text-slate-500 text-sm mt-1">{error || 'Job data not found.'}</p>
+        
+        {submissions.length > 0 && (
+          <div className="w-72 mt-4">
+            <p className="text-xs font-bold text-slate-600 mb-2 text-center">Select another evaluated script:</p>
+            <select
+              value={activeJobId || ''}
+              onChange={(e) => {
+                const val = e.target.value;
+                setActiveJobId(val);
+                router.replace(`/results?job_id=${val}`);
+              }}
+              className="w-full px-4 py-2.5 rounded-xl border border-slate-300 bg-white text-slate-900 font-bold text-xs shadow-sm focus:outline-none cursor-pointer"
+            >
+              {submissions.map((sub: any) => (
+                <option key={sub.id} value={sub.id}>
+                  {sub.student_name} ({sub.student_roll_number})
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
+
         <button 
           onClick={() => router.push('/upload')} 
           className="mt-6 px-6 py-2.5 bg-slate-900 text-white rounded-xl text-sm font-bold flex items-center gap-2"
@@ -105,21 +150,43 @@ function ResultsContent() {
     <div className="flex-1 flex flex-col space-y-5 text-left w-full">
       
       {/* Header */}
-      <div className="flex items-center gap-4">
-        <button 
-          onClick={() => router.push('/upload')}
-          className="p-2.5 rounded-xl bg-white border border-slate-200 text-slate-500 hover:bg-slate-50 hover:text-slate-900 transition-colors"
-        >
-          <ArrowLeft className="w-5 h-5" />
-        </button>
-        <div>
-          <h1 className="text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2">
-            <Sparkles className="w-5 h-5 text-emerald-500" /> Evaluation Report
-          </h1>
-          <p className="text-slate-500 text-sm font-medium mt-1">
-            Job ID: {jobId}
-          </p>
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-slate-200 pb-5">
+        <div className="flex items-center gap-4">
+          <button 
+            onClick={() => router.push('/upload')}
+            className="p-2.5 rounded-xl bg-white border border-slate-200 text-slate-500 hover:bg-slate-50 hover:text-slate-900 transition-colors"
+          >
+            <ArrowLeft className="w-5 h-5" />
+          </button>
+          <div>
+            <h1 className="text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2">
+              <Sparkles className="w-5 h-5 text-emerald-500" /> Evaluation Report
+            </h1>
+            <p className="text-slate-500 text-xs font-semibold mt-0.5">
+              Job ID: {activeJobId || urlJobId}
+            </p>
+          </div>
         </div>
+
+        {submissions.length > 0 && (
+          <div className="w-full md:w-80">
+            <select
+              value={activeJobId || urlJobId || ''}
+              onChange={(e) => {
+                const val = e.target.value;
+                setActiveJobId(val);
+                router.replace(`/results?job_id=${val}`);
+              }}
+              className="w-full px-4 py-2.5 rounded-xl border border-slate-300 bg-white text-slate-900 font-bold text-xs shadow-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 cursor-pointer"
+            >
+              {submissions.map((sub: any) => (
+                <option key={sub.id} value={sub.id}>
+                  {sub.student_name} ({sub.student_roll_number})
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
       </div>
 
       {/* Totals Summary */}
@@ -180,15 +247,26 @@ function ResultsContent() {
               <FileCheck2 className="w-5 h-5 text-emerald-500" />
               <h3 className="text-lg font-black text-slate-900">Annotated Answer Script</h3>
             </div>
-            <a
-              href={annotatedPdfUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="px-5 py-2.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold text-xs rounded-xl transition-all shadow-lg shadow-emerald-500/25 flex items-center gap-2"
-            >
-              <Download className="w-4 h-4" />
-              Download Annotated Script
-            </a>
+            <div className="flex items-center gap-3">
+              <a
+                href={`http://localhost:8000/api/v2/grade/${jobId}/student-report?format=html`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="px-5 py-2.5 bg-[#183B25] hover:bg-[#122c1b] text-white font-bold text-xs rounded-xl transition-all shadow-md flex items-center gap-2 border border-emerald-500/40"
+              >
+                <FileText className="w-4 h-4 text-emerald-300" />
+                Student Diagnostic Report (HTML)
+              </a>
+              <a
+                href={annotatedPdfUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="px-5 py-2.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold text-xs rounded-xl transition-all shadow-lg shadow-emerald-500/25 flex items-center gap-2"
+              >
+                <Download className="w-4 h-4" />
+                Download Annotated Script
+              </a>
+            </div>
           </div>
           <div className="p-4">
             <iframe
@@ -252,20 +330,38 @@ function ResultsContent() {
                               </div>
                             </div>
 
-                            {vp.awarded > 0 && vp.evidence_text ? (
-                              <div className="mt-3 p-4 bg-slate-900 rounded-xl overflow-x-auto">
-                                <p className="text-[10px] font-bold text-emerald-400 uppercase tracking-widest mb-2 flex items-center gap-1">
-                                  <Hash className="w-3 h-3" /> Extracted Evidence 
-                                  <span className="text-emerald-200/50 font-medium ml-2 tabular-nums">[{vp.evidence_span?.start} - {vp.evidence_span?.end}]</span>
-                                </p>
-                                <p className="text-sm font-medium text-emerald-50 font-mono leading-relaxed whitespace-pre-wrap break-words">&quot;{vp.evidence_text}&quot;</p>
+                            {vp.awarded > 0 ? (
+                              <div className="mt-3 p-3.5 bg-emerald-50/80 border border-emerald-200/80 rounded-xl space-y-2">
+                                <div className="flex items-center justify-between gap-2">
+                                  <p className="text-[10px] font-black text-emerald-800 uppercase tracking-wider flex items-center gap-1.5">
+                                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" /> Awarded ({vp.awarded} {vp.awarded === 1 ? 'mark' : 'marks'})
+                                  </p>
+                                  {vp.reason && (
+                                    <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100/90 px-2 py-0.5 rounded border border-emerald-300/60 font-mono">
+                                      {vp.reason}
+                                    </span>
+                                  )}
+                                </div>
+                                {vp.evidence_text && (
+                                  <div className="p-3 bg-slate-900 rounded-lg border border-slate-800">
+                                    <p className="text-[10px] font-bold text-emerald-400 uppercase tracking-widest mb-1.5 flex items-center gap-1">
+                                      <Hash className="w-3 h-3 text-emerald-400" /> Extracted Evidence 
+                                      {vp.evidence_span && (
+                                        <span className="text-emerald-200/60 font-medium ml-1.5 font-mono text-[10px]">
+                                          [{vp.evidence_span.start} - {vp.evidence_span.end}]
+                                        </span>
+                                      )}
+                                    </p>
+                                    <p className="text-xs font-medium text-emerald-50 font-mono leading-relaxed whitespace-pre-wrap break-words">&quot;{vp.evidence_text}&quot;</p>
+                                  </div>
+                                )}
                               </div>
                             ) : (
                               <div className="mt-3 p-3 bg-white border border-slate-200 rounded-xl">
                                 <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1 flex items-center gap-1">
-                                  <AlertTriangle className="w-3 h-3" /> Not Awarded
+                                  <AlertTriangle className="w-3 h-3 text-amber-500" /> Not Awarded (0 marks)
                                 </p>
-                                <p className="text-xs font-medium text-slate-600">{vp.reason}</p>
+                                <p className="text-xs font-medium text-slate-600 font-mono">{vp.reason}</p>
                               </div>
                             )}
                           </div>

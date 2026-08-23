@@ -21,13 +21,18 @@ The engine underneath is real. The surface around it is a demo.
 
 from __future__ import annotations
 
+import json
 import logging
+import os
+import re
 
 from fastapi import APIRouter, HTTPException, status
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, HTMLResponse
 from pydantic import BaseModel, Field
 
 from AI.evaluation.score_computer import compute
+from AI.job_state import JobState
+from AI.reports.student_report import generate_student_report
 from AI.evaluation.value_point import DISCLAIMER
 from AI.evaluation.value_point_matcher import match_all
 from AI.fixtures.demo_scheme import QUESTIONS
@@ -345,14 +350,49 @@ def submit_grading_job(
 def get_v2_jobs():
     """Returns all completed V2 jobs as mock submission objects for the frontend dropdown."""
     results = []
+    seen = set()
+
+    # 1. Check in-memory jobs
     for k, v in jobs.items():
-        if v.get("status") == "completed":
+        if v.get("status") in ("completed", "COMPLETE"):
+            seen.add(k)
             results.append({
                 "id": k,
-                "student_name": f"Demo Job {k[:4]}",
+                "student_name": f"Evaluated Script ({k[:8]})",
                 "student_roll_number": k[:8],
                 "status": "COMPLETED",
             })
+
+    # 2. Scan disk jobs folders for existing evaluations
+    candidate_dirs = [
+        Path("tmp/jobs"),
+        Path("../tmp/jobs"),
+        Path(os.getcwd()) / "tmp" / "jobs",
+        Path(os.getcwd()).parent / "tmp" / "jobs",
+    ]
+    for cdir in candidate_dirs:
+        if cdir.exists():
+            for folder in cdir.iterdir():
+                if folder.is_dir() and folder.name not in seen:
+                    res_file = folder / "results.json"
+                    st_file = folder / "state.json"
+                    if res_file.exists() or st_file.exists():
+                        seen.add(folder.name)
+                        score_info = ""
+                        if res_file.exists():
+                            try:
+                                rdata = json.loads(res_file.read_text(encoding="utf-8"))
+                                scored_cnt = len([q for q in rdata.get("results", []) if q.get("score")])
+                                score_info = f" [{scored_cnt} scored]"
+                            except Exception:
+                                pass
+                        results.append({
+                            "id": folder.name,
+                            "student_name": f"Evaluated Script ({folder.name[:8]}){score_info}",
+                            "student_roll_number": folder.name[:8],
+                            "status": "COMPLETED",
+                        })
+
     return results
 
 
@@ -452,27 +492,141 @@ def get_job_state(job_id: str):
     return state.to_dict()
 
 
+def resolve_job_dir(job_id: str) -> Path:
+    candidates = [
+        Path("tmp/jobs") / job_id,
+        Path("../tmp/jobs") / job_id,
+        Path(os.getcwd()) / "tmp" / "jobs" / job_id,
+        Path(os.getcwd()).parent / "tmp" / "jobs" / job_id,
+    ]
+    for p in candidates:
+        if p.exists():
+            return p
+    return Path("tmp/jobs") / job_id
+
+
 @router.get("/grade/{job_id}", summary="Get full job state, metrics, and report")
 def get_grading_job(job_id: str):
     job = jobs.get(job_id, {})
-    work_dir = Path("..") / "tmp" / "jobs" / job_id
-    if not work_dir.exists():
-        work_dir = Path("tmp") / "jobs" / job_id
+    work_dir = resolve_job_dir(job_id)
 
     state = JobState.load(work_dir)
-    if not state and not job:
+    res_file = work_dir / "results.json"
+
+    if not state and not job and not res_file.exists():
         raise HTTPException(status_code=404, detail=f"Job {job_id} not found")
 
-    resp = {}
+    resp = {"job_id": job_id, "status": "completed"}
     if state:
-        resp = state.to_dict()
+        resp.update(state.to_dict())
     if job:
         resp.update({k: v for k, v in job.items() if k != "annotated_pdf_path"})
-        if job.get("annotated_pdf_path"):
+
+    # Normalize status string for frontend compatibility
+    st_val = resp.get("status", "")
+    if st_val in ("COMPLETE", "completed"):
+        resp["status"] = "completed"
+    elif st_val in ("RUNNING", "running"):
+        resp["status"] = "running"
+    elif st_val in ("FAILED", "failed"):
+        resp["status"] = "failed"
+
+    # Attach results report if work_dir contains results.json
+    if work_dir.exists():
+        res_file = work_dir / "results.json"
+        if res_file.exists():
+            try:
+                res_data = json.loads(res_file.read_text(encoding="utf-8"))
+                raw_results = res_data.get("results", [])
+                questions_out = []
+                for r in raw_results:
+                    q_num = str(r.get("question_number", ""))
+                    q_status = r.get("status", "")
+                    score = r.get("score")
+                    mark = score.get("total") if score else 0.0
+                    max_m = score.get("max_marks") if score else 0.0
+                    
+                    vp_list = []
+                    if score and "awarded" in score:
+                        derivation_str = score.get("derivation", "")
+                        for aw in score.get("awarded", []):
+                            ev_span_val = aw.get("evidence_span")
+                            ev_text = aw.get("evidence_text") or aw.get("evidence")
+                            if not ev_text and derivation_str and aw.get("value_point_id"):
+                                vpid_pat = re.escape(str(aw.get("value_point_id")))
+                                match = re.search(rf'\[X\]\s+{vpid_pat}[\s\S]*?evidence:[^\n\r]*?"([^"]+)"', derivation_str)
+                                if match:
+                                    ev_text = match.group(1)
+                            vp_list.append({
+                                "id": aw.get("value_point_id"),
+                                "text": aw.get("text"),
+                                "awarded": aw.get("awarded"),
+                                "evidence_text": ev_text,
+                                "evidence_span": {"start": ev_span_val[0], "end": ev_span_val[1]} if ev_span_val and len(ev_span_val) == 2 else None,
+                                "reason": aw.get("reason")
+                            })
+                    if score and "not_awarded" in score:
+                        for na in score.get("not_awarded", []):
+                            vp_list.append({
+                                "id": na.get("value_point_id"),
+                                "text": na.get("text"),
+                                "awarded": 0.0,
+                                "reason": na.get("reason")
+                            })
+
+                    status_str = "scored" if score else ("routed" if q_status in ("AMBIGUOUS_MAPPING", "ROUTED") else "no scheme")
+                    questions_out.append({
+                        "question_number": q_num,
+                        "status": status_str,
+                        "mark": mark,
+                        "max_marks": max_m,
+                        "value_points": vp_list,
+                        "reason": q_status
+                    })
+                
+                resp["report"] = {
+                    "provenance": res_data.get("provenance", {}),
+                    "questions": questions_out,
+                    "coverage": [["Coverage", ["All scoreable questions evaluated"]]],
+                    "totals": {
+                        "scored": len([q for q in questions_out if q["status"] == "scored"]),
+                        "routed": len([q for q in questions_out if q["status"] == "routed"]),
+                        "no_scheme": len([q for q in questions_out if q["status"] == "no scheme"]),
+                        "flagged": 0,
+                        "total_awarded": sum(q["mark"] for q in questions_out),
+                        "total_possible": sum(q["max_marks"] for q in questions_out)
+                    }
+                }
+
+                # Attach Learning Analytics summary if missing
+                try:
+                    from AI.analytics.analytics_service import LearningAnalyticsService
+                    q_evals = []
+                    for pq in questions_out:
+                        if pq.get("status") == "scored":
+                            q_evals.append({
+                                "question_number": str(pq.get("question_number", "")),
+                                "student_answer_extracted": "",
+                                "criteria_feedback": "",
+                                "max_marks": float(pq.get("max_marks", 0.0)),
+                                "score_awarded": float(pq.get("mark", 0.0)),
+                                "confidence": 1.0,
+                                "curriculum_context": {
+                                    "topic": f"Topic {pq.get('question_number')}. Objectives: ..."
+                                }
+                            })
+                    if q_evals:
+                        las = LearningAnalyticsService()
+                        la_result = las.analyze_submission({"questions": q_evals})
+                        resp["report"]["evaluation_summary"] = {"learning_analytics": la_result.model_dump()}
+                except Exception as e:
+                    logger.error(f"Failed to generate analytics for V2 on load: {e}")
+            except Exception as e:
+                logger.error(f"Failed to load report for {job_id}: {e}")
+
+        annotated = work_dir / "annotated.pdf"
+        if annotated.exists():
             resp["annotated_pdf_url"] = f"/api/v2/grade/{job_id}/annotated.pdf"
-        if state:
-            resp["status"] = state.status
-            resp["state"] = state.to_dict()
 
     return resp
 
@@ -480,14 +634,40 @@ def get_grading_job(job_id: str):
 @router.get("/grade/{job_id}/annotated.pdf")
 def get_annotated_pdf(job_id: str):
     """Serve the annotated PDF that the grade job already produced."""
-    job = jobs.get(job_id)
-    if not job:
-        raise HTTPException(status_code=404, detail="Job not found")
+    job = jobs.get(job_id, {})
     pdf_path = job.get("annotated_pdf_path")
     if not pdf_path or not Path(pdf_path).exists():
+        work_dir = Path("..") / "tmp" / "jobs" / job_id
+        if not work_dir.exists():
+            work_dir = Path("tmp") / "jobs" / job_id
+        annotated = work_dir / "annotated.pdf"
+        if annotated.exists():
+            pdf_path = str(annotated.resolve())
+
+    if not pdf_path or not Path(pdf_path).exists():
         raise HTTPException(status_code=404, detail="Annotated PDF not available for this job")
+
     return FileResponse(
         path=pdf_path,
         media_type="application/pdf",
         filename="annotated_script.pdf",
     )
+
+
+@router.get("/grade/{job_id}/student-report", summary="Get student-facing diagnostic report with evidence spans and missed criteria")
+def get_student_report(job_id: str, format: Optional[str] = None):
+    work_dir = Path("..") / "tmp" / "jobs" / job_id
+    if not work_dir.exists():
+        work_dir = Path("tmp") / "jobs" / job_id
+
+    state = JobState.load(work_dir)
+    if not state:
+        raise HTTPException(status_code=404, detail=f"Job {job_id} state not found")
+
+    report = generate_student_report(job_state=state, job_dir=work_dir, offline=True)
+
+    if format == "html":
+        return HTMLResponse(content=report.to_html())
+
+    return report.to_dict()
+

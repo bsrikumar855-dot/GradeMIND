@@ -81,6 +81,33 @@ export const SubmissionService = {
   },
 
   getReport: async (submissionId: string) => {
+    // 1. Try V2 job report first
+    try {
+      const v2Res = await apiClient.get(`/api/v2/grade/${submissionId}`);
+      if (v2Res.data && v2Res.data.report) {
+         return {
+           success: true,
+           data: {
+              evaluation_summary: v2Res.data.report.evaluation_summary,
+              student_dashboard: { subject: "Demo Subject", recent_exams: [] },
+              teacher_dashboard: {},
+              metadata: {
+                version: "v2",
+                student_name: v2Res.data.report.student?.name || `Demo Student (${submissionId.slice(0, 6)})`,
+                student_roll_number: v2Res.data.report.student?.roll_number || submissionId.slice(0, 8)
+              },
+              report: v2Res.data.report,
+              results: v2Res.data.report.questions,
+              totals: v2Res.data.report.totals,
+              coverage: v2Res.data.report.coverage
+           }
+         };
+      }
+    } catch (v2e) {
+      // Ignore V2 error and try V1 submission report endpoint
+    }
+
+    // 2. Try V1 submission report endpoint
     try {
       const response = await apiClient.get(`/submissions/${submissionId}/report`);
       return {
@@ -88,24 +115,7 @@ export const SubmissionService = {
         data: response.data
       };
     } catch (e: any) {
-      if (e.response?.status === 404 || e.response?.status === 400 || e.message?.includes('404')) {
-        try {
-          const v2Res = await apiClient.get(`/api/v2/grade/${submissionId}`);
-          if (v2Res.data && v2Res.data.report) {
-             return {
-               success: true,
-               data: {
-                  evaluation_summary: v2Res.data.report.evaluation_summary,
-                  student_dashboard: { subject: "Demo Subject", recent_exams: [] },
-                  teacher_dashboard: {},
-                  metadata: { version: "v2" }
-               }
-             };
-          }
-        } catch (v2e) {
-          console.warn("Failed to fallback to V2 job for report", v2e);
-        }
-      }
+      console.error("Failed to retrieve submission report:", e);
       return { success: false, data: null };
     }
   },

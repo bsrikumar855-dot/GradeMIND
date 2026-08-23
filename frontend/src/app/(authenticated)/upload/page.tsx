@@ -30,6 +30,13 @@ export default function UploadCenter() {
   const [isOffline, setIsOffline] = useState(false);
 
   const [activeJobId, setActiveJobId] = useState<string | null>(null);
+  const progressRef = React.useRef<HTMLDivElement>(null);
+
+  React.useEffect(() => {
+    if (activeJobId && progressRef.current) {
+      progressRef.current.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [activeJobId]);
 
   const handleStartEvaluation = async () => {
     setSubmitError('');
@@ -201,29 +208,42 @@ export default function UploadCenter() {
           </label>
         </div>
 
-        <button
-          onClick={handleStartEvaluation}
-          disabled={isSubmitting}
-          className="px-6 py-3 bg-[#4A8B40] hover:bg-[#3B7233] text-white font-black text-xs md:text-sm rounded-xl transition-all duration-200 hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.99] flex items-center justify-center gap-2.5 shadow-md border-2 border-emerald-500 ml-auto shrink-0 group cursor-pointer opacity-100"
-        >
-          {isSubmitting ? (
-            <>
-              <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-              <span>Processing Evaluation Job...</span>
-            </>
-          ) : (
-            <>
-              <Sparkles className="w-4 h-4 text-emerald-200 group-hover:rotate-12 transition-transform duration-300" />
-              <span>Start Autonomous Evaluation</span>
-              <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform duration-300" />
-            </>
+        <div className="flex items-center gap-3 ml-auto shrink-0">
+          {activeJobId && (
+            <button
+              onClick={() => router.push(`/results?job_id=${activeJobId}`)}
+              className="px-5 py-3 bg-[#183B25] hover:bg-[#112a1a] text-white font-black text-xs md:text-sm rounded-xl transition-all duration-200 flex items-center justify-center gap-2 shadow-md border-2 border-emerald-400 cursor-pointer animate-pulse"
+            >
+              <Zap className="w-4 h-4 text-emerald-400" />
+              <span>View Results</span>
+              <ArrowRight className="w-4 h-4 text-emerald-400" />
+            </button>
           )}
-        </button>
+
+          <button
+            onClick={handleStartEvaluation}
+            disabled={isSubmitting}
+            className="px-6 py-3 bg-[#4A8B40] hover:bg-[#3B7233] text-white font-black text-xs md:text-sm rounded-xl transition-all duration-200 hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.99] flex items-center justify-center gap-2.5 shadow-md border-2 border-emerald-500 shrink-0 group cursor-pointer opacity-100"
+          >
+            {isSubmitting ? (
+              <>
+                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                <span>Processing Evaluation Job...</span>
+              </>
+            ) : (
+              <>
+                <Sparkles className="w-4 h-4 text-emerald-200 group-hover:rotate-12 transition-transform duration-300" />
+                <span>Start Autonomous Evaluation</span>
+                <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform duration-300" />
+              </>
+            )}
+          </button>
+        </div>
       </MagicBentoCard>
 
       {/* 4. Active Job Progress & Preservation State */}
       {activeJobId && (
-        <div className="w-full mt-6">
+        <div ref={progressRef} id="job-progress-container" className="w-full mt-6 scroll-mt-6">
           <JobProgressState jobId={activeJobId} />
         </div>
       )}

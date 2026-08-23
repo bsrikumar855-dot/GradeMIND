@@ -79,7 +79,6 @@ export function JobProgressState({ jobId, initialData, onResumed }: JobProgressS
 
   const fetchState = async () => {
     try {
-      setLoading(true);
       const res = await fetch(`http://localhost:8000/api/v2/grade/${jobId}`);
       if (res.ok) {
         const json = await res.json();
@@ -92,11 +91,29 @@ export function JobProgressState({ jobId, initialData, onResumed }: JobProgressS
     }
   };
 
+  const rawStatus = (data?.status || "").toUpperCase();
+  const normalizedStatus: "COMPLETE" | "PARTIAL" | "FAILED" | "RUNNING" =
+    rawStatus === "COMPLETED" || rawStatus === "COMPLETE"
+      ? "COMPLETE"
+      : rawStatus === "FAILED"
+      ? "FAILED"
+      : rawStatus === "PARTIAL"
+      ? "PARTIAL"
+      : "RUNNING";
+
   useEffect(() => {
-    if (!initialData && jobId) {
-      fetchState();
-    }
-  }, [jobId]);
+    if (!jobId) return;
+    
+    fetchState();
+
+    const interval = setInterval(() => {
+      if (!data || normalizedStatus === "RUNNING") {
+        fetchState();
+      }
+    }, 2000);
+
+    return () => clearInterval(interval);
+  }, [jobId, normalizedStatus]);
 
   const handleResume = async () => {
     try {
@@ -117,9 +134,9 @@ export function JobProgressState({ jobId, initialData, onResumed }: JobProgressS
 
   if (loading && !data) {
     return (
-      <div className="p-6 rounded-xl bg-[#183B25]/40 border border-[#4A8B40]/30 flex items-center gap-3 text-emerald-200">
-        <RefreshCw className="w-5 h-5 animate-spin text-[#4A8B40]" />
-        <span>Loading job progress state...</span>
+      <div className="p-6 rounded-2xl bg-[#183B25] border-2 border-[#4A8B40] flex items-center gap-3 text-white shadow-lg">
+        <RefreshCw className="w-5 h-5 animate-spin text-emerald-400" />
+        <span className="font-bold text-sm">Loading job evaluation state...</span>
       </div>
     );
   }
@@ -127,82 +144,98 @@ export function JobProgressState({ jobId, initialData, onResumed }: JobProgressS
   if (!data) return null;
 
   const statusColors = {
-    COMPLETE: "bg-emerald-500/15 text-emerald-400 border-emerald-500/30",
-    PARTIAL: "bg-amber-500/15 text-amber-400 border-amber-500/30",
-    FAILED: "bg-rose-500/15 text-rose-400 border-rose-500/30",
-    RUNNING: "bg-emerald-500/10 text-emerald-300 border-emerald-500/30 animate-pulse"
+    COMPLETE: "bg-[#183B25] text-white border-2 border-emerald-500",
+    PARTIAL: "bg-amber-950 text-white border-2 border-amber-500",
+    FAILED: "bg-rose-950 text-white border-2 border-rose-500",
+    RUNNING: "bg-[#183B25] text-white border-2 border-emerald-400 animate-pulse"
   };
 
   const statusIcons = {
-    COMPLETE: <CheckCircle2 className="w-5 h-5 text-emerald-400" />,
-    PARTIAL: <AlertTriangle className="w-5 h-5 text-amber-400" />,
-    FAILED: <XCircle className="w-5 h-5 text-rose-400" />,
-    RUNNING: <RefreshCw className="w-5 h-5 text-emerald-400 animate-spin" />
+    COMPLETE: <CheckCircle2 className="w-6 h-6 text-emerald-400" />,
+    PARTIAL: <AlertTriangle className="w-6 h-6 text-amber-400" />,
+    FAILED: <XCircle className="w-6 h-6 text-rose-400" />,
+    RUNNING: <RefreshCw className="w-6 h-6 text-emerald-400 animate-spin" />
   };
 
-  const reusedCount = data.metrics?.pages_reused_from_cache ?? data.pages.filter(p => p.status === "CACHED").length;
-  const apiCallsCount = data.metrics?.api_calls_made ?? data.pages.filter(p => p.status === "TRANSCRIBED").reduce((acc, p) => acc + (p.attempts || 1), 0);
+  const pagesList = data.pages || [];
+  const questionsList = data.questions || [];
+  const eventsList = data.events || [];
+
+  const reusedCount = data.metrics?.pages_reused_from_cache ?? pagesList.filter(p => p.status === "CACHED").length;
+  const apiCallsCount = data.metrics?.api_calls_made ?? pagesList.filter(p => p.status === "TRANSCRIBED").reduce((acc, p) => acc + (p.attempts || 1), 0);
 
   return (
     <div className="space-y-6">
-      {/* 1. Status Banner & Resume Header */}
-      <div className={`p-5 rounded-2xl border ${statusColors[data.status] || statusColors.RUNNING} flex flex-col md:flex-row items-start md:items-center justify-between gap-4 shadow-lg backdrop-blur-md`}>
-        <div className="flex items-center gap-3">
-          <div className="p-2.5 rounded-xl bg-black/20 backdrop-blur-sm">
-            {statusIcons[data.status] || statusIcons.RUNNING}
+      {/* 1. Status Banner & Actions Header */}
+      <div className={`p-5 rounded-2xl border-2 ${statusColors[normalizedStatus]} flex flex-col md:flex-row items-start md:items-center justify-between gap-4 shadow-xl`}>
+        <div className="flex items-center gap-3.5">
+          <div className="p-3 rounded-xl bg-black/40 border border-white/20">
+            {statusIcons[normalizedStatus]}
           </div>
           <div>
-            <div className="flex items-center gap-2">
-              <span className="font-bold text-lg tracking-wide uppercase">{data.status} JOB STATE</span>
-              <span className="text-xs px-2.5 py-0.5 rounded-full bg-black/30 text-emerald-300/80 font-mono">
-                ID: {data.job_id.slice(0, 8)}
+            <div className="flex items-center gap-2.5">
+              <span className="font-black text-xl tracking-wider uppercase text-white">{normalizedStatus} JOB STATE</span>
+              <span className="text-xs px-3 py-1 rounded-full bg-black/40 text-emerald-300 font-mono font-black border border-emerald-400/40">
+                ID: {data.job_id ? data.job_id.slice(0, 8) : jobId.slice(0, 8)}
               </span>
             </div>
-            <p className="text-xs opacity-80 mt-0.5">
-              Updated {new Date(data.updated_at).toLocaleTimeString()} • {data.pages.length} page(s) • {data.questions.length} question(s)
+            <p className="text-xs font-semibold text-emerald-100/90 mt-1">
+              Updated {data.updated_at ? new Date(data.updated_at).toLocaleTimeString() : new Date().toLocaleTimeString()} • {pagesList.length} page(s) • {questionsList.length} question(s)
             </p>
           </div>
         </div>
 
-        {(data.status === "PARTIAL" || data.status === "FAILED") && (
-          <Button
-            onClick={handleResume}
-            disabled={resuming}
-            className="bg-[#4A8B40] hover:bg-[#3D7434] text-white font-medium shadow-md transition-all duration-200 hover:-translate-y-0.5 flex items-center gap-2 px-5 py-2.5 rounded-xl ml-auto"
-          >
-            <RefreshCw className={`w-4 h-4 ${resuming ? "animate-spin" : ""}`} />
-            {resuming ? "Resuming Evaluation..." : "Resume Evaluation"}
-          </Button>
-        )}
+        <div className="flex items-center gap-3 ml-auto">
+          {normalizedStatus === "COMPLETE" && (
+            <a
+              href={`/results?job_id=${data.job_id || jobId}`}
+              className="px-6 py-3 bg-[#4A8B40] hover:bg-[#3D7434] text-white font-black text-xs md:text-sm rounded-xl transition-all shadow-lg flex items-center gap-2 border-2 border-emerald-400 cursor-pointer animate-bounce"
+            >
+              <span>View Evaluation Results</span>
+              <Zap className="w-4 h-4 text-emerald-200" />
+            </a>
+          )}
+
+          {(normalizedStatus === "PARTIAL" || normalizedStatus === "FAILED") && (
+            <Button
+              onClick={handleResume}
+              disabled={resuming}
+              className="bg-[#4A8B40] hover:bg-[#3D7434] text-white font-black shadow-lg transition-all duration-200 hover:-translate-y-0.5 flex items-center gap-2 px-6 py-3 rounded-xl border-2 border-emerald-400 cursor-pointer"
+            >
+              <RefreshCw className={`w-4 h-4 ${resuming ? "animate-spin" : ""}`} />
+              {resuming ? "Resuming Evaluation..." : "Resume Evaluation"}
+            </Button>
+          )}
+        </div>
       </div>
 
       {/* 2. Cache Savings Proof Banner */}
-      <div className="p-4 rounded-xl bg-[#183B25]/60 border border-[#4A8B40]/30 text-emerald-200 flex flex-wrap items-center justify-between gap-4 shadow-sm">
-        <div className="flex items-center gap-3">
-          <div className="p-2 rounded-lg bg-[#4A8B40]/20 text-[#4A8B40]">
+      <div className="p-5 rounded-2xl bg-[#183B25] border-2 border-[#4A8B40] text-white flex flex-wrap items-center justify-between gap-4 shadow-lg">
+        <div className="flex items-center gap-3.5">
+          <div className="p-2.5 rounded-xl bg-emerald-500/20 border border-emerald-400/40 text-emerald-300">
             <Zap className="w-5 h-5 text-emerald-400" />
           </div>
           <div>
-            <div className="text-sm font-semibold text-white flex items-center gap-2">
+            <div className="text-sm font-black text-white flex items-center gap-2.5">
               Progress Preservation Active
-              <span className="text-xs px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 font-mono">
+              <span className="text-xs px-2.5 py-0.5 rounded-full bg-emerald-400/20 text-emerald-200 font-mono font-bold border border-emerald-400/40">
                 {apiCallsCount} API calls • {reusedCount} pages reused
               </span>
             </div>
-            <p className="text-xs text-emerald-300/70">
+            <p className="text-xs text-emerald-100/90 font-semibold mt-0.5">
               Work paid for is cached on disk. Re-runs skip HTR calls and preserve marks.
             </p>
           </div>
         </div>
 
-        <div className="flex items-center gap-4 text-xs font-mono text-emerald-200/90">
-          <div className="flex items-center gap-1.5 bg-black/20 px-3 py-1.5 rounded-lg border border-[#4A8B40]/20">
-            <Database className="w-3.5 h-3.5 text-emerald-400" />
-            <span>Cache Reused: <strong>{reusedCount}</strong></span>
+        <div className="flex items-center gap-4 text-xs font-mono text-white">
+          <div className="flex items-center gap-2 bg-black/40 px-3.5 py-1.5 rounded-xl border border-emerald-400/40">
+            <Database className="w-4 h-4 text-emerald-400" />
+            <span>Cache Reused: <strong className="text-emerald-300 font-black">{reusedCount}</strong></span>
           </div>
-          <div className="flex items-center gap-1.5 bg-black/20 px-3 py-1.5 rounded-lg border border-[#4A8B40]/20">
-            <Cpu className="w-3.5 h-3.5 text-amber-400" />
-            <span>API Calls: <strong>{apiCallsCount}</strong></span>
+          <div className="flex items-center gap-2 bg-black/40 px-3.5 py-1.5 rounded-xl border border-amber-400/40">
+            <Cpu className="w-4 h-4 text-amber-400" />
+            <span>API Calls: <strong className="text-amber-300 font-black">{apiCallsCount}</strong></span>
           </div>
         </div>
       </div>
@@ -210,35 +243,35 @@ export function JobProgressState({ jobId, initialData, onResumed }: JobProgressS
       {/* 3. Page Grid & Question Table Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Page Status Card */}
-        <div className="p-5 rounded-2xl bg-[#183B25]/40 border border-[#4A8B40]/30 shadow-md">
-          <h3 className="text-sm font-semibold text-white mb-3 flex items-center gap-2">
+        <div className="p-5 rounded-2xl bg-white border-2 border-emerald-800/20 shadow-md">
+          <h3 className="text-sm font-black text-[#183B25] mb-3.5 flex items-center gap-2">
             <FileText className="w-4 h-4 text-[#4A8B40]" />
             Per-Page HTR Status
           </h3>
-          <div className="space-y-2">
-            {data.pages.map((p) => (
+          <div className="space-y-2.5">
+            {pagesList.map((p) => (
               <div
                 key={p.page_number}
-                className="p-3 rounded-xl bg-black/20 border border-[#4A8B40]/20 flex items-center justify-between text-xs"
+                className="p-3 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-between text-xs hover:border-emerald-300 transition-colors"
               >
                 <div className="flex items-center gap-2.5">
-                  <span className="w-6 h-6 rounded-lg bg-[#4A8B40]/20 text-emerald-300 font-semibold flex items-center justify-center font-mono">
+                  <span className="w-7 h-7 rounded-lg bg-[#183B25] text-white font-black flex items-center justify-center font-mono text-xs shadow-sm">
                     {p.page_number}
                   </span>
-                  <span className="font-mono text-emerald-100/70">
+                  <span className="font-mono text-slate-700 font-bold">
                     sha256: {p.page_sha256?.slice(0, 12)}...
                   </span>
                 </div>
                 <div className="flex items-center gap-2">
                   <span
-                    className={`px-2.5 py-1 rounded-md font-semibold font-mono text-[11px] ${
+                    className={`px-3 py-1 rounded-md font-black font-mono text-[11px] uppercase tracking-wider ${
                       p.status === "CACHED"
-                        ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30"
+                        ? "bg-emerald-100 text-emerald-900 border border-emerald-400"
                         : p.status === "TRANSCRIBED"
-                        ? "bg-blue-500/20 text-blue-300 border border-blue-500/30"
+                        ? "bg-blue-100 text-blue-900 border border-blue-400"
                         : p.status === "FAILED"
-                        ? "bg-rose-500/20 text-rose-300 border border-rose-500/30"
-                        : "bg-gray-500/20 text-gray-300"
+                        ? "bg-rose-100 text-rose-900 border border-rose-400"
+                        : "bg-slate-200 text-slate-800 border border-slate-400"
                     }`}
                   >
                     {p.status}
@@ -250,43 +283,43 @@ export function JobProgressState({ jobId, initialData, onResumed }: JobProgressS
         </div>
 
         {/* Questions Status Card */}
-        <div className="p-5 rounded-2xl bg-[#183B25]/40 border border-[#4A8B40]/30 shadow-md">
-          <h3 className="text-sm font-semibold text-white mb-3 flex items-center gap-2">
+        <div className="p-5 rounded-2xl bg-white border-2 border-emerald-800/20 shadow-md">
+          <h3 className="text-sm font-black text-[#183B25] mb-3.5 flex items-center gap-2">
             <ShieldCheck className="w-4 h-4 text-[#4A8B40]" />
             Question Evaluation & Human Reviews
           </h3>
-          <div className="max-h-[260px] overflow-y-auto pr-1 space-y-2">
-            {data.questions.map((q) => (
+          <div className="max-h-[260px] overflow-y-auto pr-1 space-y-2.5">
+            {questionsList.map((q) => (
               <div
                 key={q.question_number}
-                className="p-2.5 rounded-xl bg-black/20 border border-[#4A8B40]/20 flex items-center justify-between text-xs"
+                className="p-3 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-between text-xs hover:border-emerald-300 transition-colors"
               >
-                <div className="flex items-center gap-2">
-                  <span className="font-semibold text-white font-mono w-9">
+                <div className="flex items-center gap-2.5">
+                  <span className="font-black text-[#183B25] font-mono text-sm w-10">
                     Q{q.question_number}
                   </span>
                   <span
-                    className={`px-2 py-0.5 rounded text-[10px] font-mono font-medium ${
+                    className={`px-2.5 py-0.5 rounded text-[11px] font-mono font-black ${
                       q.status === "SCORED"
-                        ? "bg-emerald-500/20 text-emerald-300"
+                        ? "bg-emerald-100 text-emerald-900 border border-emerald-400"
                         : q.status === "ROUTED"
-                        ? "bg-amber-500/20 text-amber-300"
+                        ? "bg-amber-100 text-amber-900 border border-amber-400"
                         : q.status === "NO_SCHEME"
-                        ? "bg-gray-500/20 text-gray-300"
-                        : "bg-rose-500/20 text-rose-300"
+                        ? "bg-slate-200 text-slate-800 border border-slate-400"
+                        : "bg-rose-100 text-rose-900 border border-rose-400"
                     }`}
                   >
                     {q.status}
                   </span>
                   {q.human_reviewed && (
-                    <span className="flex items-center gap-1 px-2 py-0.5 rounded bg-indigo-500/20 text-indigo-300 text-[10px] border border-indigo-500/30">
-                      <UserCheck className="w-3 h-3 text-indigo-400" />
+                    <span className="flex items-center gap-1 px-2.5 py-0.5 rounded bg-indigo-100 text-indigo-900 text-[10px] font-bold border border-indigo-300">
+                      <UserCheck className="w-3 h-3 text-indigo-700" />
                       {q.reason_code || "REVIEWED"}
                     </span>
                   )}
                 </div>
 
-                <div className="font-mono text-emerald-200 font-bold">
+                <div className="font-mono text-[#183B25] font-black text-sm">
                   {q.human_reviewed && q.human_mark !== null
                     ? `${q.human_mark} / ${q.max_marks ?? "?"} (Human)`
                     : q.mark !== null
@@ -300,32 +333,32 @@ export function JobProgressState({ jobId, initialData, onResumed }: JobProgressS
       </div>
 
       {/* 4. Collapsible Event History Timeline */}
-      <div className="rounded-2xl bg-[#183B25]/40 border border-[#4A8B40]/30 shadow-md overflow-hidden">
+      <div className="rounded-2xl bg-white border-2 border-emerald-800/20 shadow-md overflow-hidden">
         <button
           onClick={() => setShowEvents(!showEvents)}
-          className="w-full p-4 bg-black/20 flex items-center justify-between text-xs font-semibold text-emerald-200 hover:bg-black/30 transition-colors"
+          className="w-full p-4 bg-emerald-50/80 flex items-center justify-between text-xs font-black text-[#183B25] hover:bg-emerald-100/80 transition-colors cursor-pointer"
         >
           <div className="flex items-center gap-2">
             <Clock className="w-4 h-4 text-[#4A8B40]" />
-            Chronological Job History ({data.events.length} events logged)
+            Chronological Job History ({eventsList.length} events logged)
           </div>
-          {showEvents ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+          {showEvents ? <ChevronUp className="w-4 h-4 text-[#183B25]" /> : <ChevronDown className="w-4 h-4 text-[#183B25]" />}
         </button>
 
         {showEvents && (
-          <div className="p-4 max-h-[300px] overflow-y-auto space-y-2 font-mono text-[11px]">
-            {data.events.map((evt, idx) => (
+          <div className="p-4 max-h-[300px] overflow-y-auto space-y-2.5 font-mono text-[11px] bg-slate-50">
+            {eventsList.map((evt, idx) => (
               <div
                 key={idx}
-                className="p-2 rounded-lg bg-black/30 border border-[#4A8B40]/10 flex items-start gap-3"
+                className="p-2.5 rounded-xl bg-white border border-slate-200 flex items-start gap-3 shadow-sm"
               >
-                <span className="text-emerald-400/60 whitespace-nowrap">
+                <span className="text-slate-500 font-bold whitespace-nowrap">
                   {new Date(evt.timestamp).toLocaleTimeString()}
                 </span>
-                <span className="font-bold text-emerald-300 uppercase min-w-[130px]">
+                <span className="font-black text-[#183B25] uppercase min-w-[130px]">
                   {evt.event}
                 </span>
-                <span className="text-emerald-100/90">{evt.detail}</span>
+                <span className="text-slate-800 font-medium">{evt.detail}</span>
               </div>
             ))}
           </div>

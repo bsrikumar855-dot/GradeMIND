@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { SubmissionService } from '@/services/submission.service';
 import { MagicBentoCard, ShimmerBadge, AnimatedList, AnimatedListItem } from '@/components/ui';
+import { JobProgressState } from '@/components/ui/job-progress-state';
 
 const agents = [
   { id: 1, name: 'OCR Agent', desc: 'Rasterizing document & extracting text/handwriting' },
@@ -175,22 +176,28 @@ function EvaluationContent() {
     };
   }, [submissionIds]);
 
+  const jobIdParam = searchParams.get('job_id') || searchParams.get('jobId') || 'demo_job_a';
+
   if (!idsStr) {
     return (
-      <div className="w-full max-w-xl text-left space-y-4 p-6 bg-white rounded-xl border border-forest-200 shadow-xs">
-        <div className="w-10 h-10 bg-amber-50 text-amber-600 rounded-lg flex items-center justify-center">
-          <AlertCircle className="w-5 h-5" />
+      <div className="flex-1 flex flex-col space-y-6 text-left w-full">
+        <div className="flex items-center justify-between border-b border-slate-200/80 pb-5">
+          <div>
+            <div className="flex items-center gap-2">
+              <ShimmerBadge variant="emerald">Evaluation Engine</ShimmerBadge>
+              <span className="text-slate-400">•</span>
+              <span className="text-xs font-bold text-slate-700">Autonomous Workflow</span>
+            </div>
+            <h1 className="text-2xl font-serif font-extrabold text-slate-900 tracking-tight mt-1">
+              Active Evaluation Job Monitor
+            </h1>
+            <p className="text-xs font-medium text-slate-600">
+              Live evaluation state, HTR transcription status, and progress preservation cache metrics.
+            </p>
+          </div>
         </div>
-        <div>
-          <h2 className="text-sm font-bold text-forest-950">No Submissions Selected</h2>
-          <p className="text-forest-600 text-xs mt-1">Please upload an exam answer sheet to launch the evaluation pipeline.</p>
-        </div>
-        <button 
-          onClick={() => router.push('/upload')} 
-          className="px-4 py-2 bg-forest-900 text-white font-bold text-xs rounded-lg hover:bg-forest-800 transition-colors"
-        >
-          Go to Upload Center
-        </button>
+
+        <JobProgressState jobId={jobIdParam} />
       </div>
     );
   }
