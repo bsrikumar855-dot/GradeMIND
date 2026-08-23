@@ -74,7 +74,7 @@ logger = logging.getLogger("GradeMIND.GeminiVisionHTR")
 # This is NOT a diagnosis of the 504. If 3.5-flash also fails, the cause lies
 # elsewhere: most likely the end-of-life `google-generativeai` client, or the
 # response_schema + vision combination.
-DEFAULT_MODEL_ID = "gemini-1.5-flash"
+DEFAULT_MODEL_ID = "gemini-3.5-flash"
 
 DEFAULT_TIMEOUT_SECONDS = 60.0
 DEFAULT_MAX_ATTEMPTS = 3
