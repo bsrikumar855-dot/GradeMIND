@@ -249,7 +249,7 @@ function ResultsContent() {
             </div>
             <div className="flex items-center gap-3">
               <a
-                href={`http://localhost:8000/api/v2/grade/${jobId}/student-report?format=html`}
+                href={`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/v2/grade/${activeJobId || urlJobId}/student-report?format=html`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="px-5 py-2.5 bg-[#183B25] hover:bg-[#122c1b] text-white font-bold text-xs rounded-xl transition-all shadow-md flex items-center gap-2 border border-emerald-500/40"
