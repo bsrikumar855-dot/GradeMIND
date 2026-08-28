@@ -174,7 +174,9 @@ d0914fbe...  refs/heads/Vishwanath     (2026-06-14, "sdf")
 
 The capital-V branch was not a duplicate — it carried **one commit reachable from neither `main` nor the lowercase branch**: a `Front end/` scaffold with a directory name containing a space. Reaching it required fetching `refs/heads/Vishwanath` explicitly to a non-colliding local ref, because the tracking ref was unusable.
 
-`d0914fb` is now preserved at **`archive/vishwanath-frontend-june-2026`** on origin, which makes deleting the colliding `refs/heads/Vishwanath` lossless. **That deletion has not been performed** — it is a teammate's branch on a shared remote and is awaiting the owner's go-ahead.
+`d0914fb` is now preserved at **`archive/vishwanath-frontend-june-2026`** on origin.
+
+**Decision: do not delete `refs/heads/Vishwanath`.** It is a teammate's branch, the archive already preserves its unique commit, and the collision only affects local checkouts on case-insensitive filesystems — nothing server-side is broken. The mitigation is a note in `README.md` telling anyone cloning on Windows or macOS how to fetch the hidden ref explicitly. Deleting a collaborator's branch out from under them to solve a local-checkout annoyance is a poor trade; the branch is Vishi's to remove.
 
 **No branches were deleted this session.** Rationale in the session report, Task 2.
 
@@ -235,5 +237,17 @@ Subprocess tests on purpose: the failure mode is interpreter start-up state — 
 **A second defect found while fixing the first.** CI's gate 0(b) import sweep passed `pkgutil.walk_packages(['AI','app'], '')` — *relative* paths, with `WORKDIR=/app/backend`. It was therefore sweeping `/app/backend/AI`, the shadow, and never the real tree. Worse, `walk_packages()` yields nothing for a non-existent path and raises nothing, so once the shadow was deleted the gate would have gone on printing `ALL IMPORTS OK` while importing zero `AI` modules. Now uses each package's own `__path__`, asserts `AI` resolves under `/app/AI`, and asserts a minimum module count — a sweep that sweeps nothing must fail rather than pass quietly. `NOT RUN`: needs Docker, unavailable on this machine.
 
 **Gate after the change:** `LOCALLY-VERIFIED`, `python -m scripts.verify_demo --offline` → **7/7 phases passed**, exit 0.
+
+**The shadow was breaking the safety tests specifically.** Deleting it took `AI/tests/` from 20 failures to 15, introducing none. Compared against `main` in a throwaway worktree, all five that started passing are in `test_htr_pipeline.py`:
+
+```
+test_unmasked_send_is_refused_by_default
+test_provider_none_raises_on_a_scan_instead_of_empty_text
+test_low_legibility_sets_below_floor_and_blocks_auto
+test_high_legibility_still_cannot_be_auto
+test_provenance_carries_every_version_field
+```
+
+That is the DPDP masking boundary, the raise-instead-of-silent-zero rule, the confidence floor that blocks `AUTO`, and provenance completeness. Not an arbitrary five — the duplicate tree was disabling precisely the guarantees the system is supposed to rest on, and their failure had been sitting in the suite reading as ordinary red.
 
 The general lesson matches the D3 entry in `CLAUDE.md`. Four consistent measurements — 94 paths, 90 identical blobs, "nothing imports `backend.AI`", and a green gate — all agreed the duplicate was inert. They agreed because none of them had opened the four files that differed. A count of paths is not a statement about what is in them.

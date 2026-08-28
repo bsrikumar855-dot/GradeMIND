@@ -13,6 +13,15 @@ breakdown with concept coverage, feedback, and a downloadable report.
   API key required**, plus an optional Gemini cross-check layer.
 - **frontend/** — Next.js 14 + React 18 + Tailwind + Recharts.
 
+> **Cloning on Windows or macOS:** `origin` carries two branches that differ
+> only in case, `Vishwanath` and `vishwanath`. On a case-insensitive
+> filesystem their remote-tracking refs collapse onto one another, so
+> `origin/Vishwanath` and `origin/vishwanath` will both resolve to the same
+> commit and one branch becomes unreachable by name. Neither is needed for any
+> current work. To inspect the one that gets hidden, fetch it explicitly:
+> `git fetch origin refs/heads/Vishwanath:refs/inspect/Vishwanath-capital`.
+> Its unique commit is also preserved on `archive/vishwanath-frontend-june-2026`.
+
 ---
 
 ## Quick start (Docker Compose)
