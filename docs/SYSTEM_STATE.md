@@ -238,16 +238,40 @@ Subprocess tests on purpose: the failure mode is interpreter start-up state — 
 
 **Gate after the change:** `LOCALLY-VERIFIED`, `python -m scripts.verify_demo --offline` → **7/7 phases passed**, exit 0.
 
-**The shadow was breaking the safety tests specifically.** Deleting it took `AI/tests/` from 20 failures to 15, introducing none. Compared against `main` in a throwaway worktree, all five that started passing are in `test_htr_pipeline.py`:
+### RETRACTED 2026-08-28 — "the shadow was breaking the safety tests"
+
+An earlier revision of this section claimed that deleting `backend/AI/` fixed five tests in `test_htr_pipeline.py` — the DPDP masking boundary, raise-instead-of-silent-zero, the `AUTO` confidence floor, and provenance completeness — and read significance into which five they were. **That claim was wrong and is withdrawn.**
+
+It came from comparing `AI/tests/` in a throwaway `main` worktree (20 failures) against the working tree (15). Those two environments differ in **two** variables, not one: the shadow tree, and the gitignored `tmp/` state that the HTR fixtures depend on and that a fresh worktree does not have. The delta was attributed to the variable under investigation.
+
+Re-measured with exactly one variable changed — same directory, same cwd, `backend/AI` moved aside and moved back:
 
 ```
-test_unmasked_send_is_refused_by_default
-test_provider_none_raises_on_a_scan_instead_of_empty_text
-test_low_legibility_sets_below_floor_and_blocks_auto
-test_high_legibility_still_cannot_be_auto
-test_provenance_carries_every_version_field
+AI/tests, shadow PRESENT :  18 failed, 364 passed
+AI/tests, shadow PARKED  :  18 failed, 364 passed
+diff of failure sets     :  no difference
 ```
 
-That is the DPDP masking boundary, the raise-instead-of-silent-zero rule, the confidence floor that blocks `AUTO`, and provenance completeness. Not an arbitrary five — the duplicate tree was disabling precisely the guarantees the system is supposed to rest on, and their failure had been sitting in the suite reading as ordinary red.
+Run from the repo root, `AI.__path__` never includes `backend/AI`, so the shadow cannot affect `AI/tests` at all. The five `test_htr_pipeline.py` failures are caused by the missing `tmp/` state in a fresh checkout — a real finding, but a different one, and it belongs to the gitignored-demo-dependency problem rather than to this section.
+
+This is the same failure mode as D3, committed by the same process that documented D3: a measurement inherited a scope it never declared. The corrective rule is unchanged and was simply not applied — state which question the command answers. `pytest` in a fresh worktree answers "what fails in a checkout without `tmp/`", not "what does the shadow break".
+
+**The deletion itself remains correct** and rests on evidence that was never in doubt: the shadow's `groq_evaluator.py` contains zero occurrences of `LLMMarkingDisabled`, demonstrated by restoring the tree and watching the guard test fail from `backend/` while passing from the repo root. Nothing above weakens that.
+
+### Where the shadow *does* bite: `verify_demo`
+
+Found 2026-08-28 while working on `fix/6b-negation`, and this one is measured with a single variable.
+
+`scripts/verify_demo.py:38` does `sys.path.insert(0, str(ROOT / "backend"))`. Because `AI/` is a namespace package, that **merges** `backend/AI` ahead of `AI/`:
+
+```
+AI.__path__    : ['D:\GradeMIND\backend\AI', 'D:\GradeMIND\AI', 'D:\GradeMIND\AI']
+score_computer : D:\GradeMIND\backend\AI\evaluation\score_computer.py
+has negation   : False
+```
+
+**The demo harness resolves the scorer to the shadow copy.** On `main`, `verify_demo`'s `7/7` is a statement about `backend/AI/`, not about the engine under development. A change to `AI/evaluation/score_computer.py` can be fully landed and the harness will report `7/7` without ever executing it — which is exactly what happened on the first run of the negation work, where the adversarial phase reported `NEGATED 0 pass / 4 fail` against a scorer that had the fix.
+
+That is a gate reporting on code that is not the code under test. Deleting `backend/AI/` fixes it; until this branch lands, `verify_demo` results on `main` should be read as validating the shadow tree.
 
 The general lesson matches the D3 entry in `CLAUDE.md`. Four consistent measurements — 94 paths, 90 identical blobs, "nothing imports `backend.AI`", and a green gate — all agreed the duplicate was inert. They agreed because none of them had opened the four files that differed. A count of paths is not a statement about what is in them.
