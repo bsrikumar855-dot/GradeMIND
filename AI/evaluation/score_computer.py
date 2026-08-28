@@ -14,6 +14,7 @@ from __future__ import annotations
 
 from typing import Dict, List, Optional, Sequence, Tuple
 
+from AI.evaluation.negation import detect_negation
 from AI.evaluation.value_point import (
     ENGINE_VERSION,
     AwardLine,
@@ -219,6 +220,50 @@ def _evaluate_single(
                 evidence_span=match.evidence_span,
                 method=match.method,
                 reason=reason_text,
+                uncalibrated=match.uncalibrated,
+            ),
+            0.0,
+            match.uncalibrated,
+        )
+
+    # The matcher found the evidence; the scorer decides whether it counts.
+    # A negation that governs the matched span means the student wrote the
+    # words and denied them, so the evidence does not support an award. This
+    # belongs here and not in the matcher: the match is real, its value as
+    # evidence is what changes.
+    negation = detect_negation(answer_text, match.evidence_span)
+
+    # POLARITY AGREEMENT. A value point may itself be phrased negatively --
+    # "does not occur in the dark" is a creditable claim about light
+    # dependence. When the scheme's own claim carries the negation, a student
+    # who reproduces it is agreeing, not denying, and the cue found in their
+    # answer is the scheme's cue rather than a contradiction of it.
+    #
+    # So the test is not "is there a negation" but "does the student's polarity
+    # differ from the scheme's". Without this, every negatively-phrased value
+    # point in every scheme becomes impossible to earn -- which is the
+    # false-positive regression this change exists to avoid.
+    scheme_negated = detect_negation(vp.text, (0, len(vp.text))).negated if vp.text else False
+
+    if negation.negated and not scheme_negated:
+        return (
+            AwardLine(
+                value_point_id=vp.id,
+                text=vp.text,
+                awarded=0.0,
+                possible=vp.marks,
+                matched=False,
+                evidence_span=match.evidence_span,
+                method=match.method,
+                # Deliberately distinct from "no supporting evidence found".
+                # A student reading their report must be able to tell "you did
+                # not cover this" from "you said the opposite" -- they are
+                # different pieces of feedback and only one of them means the
+                # student has a misconception to fix.
+                reason=(
+                    f"negation detected in evidence: '{negation.cue}' "
+                    "— the answer denies this point"
+                ),
                 uncalibrated=match.uncalibrated,
             ),
             0.0,

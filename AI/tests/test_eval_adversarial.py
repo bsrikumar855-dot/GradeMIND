@@ -38,20 +38,26 @@ def simple_question(max_marks: float = 2.0) -> SchemeQuestion:
 # ---------------------------------------------------------------------------
 
 
-def test_negation_probe_is_reported_as_a_failure():
-    """The section 6b defect, as a standing assertion.
+def test_negation_probe_now_scores_zero():
+    """Section 6b, inverted: negation handling has landed.
 
-    EXACT containment sees the terms and credits them even though the sentence
-    denies all of them. If this test ever starts passing, negation handling has
-    landed and the baseline should shrink.
+    This test previously asserted the DEFECT -- that EXACT containment sees the
+    terms and credits them even though the sentence denies all of them -- and
+    said in its own docstring that if it ever started passing, negation
+    handling had landed and the baseline should shrink. It has, so the
+    assertion is now the fix rather than the defect.
+
+    See AI/evaluation/negation.py. The scorer withholds the mark when a
+    negation governs the matched span and the value point is not itself
+    phrased negatively.
     """
     question = simple_question()
     probe = next(p for p in build_probes(question) if p.kind == "NEGATED")
     result = run_probe(question, probe)
 
     assert "does not involve" in probe.answer
-    assert result.passed is False, "negated answer must be reported as failing"
-    assert result.scored > 0.0
+    assert result.scored == 0.0, "a negated answer must score nothing"
+    assert result.passed is True
 
 
 def test_keyword_salad_is_reported_as_a_failure():
@@ -148,10 +154,16 @@ def test_all_four_fixture_questions_are_gameable_not_just_q4():
     systematically shows KEYWORD_SALAD, NEGATED and QUESTION_COPIED score full
     marks on EVERY question, including Q3 where the value points are equation
     fragments. Ad-hoc probing of two questions produced a false reassurance.
+
+    NEGATED has since been fixed and is asserted separately in
+    test_negation_probe_now_scores_zero. It is dropped from the tuple below
+    rather than the test being deleted, because the point the test makes --
+    that these gaps are systematic across all four questions and not confined
+    to Q4 -- still holds for the two that remain.
     """
     results = run_all(list(QUESTIONS.values()))
 
-    for kind in ("KEYWORD_SALAD", "NEGATED", "QUESTION_COPIED"):
+    for kind in ("KEYWORD_SALAD", "QUESTION_COPIED"):
         failing = {r.question_id for r in results if r.kind == kind and not r.passed}
         assert failing == set(QUESTIONS), (
             f"{kind} expected to fail on all fixture questions, failed on {failing}"
