@@ -123,11 +123,23 @@ jobs:
           SECRET_KEY: ci-test-secret-key
           DATABASE_URL: sqlite:///./ci_test.db
           ENVIRONMENT: ci
+        # The paths are ABSOLUTE on purpose. The container sets WORKDIR
+        # /app/backend, so the relative 'AI' this step used to pass resolved to
+        # /app/backend/AI -- the duplicate tree deleted in
+        # prod/consolidate-shadow-ai-tree. pkgutil.walk_packages() yields
+        # nothing for a path that does not exist and raises nothing, so this
+        # gate would have gone on printing ALL IMPORTS OK while importing zero
+        # AI modules. The count assertion below is the guard against that: a
+        # sweep that sweeps nothing must fail, not pass quietly.
         run: |
           docker compose run --rm backend python -c "\
-          import importlib, pkgutil; \
-          [importlib.import_module(m.name) for m in pkgutil.walk_packages(['AI','app'], '')]; \
-          print('ALL IMPORTS OK')"
+          import importlib, pkgutil, AI, app; \
+          print('AI resolved to:', AI.__file__); \
+          assert AI.__file__.startswith('/app/AI/'), f'AI resolved to {AI.__file__}, expected /app/AI/ -- a duplicate tree is shadowing it'; \
+          mods = [m.name for pkg in (AI, app) for m in pkgutil.walk_packages(pkg.__path__, pkg.__name__ + '.')]; \
+          [importlib.import_module(m) for m in mods]; \
+          assert len(mods) >= 50, f'import sweep found only {len(mods)} modules; expected >=50 -- the sweep path is wrong'; \
+          print(f'ALL IMPORTS OK ({len(mods)} modules)')"
 
       # GATE 0(c). The embedding service must raise on an unloadable model
       # rather than substituting a different one, which would silently change

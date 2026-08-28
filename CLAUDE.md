@@ -117,7 +117,15 @@ Read these before starting anything:
 
 ### Outstanding from Phase 0
 
-- **`ENVIRONMENT` triple-gate** — never built. No `ENVIRONMENT` setting exists. (Track A1)
+- ~~**`ENVIRONMENT` triple-gate** — never built. No `ENVIRONMENT` setting exists. (Track A1)~~
+  **CORRECTED 2026-08-28: this was built and the claim above was stale.**
+  `backend/app/core/config.py:48` declares `ENVIRONMENT: Environment =
+  Environment.PRODUCTION` — defaulting to the most restrictive value, so an unset variable is
+  never the one that permits the bypass — with the `Environment` coercion validator at `:88` and
+  the three-way conflict check at `:121` requiring `AUTH_ENABLED=False` **and** `DEBUG=True`
+  **and** `ENVIRONMENT=local` simultaneously before demo mode is possible. `docker-compose.yml`
+  passes `ENVIRONMENT: "${ENVIRONMENT:-production}"` and CI sets `ENVIRONMENT: "ci"`.
+  Track A1 retains only the Gate 0(e) probe and the full-suite re-run.
 - **Gate 0(e) probe** — not written. Must assert **peak disk as well as peak RSS**. (Track A1)
 - **Lockfile** — blocked on this machine (Windows/3.14 vs Linux/3.12 container). (Track A3)
 - **Four CI gates** — 0(b), 0(c), 0(e), 0(f) have no run behind them. (Track A2)
