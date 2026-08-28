@@ -1,0 +1,80 @@
+GradeMIND — TRANSCRIPTION TEMPLATE
+=================================================================
+Copy this file to  golden/scripts/<SCRIPT_ID>/transcription.txt
+then delete everything above the CUT line and type the answers.
+
+You do not need to know anything about the software. You are typing
+what is on the page, exactly as it is on the page.
+
+-----------------------------------------------------------------
+THE FOUR RULES
+-----------------------------------------------------------------
+
+1. TYPE IT VERBATIM. Keep the student's spelling, grammar and
+   arithmetic exactly as written. Do not tidy anything.
+
+     on the page:  "Photosynthesis makes there own food"
+     you type:     Photosynthesis makes there own food
+     NOT:          Photosynthesis makes their own food
+
+   The misspelling is data. If the engine later mis-marks because of
+   it, that is a real result and it must be in the record.
+
+2. ONE HEADING PER QUESTION, on a line of its own, in square
+   brackets: [Q1], [Q2], [Q4a]. Use the paper's own numbering.
+
+3. USE ONLY THE FOUR MARKERS BELOW. Nothing else in brackets.
+
+     (not attempted)   nothing written at all
+     (illegible)       writing is there, you cannot read it
+     (diagram)         a diagram you are not typing out
+
+   (illegible) goes around the unreadable part only, inline —
+   not the whole answer:
+
+     the value of (illegible) is 9.8
+
+   If the scheme gives marks for a diagram, describe it briefly:
+
+     (diagram: ray diagram, converging lens, F marked)
+
+4. DO NOT MARK ANYTHING. No marks, no ticks, no comments, no "[sic]",
+   no corrections, no opinion on whether it is right. Marking is a
+   separate step done by a separate person against the official
+   scheme, and it happens AFTER this file is finished.
+
+-----------------------------------------------------------------
+EVERY QUESTION GETS A HEADING
+-----------------------------------------------------------------
+
+Including ones the student skipped. A missing heading and a
+question answered with nothing are different statements, and
+leaving the heading out will be rejected at intake.
+
+-----------------------------------------------------------------
+WHEN YOU ARE DONE
+-----------------------------------------------------------------
+
+Save as UTF-8. Then have someone run:
+
+    python scripts/golden_intake.py golden/scripts/<SCRIPT_ID>
+
+It will tell you exactly what is missing. It repairs nothing.
+
+=================================================================
+CUT HERE — delete this line and everything above it
+=================================================================
+
+[Q1]
+
+
+[Q2]
+
+
+[Q3]
+
+
+[Q4]
+
+
+[Q5]
